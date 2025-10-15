@@ -76,6 +76,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\BoxRenderer.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
@@ -88,7 +89,11 @@
     <ClCompile Include="source\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="header\BoxRenderer.h" />
+    <ClInclude Include="header\d3dUtil.h" />
+    <ClInclude Include="header\d3dx12.h" />
     <ClInclude Include="header\Renderer.h" />
+    <ClInclude Include="header\UploadBuffer.h" />
     <ClInclude Include="imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="imgui\imconfig.h" />

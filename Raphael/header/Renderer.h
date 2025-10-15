@@ -72,8 +72,11 @@ public:
     ID3D12CommandQueue* GetCommandQueue() const { return m_commandQueue; }
     ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList; }
     ID3D12DescriptorHeap* GetRTVHeap() const { return m_rtvHeap; }
+	ID3D12DescriptorHeap* GetDSVHeap() const { return m_dsvHeap; }
     ID3D12DescriptorHeap* GetSRVHeap() const { return m_srvHeap; }
     DescriptorHeapAllocator& GetSRVAllocator() { return m_srvAllocator; }
+	DXGI_FORMAT GetBackBufferFormat() const { return mBackBufferFormat; }
+	DXGI_FORMAT GetDepthStencilFormat() const { return mDepthStencilFormat; }
 
     FrameContext* WaitForNextFrame();
 
@@ -83,6 +86,9 @@ public:
 
     void IncrementFrameIndex() { m_frameIndex++; }
 
+    D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
+    D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView() const;
+
 private:
     bool CreateDescriptorHeaps();
 
@@ -91,6 +97,7 @@ private:
     ID3D12CommandQueue* m_commandQueue = nullptr;
     ID3D12GraphicsCommandList* m_commandList = nullptr;
     ID3D12DescriptorHeap* m_rtvHeap = nullptr;
+    ID3D12DescriptorHeap* m_dsvHeap = nullptr;
     ID3D12DescriptorHeap* m_srvHeap = nullptr;
     DescriptorHeapAllocator m_srvAllocator;
     ID3D12Fence* m_fence = nullptr;
@@ -98,6 +105,14 @@ private:
     UINT64 m_fenceLastSignaled = 0;
     UINT m_frameIndex = 0;
     FrameContext m_frameContexts[NUM_FRAMES_IN_FLIGHT];
+
+    DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+	// TODO: To be implemented if needed
+    //// Set true to use 4X MSAA (§4.1.8).  The default is false.
+    //bool      m4xMsaaState = false;    // 4X MSAA enabled
+    //UINT      m4xMsaaQuality = 0;      // quality level of 4X MSAA
 };
 
 // SwapChain wrapper class
@@ -117,10 +132,13 @@ public:
 private:
     void CreateRenderTargetViews(D3D12Device& device);
     void CleanupRenderTargetViews();
+	void CreateDepthStencilView(D3D12Device& device, UINT width = 0, UINT height= 0);
+	void CleanupDepthStencilView();
 
 private:
     IDXGISwapChain3* m_swapChain = nullptr;
     ID3D12Resource* m_backBuffers[NUM_BACK_BUFFERS] = {};
+	ID3D12Resource* m_depthStencilBuffer = nullptr;
     D3D12_CPU_DESCRIPTOR_HANDLE m_rtvHandles[NUM_BACK_BUFFERS] = {};
     bool m_tearingSupport = false;
     bool m_occluded = false;
@@ -130,12 +148,14 @@ private:
 class Renderer
 {
 public:
-    bool Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd);
+    virtual bool Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd);
     void Shutdown();
     void NewFrame();
-    void Render(const ImVec4& clearColor);
+    virtual void Update();
+    virtual void Render(const ImVec4& clearColor);
 
-private:
+//private:
+protected:
     D3D12Device* m_device = nullptr;
     SwapChain* m_swapChain = nullptr;
 };

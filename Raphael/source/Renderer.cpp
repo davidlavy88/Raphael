@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "d3dx12.h"
 
 #ifdef _DEBUG
 #define DX12_ENABLE_DEBUG_LAYER
@@ -8,6 +9,7 @@
 #include <dxgidebug.h>
 #pragma comment(lib, "dxguid.lib")
 #endif
+#include <stdexcept>
 
 // Descriptor heap allocator class
 void DescriptorHeapAllocator::Initialize(ID3D12Device* device, ID3D12DescriptorHeap* heap)
@@ -131,6 +133,7 @@ void D3D12Device::Shutdown()
     if (m_commandList) { m_commandList->Release(); m_commandList = nullptr; }
     if (m_commandQueue) { m_commandQueue->Release(); m_commandQueue = nullptr; }
     if (m_rtvHeap) { m_rtvHeap->Release(); m_rtvHeap = nullptr; }
+	if (m_dsvHeap) { m_dsvHeap->Release(); m_dsvHeap = nullptr; }
     if (m_srvHeap) { m_srvHeap->Release(); m_srvHeap = nullptr; }
     if (m_fence) { m_fence->Release(); m_fence = nullptr; }
     if (m_fenceEvent) { CloseHandle(m_fenceEvent); m_fenceEvent = nullptr; }
@@ -170,6 +173,11 @@ void D3D12Device::WaitForGpu()
     ::WaitForSingleObject(m_fenceEvent, INFINITE);
 }
 
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12Device::DepthStencilView()const
+{
+    return m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+}
+
 bool D3D12Device::CreateDescriptorHeaps()
 {
     // Create RTV heap
@@ -180,6 +188,15 @@ bool D3D12Device::CreateDescriptorHeaps()
     rtvHeapDesc.NodeMask = 1;
     if (FAILED(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap))))
         return false;
+
+	// Create DSV heap
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.NumDescriptors = 1; // Assuming one depth stencil view
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	dsvHeapDesc.NodeMask = 1;
+	if (FAILED(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap))))
+		return false;
 
     // Create SRV heap
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
@@ -247,8 +264,25 @@ bool SwapChain::Initialize(HWND hwnd, D3D12Device& device)
     m_swapChain->SetMaximumFrameLatency(NUM_BACK_BUFFERS);
     m_waitableObject = m_swapChain->GetFrameLatencyWaitableObject();
 
+    RECT rcWnd;
+    GetWindowRect(hwnd, &rcWnd);
+	UINT width = rcWnd.right - rcWnd.left;
+	UINT height = rcWnd.bottom - rcWnd.top;
     // Create render target views
     CreateRenderTargetViews(device);
+	// Create depth stencil view
+    FrameContext* frameContext = device.WaitForNextFrame();
+    frameContext->CommandAllocator->Reset();
+    device.GetCommandList()->Reset(frameContext->CommandAllocator, nullptr);
+
+	CreateDepthStencilView(device, width, height);
+
+	device.GetCommandList()->Close();
+	ID3D12CommandList* const commandLists[] = { device.GetCommandList() };
+	device.GetCommandQueue()->ExecuteCommandLists(1, commandLists);
+
+    device.WaitForGpu();
+
     return true;
 }
 
@@ -268,16 +302,28 @@ void SwapChain::Shutdown()
     }
 
     CleanupRenderTargetViews();
+	CleanupDepthStencilView();
 }
 
 void SwapChain::Resize(UINT width, UINT height, D3D12Device& device)
 {
+    FrameContext* frameContext = device.WaitForNextFrame();
+    frameContext->CommandAllocator->Reset();
+    device.GetCommandList()->Reset(frameContext->CommandAllocator, nullptr);
+
     CleanupRenderTargetViews();
+	CleanupDepthStencilView();
     DXGI_SWAP_CHAIN_DESC1 desc = {};
     m_swapChain->GetDesc1(&desc);
     HRESULT result = m_swapChain->ResizeBuffers(0, width, height, desc.Format, desc.Flags);
     assert(SUCCEEDED(result) && "Failed to resize swapchain.");
     CreateRenderTargetViews(device);
+	CreateDepthStencilView(device, width, height);
+
+    device.GetCommandList()->Close();
+    ID3D12CommandList* const commandLists[] = { device.GetCommandList() };
+    device.GetCommandQueue()->ExecuteCommandLists(1, commandLists);
+    device.WaitForGpu();
 }
 
 HRESULT SwapChain::Present(bool vsync)
@@ -317,6 +363,65 @@ void SwapChain::CleanupRenderTargetViews()
     }
 }
 
+void SwapChain::CreateDepthStencilView(D3D12Device& device, UINT width, UINT height)
+{
+	SIZE_T dsvDescriptorSize = device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = device.GetDSVHeap()->GetCPUDescriptorHandleForHeapStart();
+
+    // Create the depth/stencil buffer and view.
+    D3D12_RESOURCE_DESC depthStencilDesc;
+    depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    depthStencilDesc.Alignment = 0;
+    depthStencilDesc.Width = width;
+    depthStencilDesc.Height = height;
+    depthStencilDesc.DepthOrArraySize = 1;
+    depthStencilDesc.MipLevels = 1;
+    depthStencilDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+    depthStencilDesc.SampleDesc.Count = 1;
+    depthStencilDesc.SampleDesc.Quality = 0;
+    depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+    D3D12_CLEAR_VALUE optClear;
+    optClear.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    optClear.DepthStencil.Depth = 1.0f;
+    optClear.DepthStencil.Stencil = 0;
+    D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+    if(device.GetDevice()->CreateCommittedResource(
+        &heapProp,
+        D3D12_HEAP_FLAG_NONE,
+        &depthStencilDesc,
+        D3D12_RESOURCE_STATE_COMMON,
+        &optClear,
+		IID_PPV_ARGS(&m_depthStencilBuffer)) != S_OK)
+        {
+        throw std::runtime_error("Failed to create depth stencil buffer.");
+    }
+
+    // Create descriptor to mip level 0 of entire resource using the format of the resource.
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+    dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsvDesc.Texture2D.MipSlice = 0;
+	device.GetDevice()->CreateDepthStencilView(m_depthStencilBuffer, nullptr, dsvHandle);
+
+    // Transition the resource from its initial state to be used as a depth buffer.
+	D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_depthStencilBuffer,
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    device.GetCommandList()->ResourceBarrier(1, &barrier);
+}
+
+void SwapChain::CleanupDepthStencilView()
+{
+    if (m_depthStencilBuffer)
+    {
+        m_depthStencilBuffer->Release();
+        m_depthStencilBuffer = nullptr;
+	}
+}
+
 // Renderer class that handles rendering operations
 bool Renderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
 {
@@ -341,7 +446,7 @@ bool Renderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
     initInfo.CommandQueue = device.GetCommandQueue();
     initInfo.NumFramesInFlight = NUM_FRAMES_IN_FLIGHT;
     initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-    initInfo.DSVFormat = DXGI_FORMAT_UNKNOWN;
+    initInfo.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
     initInfo.SrvDescriptorHeap = device.GetSRVHeap();
     initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_handle)
         {
@@ -375,6 +480,11 @@ void Renderer::NewFrame()
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+}
+
+void Renderer::Update()
+{
+    // Override in derived classes for custom update logic
 }
 
 void Renderer::Render(const ImVec4& clearColor)

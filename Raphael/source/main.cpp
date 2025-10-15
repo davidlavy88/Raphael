@@ -14,7 +14,8 @@
 #include <tchar.h>
 #include <cassert>
 #include <memory>
-#include "Renderer.h"
+//#include "Renderer.h"
+#include "BoxRenderer.h"
 
 #ifdef _DEBUG
 #define DX12_ENABLE_DEBUG_LAYER
@@ -122,20 +123,12 @@ public:
             // Start ImGui frame
             m_renderer.NewFrame();
 
-            // Demo windows
-            if (showDemoWindow)
-                ImGui::ShowDemoWindow(&showDemoWindow);
-
             // Main window
             {
                 static float f = 0.0f;
                 static int counter = 0;
 
                 ImGui::Begin("Hello, world!");
-                ImGui::Text("This is some useful text.");
-                ImGui::Checkbox("Demo Window", &showDemoWindow);
-                ImGui::Checkbox("Another Window", &showAnotherWindow);
-                ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
                 ImGui::ColorEdit3("clear color", (float*)&clearColor);
 
                 if (ImGui::Button("Button"))
@@ -148,17 +141,8 @@ public:
                 ImGui::End();
             }
 
-            // Another window
-            if (showAnotherWindow)
-            {
-                ImGui::Begin("Another Window", &showAnotherWindow);
-                ImGui::Text("Hello from another window!");
-                if (ImGui::Button("Close Me"))
-                    showAnotherWindow = false;
-                ImGui::End();
-            }
-
             // Render frame
+			m_renderer.Update();
             m_renderer.Render(clearColor);
 
             // Present
@@ -250,7 +234,7 @@ private:
     float m_dpiScale = 1.0f;
     D3D12Device m_device;
     SwapChain m_swapChain;
-    Renderer m_renderer;
+    BoxRenderer m_renderer;
 };
 
 // Entry point

@@ -7,6 +7,12 @@
     <Filter Include="imgui">
       <UniqueIdentifier>{45ec1c87-883c-49fc-9af8-cc012b8177e4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="backends">
+      <UniqueIdentifier>{c9a8a7b5-2fe7-4502-9d4b-64c0c5fcb34e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{4933d83f-9994-40a6-92b0-6d612686567a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -27,14 +33,20 @@
     <ClCompile Include="imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\backends\imgui_impl_dx12.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui\backends\imgui_impl_win32.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
     <ClCompile Include="imgui\misc\imgui_stdlib.cpp">
       <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="source\BoxRenderer.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\backends\imgui_impl_dx12.cpp">
+      <Filter>backends</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\backends\imgui_impl_win32.cpp">
+      <Filter>backends</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Renderer.cpp">
+      <Filter>source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -47,12 +59,6 @@
     <ClInclude Include="imgui\imgui_internal.h">
       <Filter>imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\backends\imgui_impl_dx12.h">
-      <Filter>source</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui\backends\imgui_impl_win32.h">
-      <Filter>source</Filter>
-    </ClInclude>
     <ClInclude Include="imgui\misc\imgui_stdlib.h">
       <Filter>imgui</Filter>
     </ClInclude>
@@ -64,6 +70,27 @@
     </ClInclude>
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\backends\imgui_impl_dx12.h">
+      <Filter>backends</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\backends\imgui_impl_win32.h">
+      <Filter>backends</Filter>
+    </ClInclude>
+    <ClInclude Include="header\d3dx12.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Renderer.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\UploadBuffer.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\d3dUtil.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\BoxRenderer.h">
+      <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
