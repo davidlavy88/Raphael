@@ -25,6 +25,7 @@
 #include <dxgidebug.h>
 #pragma comment(lib, "dxguid.lib")
 #endif
+#include <windowsx.h>
 
 
 // Forward declare message handler from imgui_impl_win32.cpp
@@ -172,6 +173,19 @@ public:
 
         case WM_DESTROY:
             ::PostQuitMessage(0);
+            return 0;
+        case WM_LBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+            m_renderer.OnMouseDown(m_hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            return 0;
+        case WM_LBUTTONUP:
+        case WM_MBUTTONUP:
+        case WM_RBUTTONUP:
+            m_renderer.OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            return 0;
+        case WM_MOUSEMOVE:
+            m_renderer.OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             return 0;
         }
 

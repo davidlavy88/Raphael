@@ -434,6 +434,8 @@ bool Renderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableSetMousePos;
+	// io.ConfigNavMoveSetMousePos = true;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();

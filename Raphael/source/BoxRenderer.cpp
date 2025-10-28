@@ -340,6 +340,57 @@ void BoxRenderer::Update()
     m_objectCB->CopyData(0, objConstants);
 }
 
+void BoxRenderer::OnMouseDown(HWND hWnd, WPARAM btnState, int x, int y)
+{
+    mLastMousePos.x = x;
+    mLastMousePos.y = y;
+
+    SetCapture(hWnd);
+}
+
+void BoxRenderer::OnMouseUp(WPARAM btnState, int x, int y)
+{
+    ReleaseCapture();
+}
+
+template<typename T>
+static T Clamp(const T& x, const T& low, const T& high)
+{
+    return x < low ? low : (x > high ? high : x);
+}
+
+void BoxRenderer::OnMouseMove(WPARAM btnState, int x, int y)
+{
+    if ((btnState & MK_LBUTTON) != 0)
+    {
+        // Make each pixel correspond to a quarter of a degree.
+        float dx = XMConvertToRadians(0.25f * static_cast<float>(x - mLastMousePos.x));
+        float dy = XMConvertToRadians(0.25f * static_cast<float>(y - mLastMousePos.y));
+
+        // Update angles based on input to orbit camera around box.
+        mTheta += dx;
+        mPhi += dy;
+
+        // Restrict the angle mPhi.
+        mPhi = Clamp(mPhi, 0.1f, XM_PI - 0.1f);
+    }
+    else if ((btnState & MK_RBUTTON) != 0)
+    {
+        // Make each pixel correspond to 0.005 unit in the scene.
+        float dx = 0.005f * static_cast<float>(x - mLastMousePos.x);
+        float dy = 0.005f * static_cast<float>(y - mLastMousePos.y);
+
+        // Update the camera radius based on input.
+        mRadius += dx - dy;
+
+        // Restrict the radius.
+        mRadius = Clamp(mRadius, 3.0f, 15.0f);
+    }
+
+    mLastMousePos.x = x;
+    mLastMousePos.y = y;
+}
+
 ComPtr<ID3DBlob> CompileShader(
     const std::wstring& filename,
     const D3D_SHADER_MACRO* defines,

@@ -154,6 +154,11 @@ public:
     virtual void Update();
     virtual void Render(const ImVec4& clearColor);
 
+    // Convenience overrides for handling mouse input.
+    virtual void OnMouseDown(HWND hWnd, WPARAM btnState, int x, int y) {}
+    virtual void OnMouseUp(WPARAM btnState, int x, int y) {}
+    virtual void OnMouseMove(WPARAM btnState, int x, int y) {}
+
 //private:
 protected:
     D3D12Device* m_device = nullptr;

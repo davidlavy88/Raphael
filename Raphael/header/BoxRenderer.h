@@ -35,6 +35,10 @@ public:
     void Render(const ImVec4& clearColor) override;
     void Update();
 
+    virtual void OnMouseDown(HWND hWnd, WPARAM btnState, int x, int y)override;
+    virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
+    virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
+
     void BuildDescriptorHeaps(D3D12Device& device);
     void BuildConstantBuffers(D3D12Device& device);
     void BuildRootSignature(D3D12Device& device);
@@ -66,4 +70,5 @@ private:
     float mPhi = XM_PIDIV4;
     float mRadius = 5.0f;
 
+    POINT mLastMousePos;
 };
