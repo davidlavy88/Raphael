@@ -77,6 +77,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="source\BoxRenderer.cpp" />
+    <ClCompile Include="source\d3dUtil.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
