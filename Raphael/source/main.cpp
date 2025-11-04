@@ -15,7 +15,7 @@
 #include <cassert>
 #include <memory>
 //#include "Renderer.h"
-#include "BoxRenderer.h"
+#include "RayTracerRenderer.h"
 
 #ifdef _DEBUG
 #define DX12_ENABLE_DEBUG_LAYER
@@ -248,7 +248,7 @@ private:
     float m_dpiScale = 1.0f;
     D3D12Device m_device;
     SwapChain m_swapChain;
-    BoxRenderer m_renderer;
+    RayTracerRenderer m_renderer;
 };
 
 // Entry point

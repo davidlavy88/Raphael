@@ -14,8 +14,9 @@ cbuffer SceneCB : register(b0)
     
 };
 
-Texture2D tex00 : register(t0);
-SamplerState sam00 : register(s0);
+// I will use these later for adding textures
+//Texture2D tex00 : register(t0);
+//SamplerState sam00 : register(s0);
 
 // -----------------------------------------------------------
 // Vertex shader input/output
@@ -183,8 +184,8 @@ float4 PS_Main(VSOut IN) : SV_TARGET
     float4 clipFar = float4(ndc, 1.0f, 1.0f); // far plane
     
     // Unproject to world space: worldPos = invViewProj * clipPos
-    float4 worldNearest = mul(viewProjInverse, clipNearest);
-    float4 worldFar = mul(viewProjInverse, clipFar);
+    float4 worldNearest = mul(clipNearest, viewProjInverse);
+    float4 worldFar = mul(clipFar, viewProjInverse);
     
     // Perspective divide
     worldNearest /= worldNearest.w;
@@ -247,4 +248,7 @@ float4 PS_Main(VSOut IN) : SV_TARGET
             return Shade(hitPoint, hitNormal, hitColor, cameraPos.xyz);
         }
     }
+    
+    // Background color (sky-ish)
+    return float4(0.4, 0.6, 0.9, 1.0);
 }

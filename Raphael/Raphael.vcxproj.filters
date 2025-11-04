@@ -48,6 +48,9 @@
     <ClCompile Include="source\Renderer.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\RayTracerRenderer.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
     <ClCompile Include="source\d3dUtil.cpp">
       <Filter>source</Filter>
     </ClCompile>
@@ -93,6 +96,9 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="header\BoxRenderer.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\RayTracerRenderer.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>
