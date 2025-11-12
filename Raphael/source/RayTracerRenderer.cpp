@@ -41,6 +41,17 @@ bool RayTracerRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HW
     return true;
 }
 
+void RayTracerRenderer::Shutdown()
+{
+    m_fullscreenGeo.reset();
+    m_sceneCB.reset();
+    m_pso.Reset();
+    m_rootSignature.Reset();
+    m_cbvHeap.Reset();
+
+    Renderer::Shutdown();
+}
+
 void RayTracerRenderer::BuildDescriptorHeaps(D3D12Device& device)
 {
     // Implementation for creating descriptor heaps

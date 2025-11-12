@@ -41,6 +41,17 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
 	return true;
 }
 
+void BoxRenderer::Shutdown()
+{
+    mBoxGeo.reset();
+    m_objectCB.reset();
+    m_pso.Reset();
+    m_rootSignature.Reset();
+    m_cbvHeap.Reset();
+
+    Renderer::Shutdown();
+}
+
 void BoxRenderer::BuildDescriptorHeaps(D3D12Device& device)
 {
     // Implementation for creating descriptor heaps

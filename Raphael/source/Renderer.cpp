@@ -301,6 +301,23 @@ void SwapChain::Shutdown()
         m_waitableObject = nullptr;
     }
 
+    // Release back buffers
+    for (int i = 0; i < NUM_BACK_BUFFERS; i++)
+    {
+        if (m_backBuffers[i])
+        {
+            m_backBuffers[i]->Release();
+            m_backBuffers[i] = nullptr;
+        }
+    }
+
+    // Release depth stencil buffer
+    if (m_depthStencilBuffer)
+    {
+        m_depthStencilBuffer->Release();
+        m_depthStencilBuffer = nullptr;
+    }
+
     CleanupRenderTargetViews();
 	CleanupDepthStencilView();
 }

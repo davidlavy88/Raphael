@@ -37,6 +37,7 @@ class RayTracerRenderer : public Renderer
 {
 public:
     bool Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd) override;
+    void Shutdown();
     void Render(const ImVec4& clearColor) override;
     void Update();
 
