@@ -317,28 +317,21 @@ void RayTracerRenderer::Update()
     m_sceneCB->CopyData(0, sceneConstants);
 }
 
-void RayTracerRenderer::OnMouseDown(HWND hWnd, WPARAM btnState, int x, int y)
-{
-    mLastMousePos.x = x;
-    mLastMousePos.y = y;
-
-    SetCapture(hWnd);
-}
-
-void RayTracerRenderer::OnMouseUp(WPARAM btnState, int x, int y)
-{
-    ReleaseCapture();
-}
-
 template<typename T>
 static T Clamp(const T& x, const T& low, const T& high)
 {
     return x < low ? low : (x > high ? high : x);
 }
 
-void RayTracerRenderer::OnMouseMove(WPARAM btnState, int x, int y)
+void RayTracerRenderer::ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y)
 {
-    if ((btnState & MK_LBUTTON) != 0)
+    mLastMousePos.x = static_cast<LONG>(x);
+    mLastMousePos.y = static_cast<LONG>(y);
+}
+
+void RayTracerRenderer::ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y)
+{
+    if (button == ImGuiMouseButton_Left)
     {
         // Make each pixel correspond to a quarter of a degree.
         float dx = XMConvertToRadians(0.25f * static_cast<float>(x - mLastMousePos.x));
@@ -351,7 +344,7 @@ void RayTracerRenderer::OnMouseMove(WPARAM btnState, int x, int y)
         // Restrict the angle mPhi.
         mPhi = Clamp(mPhi, 0.1f, XM_PI - 0.1f);
     }
-    else if ((btnState & MK_RBUTTON) != 0)
+    else if (button == ImGuiMouseButton_Right)
     {
         // Make each pixel correspond to 0.005 unit in the scene.
         float dx = 0.005f * static_cast<float>(x - mLastMousePos.x);
@@ -364,6 +357,6 @@ void RayTracerRenderer::OnMouseMove(WPARAM btnState, int x, int y)
         mRadius = Clamp(mRadius, 3.0f, 15.0f);
     }
 
-    mLastMousePos.x = x;
-    mLastMousePos.y = y;
+    mLastMousePos.x = static_cast<LONG>(x);
+    mLastMousePos.y = static_cast<LONG>(y);
 }

@@ -89,6 +89,8 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
     D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView() const;
 
+    bool m_appPaused = false;          // Is the application paused?
+
 private:
     bool CreateDescriptorHeaps();
 
@@ -155,9 +157,8 @@ public:
     virtual void Render(const ImVec4& clearColor);
 
     // Convenience overrides for handling mouse input.
-    virtual void OnMouseDown(HWND hWnd, WPARAM btnState, int x, int y) {}
-    virtual void OnMouseUp(WPARAM btnState, int x, int y) {}
-    virtual void OnMouseMove(WPARAM btnState, int x, int y) {}
+    virtual void ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y) {}
+    virtual void ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y) {}
 
 //private:
 protected:

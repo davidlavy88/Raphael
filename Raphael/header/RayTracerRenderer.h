@@ -40,9 +40,8 @@ public:
     void Render(const ImVec4& clearColor) override;
     void Update();
 
-    virtual void OnMouseDown(HWND hWnd, WPARAM btnState, int x, int y)override;
-    virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
-    virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
+    virtual void ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y)override;
+    virtual void ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y)override;
 
     void BuildDescriptorHeaps(D3D12Device& device);
     void BuildConstantBuffers(D3D12Device& device);

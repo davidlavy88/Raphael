@@ -26,6 +26,7 @@
 #pragma comment(lib, "dxguid.lib")
 #endif
 #include <windowsx.h>
+#include <imgui_internal.h>
 
 
 // Forward declare message handler from imgui_impl_win32.cpp
@@ -67,6 +68,13 @@ public:
             return false;
         }
 
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
         // Setup ImGui scaling
         ImGuiStyle& style = ImGui::GetStyle();
         style.ScaleAllSizes(m_dpiScale);
@@ -93,62 +101,114 @@ public:
         bool showDemoWindow = true;
         bool showAnotherWindow = false;
         ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+        MSG msg = { 0 };
 
         // Main loop
-        bool done = false;
-        while (!done)
+        while (msg.message != WM_QUIT)
         {
             // Process messages
-            MSG msg;
-            while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+            if (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
             {
                 ::TranslateMessage(&msg);
                 ::DispatchMessage(&msg);
-                if (msg.message == WM_QUIT)
-                    done = true;
             }
-            if (done)
-                break;
-
-            // Handle window occlusion
-            if ((m_swapChain.IsOccluded() && m_swapChain.Present(false) == DXGI_STATUS_OCCLUDED) || ::IsIconic(m_hwnd))
+            else
             {
-                ::Sleep(10);
-                continue;
-            }
+                if (m_device.m_appPaused)
+                {
+                    ::Sleep(100);
+				}
+                else 
+                {
+                    // Handle window occlusion
+                    if ((m_swapChain.IsOccluded() && m_swapChain.Present(false) == DXGI_STATUS_OCCLUDED) || ::IsIconic(m_hwnd))
+                    {
+                        ::Sleep(10);
+                        continue;
+                    }
 
-            // Wait for swap chain if needed
-            if (HANDLE waitableObject = m_swapChain.GetWaitableObject())
-                ::WaitForSingleObject(waitableObject, INFINITE);
+                    // Wait for swap chain if needed
+                    if (HANDLE waitableObject = m_swapChain.GetWaitableObject())
+                        ::WaitForSingleObject(waitableObject, INFINITE);
 
-            // Start ImGui frame
-            m_renderer.NewFrame();
+                    // Start ImGui frame
+                    m_renderer.NewFrame();
 
-            // Main window
-            {
-                static float f = 0.0f;
-                static int counter = 0;
+                    // Handle mouse input for 3D scene
+                    ImGuiIO& io = ImGui::GetIO();
+                    static bool leftMousePressed = false;
+                    static bool rightMousePressed = false;
+                    static ImVec2 lastMousePos = { 0, 0 };
 
-                ImGui::Begin("Hello, world!");
-                ImGui::ColorEdit3("clear color", (float*)&clearColor);
+                    // Check for mouse button press (start of drag)
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !io.WantCaptureMouse)
+                    {
+                        leftMousePressed = true;
+                        lastMousePos = io.MousePos;
+                        m_renderer.ImGuiOnMouseDown(ImGuiMouseButton_Left, io.MousePos.x, io.MousePos.y);
+                    }
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) && !io.WantCaptureMouse)
+                    {
+                        rightMousePressed = true;
+                        lastMousePos = io.MousePos;
+                        m_renderer.ImGuiOnMouseDown(ImGuiMouseButton_Right, io.MousePos.x, io.MousePos.y);
+                    }
 
-                if (ImGui::Button("Button"))
-                    counter++;
-                ImGui::SameLine();
-                ImGui::Text("counter = %d", counter);
+                    // Check for mouse button release (end of drag)
+                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+                    {
+                        leftMousePressed = false;
+                    }
+                    if (ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+                    {
+                        rightMousePressed = false;
+                    }
 
-                ImGuiIO& io = ImGui::GetIO();
-                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-                ImGui::End();
-            }
+                    // Handle mouse movement during drag
+                    if (leftMousePressed && ImGui::IsMouseDown(ImGuiMouseButton_Left) && !io.WantCaptureMouse)
+                    {
+                        if (io.MousePos.x != lastMousePos.x || io.MousePos.y != lastMousePos.y)
+                        {
+                            m_renderer.ImGuiOnMouseMove(ImGuiMouseButton_Left, io.MousePos.x, io.MousePos.y);
+                            lastMousePos = io.MousePos;
+                        }
+                    }
+                    if (rightMousePressed && ImGui::IsMouseDown(ImGuiMouseButton_Right) && !io.WantCaptureMouse)
+                    {
+                        if (io.MousePos.x != lastMousePos.x || io.MousePos.y != lastMousePos.y)
+                        {
+                            m_renderer.ImGuiOnMouseMove(ImGuiMouseButton_Right, io.MousePos.x, io.MousePos.y);
+                            lastMousePos = io.MousePos;
+                        }
+                    }
 
-            // Render frame
-			m_renderer.Update();
-            m_renderer.Render(clearColor);
+                    // Main window
+                    {
+                        static float f = 0.0f;
+                        static int counter = 0;
 
-            // Present
-            m_swapChain.Present(true);
-            m_device.IncrementFrameIndex();
+                        ImGui::Begin("Hello, world!");
+                        ImGui::ColorEdit3("clear color", (float*)&clearColor);
+
+                        if (ImGui::Button("Button"))
+                            counter++;
+                        ImGui::SameLine();
+                        ImGui::Text("counter = %d", counter);
+
+                        ImGuiIO& io = ImGui::GetIO();
+                        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+                        ImGui::End();
+                    }
+
+                    // Render frame
+                    m_renderer.Update();
+                    m_renderer.Render(clearColor);
+
+                    // Present
+                    m_swapChain.Present(true);
+                    m_device.IncrementFrameIndex();
+                }                
+            }            
         }
     }
 
@@ -159,6 +219,17 @@ public:
 
         switch (msg)
         {
+        case WM_ACTIVATE:
+            if (LOWORD(wParam) == WA_INACTIVE)
+            {
+                m_device.m_appPaused = true;
+            }
+            else
+            {
+                m_device.m_appPaused = false;
+			}
+			return 0;
+
         case WM_SIZE:
             if (m_device.GetDevice() != nullptr && wParam != SIZE_MINIMIZED)
             {
@@ -173,19 +244,6 @@ public:
 
         case WM_DESTROY:
             ::PostQuitMessage(0);
-            return 0;
-        case WM_LBUTTONDOWN:
-        case WM_MBUTTONDOWN:
-        case WM_RBUTTONDOWN:
-            m_renderer.OnMouseDown(m_hwnd, wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            return 0;
-        case WM_LBUTTONUP:
-        case WM_MBUTTONUP:
-        case WM_RBUTTONUP:
-            m_renderer.OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            return 0;
-        case WM_MOUSEMOVE:
-            m_renderer.OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             return 0;
         }
 
