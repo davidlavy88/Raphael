@@ -8,6 +8,7 @@
 #include <tchar.h>
 #include <cassert>
 #include <memory>
+#include <DirectXMath.h>
 
 #if defined(DEBUG) || defined(_DEBUG)
 #define _CRTDBG_MAP_ALLOC
@@ -18,6 +19,8 @@
 #pragma comment(lib,"d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
+
+using namespace DirectX;
 
 // Config constants
 static constexpr int NUM_FRAMES_IN_FLIGHT = 2;
@@ -160,8 +163,29 @@ public:
     virtual void ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y) {}
     virtual void ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y) {}
 
+    // Overrides for camera movement
+    virtual void CameraForward();
+    virtual void CameraBackward();
+    virtual void CameraLeft();
+    virtual void CameraRight();
+
+    void SetCameraSpeed(float speed) { cameraSpeed = speed; }
+    float GetCameraSpeed() const { return cameraSpeed; }
+    float GetPitch() const { return mPitch; }
+    float GetYaw() const { return mYaw; }
+    void SetPos(XMVECTOR pos) { mPos = pos; }
+
 //private:
 protected:
     D3D12Device* m_device = nullptr;
     SwapChain* m_swapChain = nullptr;
+
+    float mPitch = 0.0f;
+    float mYaw = 0.0f;
+
+    XMVECTOR mFront;
+    XMVECTOR mPos;
+    XMVECTOR mUp;
+
+    float cameraSpeed = 0.05f;
 };

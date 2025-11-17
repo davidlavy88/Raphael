@@ -182,18 +182,27 @@ public:
                         }
                     }
 
+                    // Check for keyboard input for camera movement
+                    if (ImGui::IsKeyDown(ImGuiKey_W) || ImGui::IsKeyDown(ImGuiKey_UpArrow))
+                        m_renderer.CameraForward();
+                    if (ImGui::IsKeyDown(ImGuiKey_S) || ImGui::IsKeyDown(ImGuiKey_DownArrow))
+                        m_renderer.CameraBackward();
+                    if (ImGui::IsKeyDown(ImGuiKey_A) || ImGui::IsKeyDown(ImGuiKey_LeftArrow))
+                        m_renderer.CameraLeft();
+                    if (ImGui::IsKeyDown(ImGuiKey_D) || ImGui::IsKeyDown(ImGuiKey_RightArrow))
+                        m_renderer.CameraRight();
+
                     // Main window
                     {
-                        static float f = 0.0f;
-                        static int counter = 0;
+                        static float cameraSpeed = 0.05f;
 
                         ImGui::Begin("Hello, world!");
                         ImGui::ColorEdit3("clear color", (float*)&clearColor);
 
-                        if (ImGui::Button("Button"))
-                            counter++;
-                        ImGui::SameLine();
-                        ImGui::Text("counter = %d", counter);
+                        ImGui::SliderFloat("Camera Speed", &cameraSpeed, 0.0f, 0.4f);
+                        m_renderer.SetCameraSpeed(cameraSpeed);
+
+                        ImGui::Text("Pitch(degrees): %.2f, Yaw(degrees): %.2f", m_renderer.GetPitch() * 180.0f / XM_PI , m_renderer.GetYaw() * 180.0f / XM_PI);
 
                         ImGuiIO& io = ImGui::GetIO();
                         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);

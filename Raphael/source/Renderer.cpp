@@ -556,3 +556,23 @@ void Renderer::Render(const ImVec4& clearColor)
     m_device->GetCommandQueue()->ExecuteCommandLists(1, cmdLists);
     m_device->SignalAndIncrementFence(frameContext);
 }
+
+void Renderer::CameraForward()
+{
+    mPos = mPos + cameraSpeed * mFront;
+}
+
+void Renderer::CameraBackward()
+{
+    mPos = mPos - cameraSpeed * mFront;
+}
+
+void Renderer::CameraLeft()
+{
+    mPos = mPos + XMVector3Normalize(XMVector3Cross(mFront, mUp)) * cameraSpeed;
+}
+
+void Renderer::CameraRight()
+{
+    mPos = mPos - XMVector3Normalize(XMVector3Cross(mFront, mUp)) * cameraSpeed;
+}

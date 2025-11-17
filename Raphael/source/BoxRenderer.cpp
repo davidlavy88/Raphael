@@ -17,6 +17,11 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
     BuildBoxGeometry(device);
     BuildPSO(device);
 
+    // Initialize camera position
+    mPos = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
+    mFront = -1 * mPos;
+    mUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
     // ADD: Initialize matrices
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
@@ -323,17 +328,7 @@ void BoxRenderer::Render(const ImVec4& clearColor)
 
 void BoxRenderer::Update()
 {
-    // Convert Spherical to Cartesian coordinates.
-    float x = mRadius * sinf(mPhi) * cosf(mTheta);
-    float z = mRadius * sinf(mPhi) * sinf(mTheta);
-    float y = mRadius * cosf(mPhi);
-
-    // Build the view matrix.
-    XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
-    XMVECTOR target = XMVectorZero();
-    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-    XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+    XMMATRIX view = XMMatrixLookAtLH(mPos, mPos + mFront, mUp);
     XMStoreFloat4x4(&mView, view);
 
     XMMATRIX world = XMLoadFloat4x4(&mWorld);
@@ -363,28 +358,24 @@ void BoxRenderer::ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y)
     if (button == ImGuiMouseButton_Left)
     {
         // Make each pixel correspond to a quarter of a degree.
-        float dx = XMConvertToRadians(0.25f * static_cast<float>(x - mLastMousePos.x));
-        float dy = XMConvertToRadians(0.25f * static_cast<float>(y - mLastMousePos.y));
-
-        // Update angles based on input to orbit camera around box.
-        mTheta += dx;
-        mPhi += dy;
-
-        // Restrict the angle mPhi.
-        mPhi = Clamp(mPhi, 0.1f, XM_PI - 0.1f);
+        float dx = XMConvertToRadians(4 * cameraSpeed * static_cast<float>(x - mLastMousePos.x));
+        float dy = XMConvertToRadians(4 * cameraSpeed * static_cast<float>(y - mLastMousePos.y));
+        
+		mPitch += dy;
+		mYaw += dx;
     }
     else if (button == ImGuiMouseButton_Right)
     {
-        // Make each pixel correspond to 0.005 unit in the scene.
-        float dx = 0.005f * static_cast<float>(x - mLastMousePos.x);
-        float dy = 0.005f * static_cast<float>(y - mLastMousePos.y);
-
-        // Update the camera radius based on input.
-        mRadius += dx - dy;
-
-        // Restrict the radius.
-        mRadius = Clamp(mRadius, 3.0f, 15.0f);
+        // TODO Implement up and down
     }
+
+    // Calculate the new front vector
+    mFront = XMVectorSet(
+        cosf(mPitch) * sinf(mYaw),
+        sinf(mPitch),
+        cosf(mPitch) * cosf(mYaw),
+        0.0f
+        );
 
     mLastMousePos.x = static_cast<LONG>(x);
     mLastMousePos.y = static_cast<LONG>(y);
