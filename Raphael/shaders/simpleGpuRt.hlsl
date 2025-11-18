@@ -143,7 +143,7 @@ bool IsInShadow(float3 p, float3 lightDir, float lightDistance)
 
 // Shading function
 // We use ambient + diffuse shading model (Lambert) + specular + shadowing
-float4 Shade(float3 p, float3 normal, float4 baseColor, float3 camPos)
+float4 Shade(float3 p, float3 normal, float4 baseColor, float3 camPos, bool inShadow)
 {
     // Light direction
     float3 lightDir = normalize(lightPos.xyz - p);
@@ -167,6 +167,12 @@ float4 Shade(float3 p, float3 normal, float4 baseColor, float3 camPos)
     float3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(saturate(dot(viewDir, reflectDir)), shininess);
     float3 specular = specularStrength * spec * float3(1.0f, 1.0f, 1.0f); // white specular highlight
+    
+    if (inShadow)
+    {
+        diffuse = 0.0f; // Set  diffuse to zero in shadow
+        specular = 0.0f; // Set specular to zero in shadow
+    }
     
     return float4(ambient + diffuse + specular, 1.0f);
 }
@@ -238,15 +244,7 @@ float4 PS_Main(VSOut IN) : SV_TARGET
         float lightDistance = length(lightPos.xyz - hitPoint);
         bool inShadow = IsInShadow(hitPoint, lightDir, lightDistance);
         
-        if (inShadow)
-        {
-            // Simple shadow: darken the color
-            return float4(hitColor.rgb * 0.3f, 1.0f); // darken to 30%
-        }
-        else
-        {
-            return Shade(hitPoint, hitNormal, hitColor, cameraPos.xyz);
-        }
+        return Shade(hitPoint, hitNormal, hitColor, cameraPos.xyz, inShadow);
     }
     
     // Background color (sky-ish)
