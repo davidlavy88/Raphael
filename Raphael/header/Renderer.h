@@ -160,8 +160,8 @@ public:
     virtual void Render(const ImVec4& clearColor);
 
     // Convenience overrides for handling mouse input.
-    virtual void ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y) {}
-    virtual void ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y) {}
+    virtual void ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y);
+    virtual void ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y);
 
     // Overrides for camera movement
     virtual void CameraForward();
@@ -188,4 +188,10 @@ protected:
     XMVECTOR mUp;
 
     float cameraSpeed = 0.05f;
+
+    XMFLOAT4X4 mWorld;
+    XMFLOAT4X4 mView;
+    XMFLOAT4X4 mProj;
+
+    POINT mLastMousePos;
 };

@@ -41,9 +41,6 @@ public:
     void Render(const ImVec4& clearColor) override;
     void Update();
 
-    virtual void ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y)override;
-    virtual void ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y)override;
-
     void BuildDescriptorHeaps(D3D12Device& device);
     void BuildConstantBuffers(D3D12Device& device);
     void BuildRootSignature(D3D12Device& device);
@@ -66,10 +63,4 @@ private:
     std::unique_ptr<UploadBuffer<SceneConstants>> m_sceneCB = nullptr;
 
     std::unique_ptr<MeshGeometry> m_fullscreenGeo = nullptr;
-
-    XMFLOAT4X4 mWorld;
-    XMFLOAT4X4 mView;
-    XMFLOAT4X4 mProj;
-
-    POINT mLastMousePos;
 };

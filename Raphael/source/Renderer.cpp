@@ -576,3 +576,46 @@ void Renderer::CameraRight()
 {
     mPos = mPos - XMVector3Normalize(XMVector3Cross(mFront, mUp)) * cameraSpeed;
 }
+
+template<typename T>
+static T Clamp(const T& x, const T& low, const T& high)
+{
+    return x < low ? low : (x > high ? high : x);
+}
+
+void Renderer::ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y)
+{
+    mLastMousePos.x = static_cast<LONG>(x);
+    mLastMousePos.y = static_cast<LONG>(y);
+}
+
+void Renderer::ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y)
+{
+    if (button == ImGuiMouseButton_Left)
+    {
+        // Make each pixel correspond to a quarter of a degree.
+        float dx = XMConvertToRadians(4 * cameraSpeed * static_cast<float>(x - mLastMousePos.x));
+        float dy = XMConvertToRadians(4 * cameraSpeed * static_cast<float>(y - mLastMousePos.y));
+
+        mPitch += dy;
+        mYaw += dx;
+
+        // Make sure that when pitch is out of bounds, screen doesn't get flipped
+        mPitch = Clamp(mPitch, -XM_PIDIV2 + 0.01f, XM_PIDIV2 - 0.01f);
+    }
+    else if (button == ImGuiMouseButton_Right)
+    {
+        mPos += cameraSpeed * (static_cast<float>(y - mLastMousePos.y)) * mUp;
+    }
+
+    // Calculate the new front vector
+    mFront = XMVectorSet(
+        cosf(mPitch) * sinf(mYaw),
+        sinf(mPitch),
+        cosf(mPitch) * cosf(mYaw),
+        0.0f
+    );
+
+    mLastMousePos.x = static_cast<LONG>(x);
+    mLastMousePos.y = static_cast<LONG>(y);
+}
