@@ -39,7 +39,7 @@ public:
     bool Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd) override;
     void Shutdown();
     void Render(const ImVec4& clearColor) override;
-    void Update();
+    void Update(float deltaTime);
 
     void BuildDescriptorHeaps(D3D12Device& device);
     void BuildConstantBuffers(D3D12Device& device);
@@ -63,4 +63,6 @@ private:
     std::unique_ptr<UploadBuffer<SceneConstants>> m_sceneCB = nullptr;
 
     std::unique_ptr<MeshGeometry> m_fullscreenGeo = nullptr;
+
+    float mTime = 0.0f;
 };

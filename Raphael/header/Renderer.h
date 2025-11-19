@@ -156,7 +156,7 @@ public:
     virtual bool Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd);
     void Shutdown();
     void NewFrame();
-    virtual void Update();
+    virtual void Update(float deltaTime) {}
     virtual void Render(const ImVec4& clearColor);
 
     // Convenience overrides for handling mouse input.

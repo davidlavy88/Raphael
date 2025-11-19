@@ -34,7 +34,7 @@ public:
     bool Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd) override;
     void Shutdown();
     void Render(const ImVec4& clearColor) override;
-    void Update();
+    void Update(float deltaTime);
 
     void BuildDescriptorHeaps(D3D12Device& device);
     void BuildConstantBuffers(D3D12Device& device);

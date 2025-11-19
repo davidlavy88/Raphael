@@ -210,7 +210,8 @@ public:
                     }
 
                     // Render frame
-                    m_renderer.Update();
+                    float deltaTime = 0.01;
+                    m_renderer.Update(deltaTime);
                     m_renderer.Render(clearColor);
 
                     // Present

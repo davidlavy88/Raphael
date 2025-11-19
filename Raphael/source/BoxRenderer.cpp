@@ -326,7 +326,7 @@ void BoxRenderer::Render(const ImVec4& clearColor)
     m_device->SignalAndIncrementFence(frameContext);
 }
 
-void BoxRenderer::Update()
+void BoxRenderer::Update(float deltaTime)
 {
     XMMATRIX view = XMMatrixLookAtLH(mPos, mPos + mFront, mUp);
     XMStoreFloat4x4(&mView, view);

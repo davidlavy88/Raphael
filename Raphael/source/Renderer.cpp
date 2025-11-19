@@ -501,11 +501,6 @@ void Renderer::NewFrame()
     ImGui::NewFrame();
 }
 
-void Renderer::Update()
-{
-    // Override in derived classes for custom update logic
-}
-
 void Renderer::Render(const ImVec4& clearColor)
 {
     ImGui::Render();

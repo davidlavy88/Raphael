@@ -296,7 +296,7 @@ void RayTracerRenderer::Render(const ImVec4& clearColor)
     m_device->SignalAndIncrementFence(frameContext);
 }
 
-void RayTracerRenderer::Update()
+void RayTracerRenderer::Update(float deltaTime)
 {
     XMMATRIX view = XMMatrixLookAtLH(mPos, mPos + mFront, mUp);
     XMStoreFloat4x4(&mView, view);
@@ -313,12 +313,13 @@ void RayTracerRenderer::Update()
     SceneConstants sceneConstants;
     // Initialize scene parameters
     XMStoreFloat4(&sceneConstants.CameraPos, mPos);                 // Update camera position
-    sceneConstants.Sphere = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);        // Sphere at origin, radius 1
+    sceneConstants.Sphere = XMFLOAT4(1.2 * sinf(mTime), 0.0f, 2.8f * cosf(mTime), 1.0f);        // Sphere moving in elliptical path
     sceneConstants.Plane = XMFLOAT4(0.0f, 1.0f, 0.0f, 2.0f);         // Plane with normal (0,1,0), distance 2
     sceneConstants.LightPos = XMFLOAT4(3.0f, 3.0f, -3.0f, 1.0f);         // Light position
     sceneConstants.SphereColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);       // Red sphere
     sceneConstants.PlaneColor = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);        // Green plane
 
+    mTime += deltaTime;
     XMStoreFloat4x4(&sceneConstants.InvViewProj, XMMatrixTranspose(viewProjInverse));
     m_sceneCB->CopyData(0, sceneConstants);
 }
