@@ -78,6 +78,7 @@ ComPtr<ID3DBlob> d3dUtil::CompileShader(
     if (FAILED(D3DCompileFromFile(filename.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
         entrypoint.c_str(), target.c_str(), compileFlags, 0, &byteCode, &errors)))
     {
+        OutputDebugStringA((char*)errors->GetBufferPointer());
         throw std::runtime_error("Failed to compile shader");
     }
 

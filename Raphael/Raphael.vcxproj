@@ -76,6 +76,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DDSTextureLoader\DDSTextureLoader12.cpp" />
     <ClCompile Include="source\BoxRenderer.cpp" />
     <ClCompile Include="source\d3dUtil.cpp" />
     <ClCompile Include="source\RayTracerRenderer.cpp" />
@@ -91,6 +92,7 @@
     <ClCompile Include="source\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DDSTextureLoader\DDSTextureLoader12.h" />
     <ClInclude Include="header\BoxRenderer.h" />
     <ClInclude Include="header\d3dUtil.h" />
     <ClInclude Include="header\d3dx12.h" />

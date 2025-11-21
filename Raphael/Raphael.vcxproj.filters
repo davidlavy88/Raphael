@@ -54,6 +54,9 @@
     <ClCompile Include="source\d3dUtil.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="DDSTextureLoader\DDSTextureLoader12.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imconfig.h">
@@ -99,6 +102,9 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="header\RayTracerRenderer.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="DDSTextureLoader\DDSTextureLoader12.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>
