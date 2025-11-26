@@ -193,6 +193,9 @@ float4 PS_Main(VSOut IN) : SV_TARGET
     
     ContextGather ui;
     s2h_init(ui, IN.pos.xy);
+    s2h_setCursor(ui, float2(15, 45));
+    // Set text color to semi-transparent magenta
+    ui.textColor = float4(1,0,1,0.5f);
     s2h_printTxt(ui, _P, _o, _s, _COLON);
     
     s2h_setScale(ui, 3.0f);
@@ -200,13 +203,8 @@ float4 PS_Main(VSOut IN) : SV_TARGET
     s2h_printLF(ui);
     s2h_printTxt(ui, _W, _o, _r, _l, _d);
     
-    s2h_drawSRGBRamp(ui, float2(100, 100));
-    
-    float4 background = float4(frac(IN.pos.xy / 256.0f), 0, 1);
-    // Return background blended with UI text (ui.dstColor is premultiplied alpha)
-    return background * (1.0f - ui.dstColor.a) + ui.dstColor;
-    
-    /*
+    s2h_drawSRGBRamp(ui, float2(5, 5));
+
 	// Reconstruct world space ray
     // NDC from vertex shader is in -1..1 range
     float2 ndc = IN.ndcPos; // already in -1..1 range
@@ -262,6 +260,8 @@ float4 PS_Main(VSOut IN) : SV_TARGET
         }
     }
     
+    float4 ret = 0; 
+    
     // If we hit something, shade it
     if (hitSomething)
     {
@@ -269,11 +269,18 @@ float4 PS_Main(VSOut IN) : SV_TARGET
         float3 lightDir = normalize(lightPos.xyz - hitPoint);
         float lightDistance = length(lightPos.xyz - hitPoint);
         bool inShadow = IsInShadow(hitPoint, lightDir, lightDistance);
-        
-        return Shade(hitPoint, hitNormal, hitColor, cameraPos.xyz, inShadow);
+        // Remove the early return so the RT rendering doesn't happen on top of the S2H UI
+        ret = Shade(hitPoint, hitNormal, hitColor, cameraPos.xyz, inShadow);
     }
     
+//  Trying different ways to blend UI text over the raytraced scene
+//    return float4(lerp(ret.rgb, float3(1, 1, 0), ui.dstColor.a), 1);
+//    return float4(lerp(ret.rgb, ui.dstColor.rgb / (ui.dstColor.a + 0.1f), ui.dstColor.a), 1);
+//    return float4(ret.rgb * (1.0f - ui.dstColor.a) + ui.dstColor.rgb, 1);
+
+    
     // Background color (sky-ish)
-    return float4(0.4, 0.6, 0.9, 1.0);
-    */
+    float4 background = float4(0.4, 0.6, 0.9, 1.0);
+    // Blend background with raytraced color first, then overlay UI text (ui.dstColor is premultiplied alpha)
+    return (background * (1.0f - ret.a) + ret) * (1.0f - ui.dstColor.a) + ui.dstColor;
 }
