@@ -2,6 +2,9 @@
 // One sphere, one plane and one point light source
 // Shadow Checking
 
+#include "../s2h/include/s2h.hlsl"
+#include "../s2h/include/s2h_3d.hlsl"
+
 cbuffer SceneCB : register(b0)
 {
     float4x4 viewProjInverse;
@@ -177,10 +180,33 @@ float4 Shade(float3 p, float3 normal, float4 baseColor, float3 camPos, bool inSh
     return float4(ambient + diffuse + specular, 1.0f);
 }
 
+// Linear interpolation function
+float lerpEmulation(float a, float b, float alpha)
+{
+    return a * (1.0f - alpha) + b * alpha;
+}
+
 // Pixel Shader
 // Generates ray from camera through pixel, intersects with scene, shades the hit point
 float4 PS_Main(VSOut IN) : SV_TARGET
 {
+    
+    ContextGather ui;
+    s2h_init(ui, IN.pos.xy);
+    s2h_printTxt(ui, _P, _o, _s, _COLON);
+    
+    s2h_setScale(ui, 3.0f);
+    s2h_printTxt(ui, _H, _e, _l, _l, _o);
+    s2h_printLF(ui);
+    s2h_printTxt(ui, _W, _o, _r, _l, _d);
+    
+    s2h_drawSRGBRamp(ui, float2(100, 100));
+    
+    float4 background = float4(frac(IN.pos.xy / 256.0f), 0, 1);
+    // Return background blended with UI text (ui.dstColor is premultiplied alpha)
+    return background * (1.0f - ui.dstColor.a) + ui.dstColor;
+    
+    /*
 	// Reconstruct world space ray
     // NDC from vertex shader is in -1..1 range
     float2 ndc = IN.ndcPos; // already in -1..1 range
@@ -249,4 +275,5 @@ float4 PS_Main(VSOut IN) : SV_TARGET
     
     // Background color (sky-ish)
     return float4(0.4, 0.6, 0.9, 1.0);
+    */
 }
