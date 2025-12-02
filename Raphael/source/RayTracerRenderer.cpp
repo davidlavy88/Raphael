@@ -11,7 +11,7 @@ bool RayTracerRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HW
     // Reset command list for initialization
     FrameContext* frameContext = device.WaitForNextFrame();
     frameContext->CommandAllocator->Reset();
-    device.GetCommandList()->Reset(frameContext->CommandAllocator, nullptr);
+    device.GetCommandList()->Reset(frameContext->CommandAllocator.Get(), nullptr);
 
     BuildDescriptorHeaps(device);
     BuildConstantBuffers(device);
@@ -39,7 +39,7 @@ bool RayTracerRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HW
 
     // Execute the initialization commands
     device.GetCommandList()->Close();
-    ID3D12CommandList* cmdLists[] = { device.GetCommandList() };
+    ID3D12CommandList* cmdLists[] = { device.GetCommandList().Get()};
     device.GetCommandQueue()->ExecuteCommandLists(1, cmdLists);
     // device.SignalAndIncrementFence(frameContext);
 
@@ -166,9 +166,9 @@ void RayTracerRenderer::BuildFullscreenGeometry(D3D12Device& device)
     D3DCreateBlob(ibByteSize, &m_fullscreenGeo->IndexBufferCPU);
     CopyMemory(m_fullscreenGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-    m_fullscreenGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice(), device.GetCommandList(),
+    m_fullscreenGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(), device.GetCommandList().Get(),
         vertices.data(), vbByteSize, m_fullscreenGeo->VertexBufferUploader);
-    m_fullscreenGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice(), device.GetCommandList(),
+    m_fullscreenGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(), device.GetCommandList().Get(),
         indices.data(), ibByteSize, m_fullscreenGeo->IndexBufferUploader);
 
     m_fullscreenGeo->VertexByteStride = sizeof(Vertex);
@@ -217,8 +217,8 @@ void RayTracerRenderer::Render(const ImVec4& clearColor)
 
     frameContext->CommandAllocator->Reset();
 
-    ID3D12GraphicsCommandList* cmdList = m_device->GetCommandList();
-    cmdList->Reset(frameContext->CommandAllocator, nullptr);
+    ID3D12GraphicsCommandList* cmdList = m_device->GetCommandList().Get();
+    cmdList->Reset(frameContext->CommandAllocator.Get(), nullptr);
 
     // TODO: Record commands and the rest
     // ADD: Set viewport and scissor rect (CRITICAL!)
@@ -281,7 +281,7 @@ void RayTracerRenderer::Render(const ImVec4& clearColor)
         m_fullscreenGeo->DrawArgs["quad"].IndexCount,
         1, 0, 0, 0);
 
-    ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap();
+    ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap().Get();
     cmdList->SetDescriptorHeaps(1, &srvHeap);
 
     // Render ImGui

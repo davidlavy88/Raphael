@@ -55,7 +55,7 @@ bool D3D12Device::Initialize()
 
     // Create command list
     if (FAILED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-        m_frameContexts[0].CommandAllocator, nullptr, IID_PPV_ARGS(&m_commandList))))
+        m_frameContexts[0].CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList))))
         return false;
 
     if (FAILED(m_commandList->Close()))
@@ -77,16 +77,16 @@ void D3D12Device::Shutdown()
     WaitForGpu();
 
     for (auto& frameContext : m_frameContexts)
-        frameContext.~FrameContext();
+		frameContext.CommandAllocator.Reset();
 
-    if (m_commandList) { m_commandList->Release(); m_commandList = nullptr; }
-    if (m_commandQueue) { m_commandQueue->Release(); m_commandQueue = nullptr; }
-    if (m_rtvHeap) { m_rtvHeap->Release(); m_rtvHeap = nullptr; }
-    if (m_dsvHeap) { m_dsvHeap->Release(); m_dsvHeap = nullptr; }
-    if (m_srvHeap) { m_srvHeap->Release(); m_srvHeap = nullptr; }
+    if (m_commandList) { m_commandList.Reset(); }
+    if (m_commandQueue) { m_commandQueue.Reset(); }
+    if (m_rtvHeap) { m_rtvHeap.Reset(); }
+    if (m_dsvHeap) { m_dsvHeap.Reset(); }
+    if (m_srvHeap) { m_srvHeap.Reset(); }
     if (m_fence) { m_fence->Release(); m_fence = nullptr; }
     if (m_fenceEvent) { CloseHandle(m_fenceEvent); m_fenceEvent = nullptr; }
-    if (m_device) { m_device->Release(); m_device = nullptr; }
+    if (m_device) { m_device.Reset(); }
 
 #ifdef DX12_ENABLE_DEBUG_LAYER
     IDXGIDebug1* debug = nullptr;
@@ -155,6 +155,6 @@ bool D3D12Device::CreateDescriptorHeaps()
     if (FAILED(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap))))
         return false;
 
-    m_srvAllocator.Initialize(m_device, m_srvHeap);
+    m_srvAllocator.Initialize(m_device.Get(), m_srvHeap.Get());
     return true;
 }

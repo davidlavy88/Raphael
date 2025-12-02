@@ -11,7 +11,7 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
     // Reset command list for initialization
     FrameContext* frameContext = device.WaitForNextFrame();
     frameContext->CommandAllocator->Reset();
-    device.GetCommandList()->Reset(frameContext->CommandAllocator, nullptr);
+    device.GetCommandList()->Reset(frameContext->CommandAllocator.Get(), nullptr);
 
     BuildDescriptorHeaps(device);
     BuildConstantBuffers(device);
@@ -39,7 +39,7 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
 
     // Execute the initialization commands
 	device.GetCommandList()->Close();
-    ID3D12CommandList* cmdLists[] = { device.GetCommandList() };
+    ID3D12CommandList* cmdLists[] = { device.GetCommandList().Get()};
     device.GetCommandQueue()->ExecuteCommandLists(1, cmdLists);
     // device.SignalAndIncrementFence(frameContext);
 
@@ -193,11 +193,11 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
     D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU);
     CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-    mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice(),
-        device.GetCommandList(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
+    mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(),
+        device.GetCommandList().Get(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
 
-    mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice(),
-        device.GetCommandList(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
+    mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(),
+        device.GetCommandList().Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
 
     mBoxGeo->VertexByteStride = sizeof(Vertex);
     mBoxGeo->VertexBufferByteSize = vbByteSize;
@@ -247,8 +247,8 @@ void BoxRenderer::Render(const ImVec4& clearColor)
 
     frameContext->CommandAllocator->Reset();
 
-    ID3D12GraphicsCommandList* cmdList = m_device->GetCommandList();
-    cmdList->Reset(frameContext->CommandAllocator, nullptr);
+    ID3D12GraphicsCommandList* cmdList = m_device->GetCommandList().Get();
+    cmdList->Reset(frameContext->CommandAllocator.Get(), nullptr);
 
 	// TODO: Record commands and the rest
     // ADD: Set viewport and scissor rect (CRITICAL!)
@@ -311,7 +311,7 @@ void BoxRenderer::Render(const ImVec4& clearColor)
         mBoxGeo->DrawArgs["box"].IndexCount,
         1, 0, 0, 0);
 
-    ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap();
+    ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap().Get();
     cmdList->SetDescriptorHeaps(1, &srvHeap);
 
     // Render ImGui

@@ -8,16 +8,8 @@ static constexpr int SRV_HEAP_SIZE = 64;
 // Frame context structure
 struct FrameContext
 {
-    ID3D12CommandAllocator* CommandAllocator = nullptr;
+    ComPtr<ID3D12CommandAllocator> CommandAllocator = nullptr;
     UINT64 FenceValue = 0;
-
-    ~FrameContext()
-    {
-        if (CommandAllocator) {
-            CommandAllocator->Release();
-            CommandAllocator = nullptr;
-        }
-    }
 };
 
 // D3D12 Device wrapper class
@@ -28,12 +20,12 @@ public:
 
     void Shutdown();
 
-    ID3D12Device* GetDevice() const { return m_device; }
-    ID3D12CommandQueue* GetCommandQueue() const { return m_commandQueue; }
-    ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList; }
-    ID3D12DescriptorHeap* GetRTVHeap() const { return m_rtvHeap; }
-    ID3D12DescriptorHeap* GetDSVHeap() const { return m_dsvHeap; }
-    ID3D12DescriptorHeap* GetSRVHeap() const { return m_srvHeap; }
+    ComPtr<ID3D12Device> GetDevice() const { return m_device; }
+    ComPtr<ID3D12CommandQueue> GetCommandQueue() const { return m_commandQueue; }
+    ComPtr<ID3D12GraphicsCommandList> GetCommandList() const { return m_commandList; }
+    ComPtr<ID3D12DescriptorHeap> GetRTVHeap() const { return m_rtvHeap; }
+    ComPtr<ID3D12DescriptorHeap> GetDSVHeap() const { return m_dsvHeap; }
+    ComPtr<ID3D12DescriptorHeap> GetSRVHeap() const { return m_srvHeap; }
     DescriptorHeapAllocator& GetSRVAllocator() { return m_srvAllocator; }
     DXGI_FORMAT GetBackBufferFormat() const { return mBackBufferFormat; }
     DXGI_FORMAT GetDepthStencilFormat() const { return mDepthStencilFormat; }
@@ -55,12 +47,12 @@ private:
     bool CreateDescriptorHeaps();
 
 private:
-    ID3D12Device* m_device = nullptr;
-    ID3D12CommandQueue* m_commandQueue = nullptr;
-    ID3D12GraphicsCommandList* m_commandList = nullptr;
-    ID3D12DescriptorHeap* m_rtvHeap = nullptr;
-    ID3D12DescriptorHeap* m_dsvHeap = nullptr;
-    ID3D12DescriptorHeap* m_srvHeap = nullptr;
+    ComPtr<ID3D12Device> m_device = nullptr;
+    ComPtr<ID3D12CommandQueue> m_commandQueue = nullptr;
+    ComPtr<ID3D12GraphicsCommandList> m_commandList = nullptr;
+    ComPtr<ID3D12DescriptorHeap> m_rtvHeap = nullptr;
+    ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
+    ComPtr<ID3D12DescriptorHeap> m_srvHeap = nullptr;
     DescriptorHeapAllocator m_srvAllocator;
     ID3D12Fence* m_fence = nullptr;
     HANDLE m_fenceEvent = nullptr;

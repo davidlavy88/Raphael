@@ -26,12 +26,12 @@ bool Renderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
     ImGui_ImplWin32_Init(hwnd);
 
     ImGui_ImplDX12_InitInfo initInfo = {};
-    initInfo.Device = device.GetDevice();
-    initInfo.CommandQueue = device.GetCommandQueue();
+    initInfo.Device = device.GetDevice().Get();
+    initInfo.CommandQueue = device.GetCommandQueue().Get();
     initInfo.NumFramesInFlight = NUM_FRAMES_IN_FLIGHT;
     initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     initInfo.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    initInfo.SrvDescriptorHeap = device.GetSRVHeap();
+    initInfo.SrvDescriptorHeap = device.GetSRVHeap().Get();
     initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_handle)
         {
             return static_cast<Renderer*>(ImGui::GetIO().UserData)->m_device->GetSRVAllocator().Alloc(out_cpu_handle, out_gpu_handle);
@@ -75,8 +75,8 @@ void Renderer::Render(const ImVec4& clearColor)
 
     frameContext->CommandAllocator->Reset();
 
-    ID3D12GraphicsCommandList* cmdList = m_device->GetCommandList();
-    cmdList->Reset(frameContext->CommandAllocator, nullptr);
+    ComPtr<ID3D12GraphicsCommandList> cmdList = m_device->GetCommandList();
+    cmdList->Reset(frameContext->CommandAllocator.Get(), nullptr);
 
     // Transition to render target
     D3D12_RESOURCE_BARRIER barrier = {};
@@ -99,11 +99,11 @@ void Renderer::Render(const ImVec4& clearColor)
     cmdList->ClearRenderTargetView(rtvHandle, clearColorArray, 0, nullptr);
     cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-    ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap();
+    ComPtr<ID3D12DescriptorHeap> srvHeap = m_device->GetSRVHeap();
     cmdList->SetDescriptorHeaps(1, &srvHeap);
 
     // Render ImGui
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmdList);
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmdList.Get());
 
     // Transition back to present
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -112,7 +112,7 @@ void Renderer::Render(const ImVec4& clearColor)
     cmdList->Close();
 
     // Execute commands
-    ID3D12CommandList* cmdLists[] = { cmdList };
+    ID3D12CommandList* cmdLists[] = { cmdList.Get()};
     m_device->GetCommandQueue()->ExecuteCommandLists(1, cmdLists);
     m_device->SignalAndIncrementFence(frameContext);
 }

@@ -32,7 +32,7 @@ bool SwapChain::Initialize(HWND hwnd, D3D12Device& device)
 
     // Create swap chain
     IDXGISwapChain1* swapChain1 = nullptr;
-    if (FAILED(dxgiFactory->CreateSwapChainForHwnd(device.GetCommandQueue(), hwnd, &swapChainDesc, nullptr, nullptr, &swapChain1)))
+    if (FAILED(dxgiFactory->CreateSwapChainForHwnd(device.GetCommandQueue().Get(), hwnd, &swapChainDesc, nullptr, nullptr, &swapChain1)))
     {
         dxgiFactory->Release();
         return false;
@@ -63,12 +63,12 @@ bool SwapChain::Initialize(HWND hwnd, D3D12Device& device)
     // Create depth stencil view
     FrameContext* frameContext = device.WaitForNextFrame();
     frameContext->CommandAllocator->Reset();
-    device.GetCommandList()->Reset(frameContext->CommandAllocator, nullptr);
+    device.GetCommandList()->Reset(frameContext->CommandAllocator.Get(), nullptr);
 
     CreateDepthStencilView(device, width, height);
 
     device.GetCommandList()->Close();
-    ID3D12CommandList* const commandLists[] = { device.GetCommandList() };
+    ID3D12CommandList* const commandLists[] = { device.GetCommandList().Get()};
     device.GetCommandQueue()->ExecuteCommandLists(1, commandLists);
 
     device.WaitForGpu();
@@ -116,7 +116,7 @@ void SwapChain::Resize(UINT width, UINT height, D3D12Device& device)
 {
     FrameContext* frameContext = device.WaitForNextFrame();
     frameContext->CommandAllocator->Reset();
-    device.GetCommandList()->Reset(frameContext->CommandAllocator, nullptr);
+    device.GetCommandList()->Reset(frameContext->CommandAllocator.Get(), nullptr);
 
     CleanupRenderTargetViews();
     CleanupDepthStencilView();
@@ -128,7 +128,7 @@ void SwapChain::Resize(UINT width, UINT height, D3D12Device& device)
     CreateDepthStencilView(device, width, height);
 
     device.GetCommandList()->Close();
-    ID3D12CommandList* const commandLists[] = { device.GetCommandList() };
+    ID3D12CommandList* const commandLists[] = { device.GetCommandList().Get()};
     device.GetCommandQueue()->ExecuteCommandLists(1, commandLists);
     device.WaitForGpu();
 }
