@@ -1,5 +1,8 @@
 #include "RayTracerRenderer.h"
 
+#include "backends/imgui_impl_win32.h"
+#include "backends/imgui_impl_dx12.h"
+
 bool RayTracerRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
 {
     if (!Renderer::Initialize(device, swapChain, hwnd))

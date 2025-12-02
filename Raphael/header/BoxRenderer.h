@@ -2,20 +2,6 @@
 #include "Renderer.h"
 #include "UploadBuffer.h"
 #include "d3dUtil.h"
-/// ADD HERE /// - Include additional headers for cube rendering
-#include <DirectXMath.h>
-#include <DirectXColors.h>
-#include <d3dcompiler.h>
-#include <wrl.h>
-#include <stdexcept>
-#include "d3dx12.h"
-#include <array>
-#include <cstdint>
-#include <vector>
-#include <memory>
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
 
 struct Vertex
 {

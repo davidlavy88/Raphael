@@ -50,7 +50,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\imgui;$(SolutionDir)Raphael\header</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -67,7 +67,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\imgui;$(SolutionDir)Raphael\header</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -76,44 +76,55 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="DDSTextureLoader\DDSTextureLoader12.cpp" />
+    <ClCompile Include="source\Device.cpp" />
+    <ClCompile Include="source\DescriptorHeapAllocator.cpp" />
+    <ClCompile Include="source\GameTimer.cpp" />
+    <ClCompile Include="source\Application.cpp" />
+    <ClCompile Include="source\SwapChain.cpp" />
+    <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader12.cpp" />
     <ClCompile Include="source\BoxRenderer.cpp" />
     <ClCompile Include="source\d3dUtil.cpp" />
     <ClCompile Include="source\RayTracerRenderer.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
-    <ClCompile Include="imgui\backends\imgui_impl_dx12.cpp" />
-    <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
-    <ClCompile Include="imgui\imgui.cpp" />
-    <ClCompile Include="imgui\imgui_demo.cpp" />
-    <ClCompile Include="imgui\imgui_draw.cpp" />
-    <ClCompile Include="imgui\imgui_tables.cpp" />
-    <ClCompile Include="imgui\imgui_widgets.cpp" />
-    <ClCompile Include="imgui\misc\imgui_stdlib.cpp" />
+    <ClCompile Include="Utilities\imgui\backends\imgui_impl_dx12.cpp" />
+    <ClCompile Include="Utilities\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="Utilities\imgui\imgui.cpp" />
+    <ClCompile Include="Utilities\imgui\imgui_demo.cpp" />
+    <ClCompile Include="Utilities\imgui\imgui_draw.cpp" />
+    <ClCompile Include="Utilities\imgui\imgui_tables.cpp" />
+    <ClCompile Include="Utilities\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="Utilities\imgui\misc\imgui_stdlib.cpp" />
     <ClCompile Include="source\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DDSTextureLoader\DDSTextureLoader12.h" />
+    <ClInclude Include="header\Device.h" />
+    <ClInclude Include="header\DescriptorHeapAllocator.h" />
+    <ClInclude Include="header\GameTimer.h" />
+    <ClInclude Include="header\Application.h" />
+    <ClInclude Include="header\D3D12CommonHeaders.h" />
+    <ClInclude Include="header\SwapChain.h" />
+    <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader12.h" />
     <ClInclude Include="header\BoxRenderer.h" />
     <ClInclude Include="header\d3dUtil.h" />
     <ClInclude Include="header\d3dx12.h" />
     <ClInclude Include="header\RayTracerRenderer.h" />
     <ClInclude Include="header\Renderer.h" />
     <ClInclude Include="header\UploadBuffer.h" />
-    <ClInclude Include="imgui\backends\imgui_impl_dx12.h" />
-    <ClInclude Include="imgui\backends\imgui_impl_win32.h" />
-    <ClInclude Include="imgui\imconfig.h" />
-    <ClInclude Include="imgui\imgui.h" />
-    <ClInclude Include="imgui\imgui_internal.h" />
-    <ClInclude Include="imgui\imstb_rectpack.h" />
-    <ClInclude Include="imgui\imstb_textedit.h" />
-    <ClInclude Include="imgui\imstb_truetype.h" />
-    <ClInclude Include="imgui\misc\imgui_stdlib.h" />
+    <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
+    <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="Utilities\imgui\imconfig.h" />
+    <ClInclude Include="Utilities\imgui\imgui.h" />
+    <ClInclude Include="Utilities\imgui\imgui_internal.h" />
+    <ClInclude Include="Utilities\imgui\imstb_rectpack.h" />
+    <ClInclude Include="Utilities\imgui\imstb_textedit.h" />
+    <ClInclude Include="Utilities\imgui\imstb_truetype.h" />
+    <ClInclude Include="Utilities\imgui\misc\imgui_stdlib.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="imgui\misc\imgui.natstepfilter" />
+    <None Include="Utilities\imgui\misc\imgui.natstepfilter" />
   </ItemGroup>
   <ItemGroup>
-    <Natvis Include="imgui\misc\imgui.natvis" />
+    <Natvis Include="Utilities\imgui\misc\imgui.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
