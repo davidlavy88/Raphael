@@ -25,7 +25,13 @@ using namespace DirectX;
 #include <memory>
 #include <queue>
 #include <map>
+#include <vector>
+#include <array>
+#include <unordered_map>
 #include <stdexcept>
+#include <fstream>
+#include <sstream>
+#include <cassert>
 
 #ifdef _DEBUG
 #define DX12_ENABLE_DEBUG_LAYER

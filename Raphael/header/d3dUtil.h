@@ -1,21 +1,7 @@
 #pragma once
 
-#include <windows.h>
-#include <wrl.h>
-#include <dxgi1_4.h>
-#include <d3d12.h>
-#include <D3Dcompiler.h>
+#include "D3D12CommonHeaders.h"
 #include <DirectXCollision.h>
-#include <string>
-#include <memory>
-#include <algorithm>
-#include <vector>
-#include <array>
-#include <unordered_map>
-#include <cstdint>
-#include <fstream>
-#include <sstream>
-#include <cassert>
 
 // Defines a subrange of geometry in a MeshGeometry.  This is for when multiple
 // geometries are stored in one vertex and index buffer.  It provides the offsets
@@ -39,14 +25,14 @@ struct MeshGeometry
 
 	// System memory copies.  Use Blobs because the vertex/index format can be generic.
 	// It is up to the client to cast appropriately.  
-	Microsoft::WRL::ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU = nullptr;
+	ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
+	ComPtr<ID3DBlob> IndexBufferCPU = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
+	ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
+	ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
 
 	// Data about the buffers.
 	UINT VertexByteStride = 0;
@@ -90,14 +76,14 @@ struct MeshGeometry
 class d3dUtil
 {
 public:
-	static Microsoft::WRL::ComPtr<ID3D12Resource> CreateDefaultBuffer(
+	static ComPtr<ID3D12Resource> CreateDefaultBuffer(
 		ID3D12Device* device,
 		ID3D12GraphicsCommandList* cmdList,
 		const void* initData,
 		UINT64 byteSize,
-		Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
+		ComPtr<ID3D12Resource>& uploadBuffer);
 
-	static Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
+	static ComPtr<ID3DBlob> CompileShader(
 		const std::wstring& filename,
 		const D3D_SHADER_MACRO* defines,
 		const std::string& entrypoint,
