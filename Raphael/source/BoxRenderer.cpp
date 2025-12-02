@@ -328,10 +328,15 @@ void BoxRenderer::Render(const ImVec4& clearColor)
 
 void BoxRenderer::Update(float deltaTime)
 {
+    static double totalTime = 0.0;
+    totalTime += deltaTime;
+
     XMMATRIX view = XMMatrixLookAtLH(mPos, mPos + mFront, mUp);
     XMStoreFloat4x4(&mView, view);
 
-    XMMATRIX world = XMLoadFloat4x4(&mWorld);
+    float angle = static_cast<float>(totalTime * 90.0);
+    const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
+    XMMATRIX world = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
     XMMATRIX proj = XMLoadFloat4x4(&mProj);
     XMMATRIX worldViewProj = world * view * proj;
 
