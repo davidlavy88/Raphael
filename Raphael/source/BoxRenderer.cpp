@@ -1,4 +1,31 @@
 #include "BoxRenderer.h"
+#include <random>
+
+BoxRenderer::BoxRenderer()
+{
+	_cubes.push_back(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
+    _activeIndex = 0;
+
+    _cellSize = _spawnRadius / std::sqrt(2);
+    _gridWidth = XMVectorGetX(_maxExtent) - XMVectorGetX(_minExtent);
+    _gridHeight = XMVectorGetY(_maxExtent) - XMVectorGetY(_minExtent);
+	_gridDepth = XMVectorGetZ(_maxExtent) - XMVectorGetZ(_minExtent);
+    _cellsNumX = static_cast<size_t>(ceilf(_gridWidth / _cellSize));
+    _cellsNumY = static_cast<size_t>(ceilf(_gridHeight / _cellSize));
+	_cellsNumZ = static_cast<size_t>(ceilf(_gridDepth / _cellSize));\
+
+	// _grid.resize(_cellsNumX * _cellsNumY * _cellsNumZ);
+	// initialize 3D grid with -1 (indicating empty cells)
+    _grid = std::vector<std::vector<std::vector<int>>>(_cellsNumX,
+        std::vector<std::vector<int>>(_cellsNumY,
+			std::vector<int>(_cellsNumZ, -1)));
+
+    //  grid cell coordinates where the first cube (at position 0, 0, 0) should be stored in a 3D spatial grid (center cell of the grid).
+	int pointIndexX = static_cast<int>(ceilf((_gridWidth / 2) / _cellSize));
+	int pointIndexY = static_cast<int>(ceilf((_gridHeight / 2) / _cellSize));
+	int pointIndexZ = static_cast<int>(ceilf((_gridDepth / 2) / _cellSize));
+	_grid[pointIndexX][pointIndexY][pointIndexZ] = 0;
+}
 
 bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
 {
@@ -6,19 +33,21 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
         return false;
 
     // Reset command list for initialization
-    FrameContext* frameContext = device.WaitForNextFrame();
-    frameContext->CommandAllocator->Reset();
-    device.GetCommandList()->Reset(frameContext->CommandAllocator, nullptr);
+    //FrameContext* frameContext = device.WaitForNextFrame();
+	//frameContext->CommandAllocator->Reset(); // Prob not needed here
+    device.GetCommandList()->Reset(device.GetCurrentCommandAllocator(), nullptr);
 
-    BuildDescriptorHeaps(device);
-    BuildConstantBuffers(device);
     BuildRootSignature(device);
     BuildShadersAndInputLayout();
     BuildBoxGeometry(device);
+	BuildRenderItems();
+    BuildFrameContexts(device);
+    BuildDescriptorHeaps(device);
+    BuildConstantBufferViews(device);
     BuildPSO(device);
 
     // Initialize camera position
-    mPos = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
+    mPos = XMVectorSet(0.0f, 0.0f, -300.0f, 1.0f);
     mFront = -1 * mPos;
     mUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -49,7 +78,6 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
 void BoxRenderer::Shutdown()
 {
     mBoxGeo.reset();
-    m_objectCB.reset();
     m_pso.Reset();
     m_rootSignature.Reset();
     m_cbvHeap.Reset();
@@ -59,9 +87,18 @@ void BoxRenderer::Shutdown()
 
 void BoxRenderer::BuildDescriptorHeaps(D3D12Device& device)
 {
+    size_t objCount = _cubes.size();
+
+	// Need one CBV per object per each frame resource
+	// plus one for the pass constants
+	int numDescriptors = (objCount + 1) * NUM_FRAMES_IN_FLIGHT;
+
+	// Set offset for pass CBV in the heap
+	m_passCbvOffset = objCount * NUM_FRAMES_IN_FLIGHT;
+
     // Implementation for creating descriptor heaps
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-    cbvHeapDesc.NumDescriptors = 1; // Only one constant buffer
+    cbvHeapDesc.NumDescriptors = numDescriptors; // Only one constant buffer
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     cbvHeapDesc.NodeMask = 0;
@@ -69,36 +106,77 @@ void BoxRenderer::BuildDescriptorHeaps(D3D12Device& device)
 		throw std::runtime_error("Failed to create CBV descriptor heap");
 }
 
-void BoxRenderer::BuildConstantBuffers(D3D12Device& device)
+void BoxRenderer::BuildConstantBufferViews(D3D12Device& device)
 {
-    // Implementation for creating constant buffers
-    m_objectCB = std::make_unique<UploadBuffer<ObjectConstants>>(device.GetDevice(), 1, true);
-
     UINT objCBByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
+    size_t objCount = _cubes.size();
 
-    D3D12_GPU_VIRTUAL_ADDRESS cbAddress = m_objectCB->Resource()->GetGPUVirtualAddress();
-    // Offset to the ith object constant buffer in the buffer.
-    int boxCBufIndex = 0;
-    cbAddress += boxCBufIndex * objCBByteSize;
+	// Create the object constant buffer view descriptors for each object for each frame resource
+    for (int frameIndex = 0; frameIndex < NUM_FRAMES_IN_FLIGHT; ++frameIndex)
+    {
+		ID3D12Resource* objectCB = device.GetFrameContext()[frameIndex].ObjectCB->Resource();
+        for (int i = 0; i < objCount; ++i)
+        {
+			D3D12_GPU_VIRTUAL_ADDRESS cbAddress = objectCB->GetGPUVirtualAddress();
 
-    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-    cbvDesc.BufferLocation = cbAddress;
-    cbvDesc.SizeInBytes = CalcConstantBufferByteSize(sizeof(ObjectConstants));
+            // Offset to the ith object constant buffer in the buffer
+			cbAddress += i * objCBByteSize;
 
-    device.GetDevice()->CreateConstantBufferView(
-        &cbvDesc,
-        m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
+			// Offset to hte object constant buffer in the descriptor heap
+            int boxCBIndexHeap = i + frameIndex * objCount;
+            CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(
+                m_cbvHeap->GetCPUDescriptorHandleForHeapStart(),
+                boxCBIndexHeap,
+				device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
+            D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+			cbvDesc.BufferLocation = cbAddress;
+            cbvDesc.SizeInBytes = objCBByteSize;
+
+            device.GetDevice()->CreateConstantBufferView(
+                &cbvDesc,
+				cbvHandle);
+        }
+	}
+
+    UINT passCBByteSize = CalcConstantBufferByteSize(sizeof(PassConstants));
+	// Create the pass constant buffer view descriptor (one per frame resource)
+    for (int frameIndex = 0; frameIndex < NUM_FRAMES_IN_FLIGHT; ++frameIndex)
+    {
+		ID3D12Resource* passCB = device.GetFrameContext()[frameIndex].PassCB->Resource();
+        D3D12_GPU_VIRTUAL_ADDRESS cbAddress = passCB->GetGPUVirtualAddress();
+		
+		// Offset to the pass constant buffer in the descriptor heap
+        int passCBIndexHeap = m_passCbvOffset + frameIndex;
+        CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(
+            m_cbvHeap->GetCPUDescriptorHandleForHeapStart(),
+            passCBIndexHeap,
+			device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
+		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+        cbvDesc.BufferLocation = cbAddress;
+        cbvDesc.SizeInBytes = passCBByteSize;
+
+        device.GetDevice()->CreateConstantBufferView(
+            &cbvDesc,
+			cbvHandle);
+    }
 }
 
 void BoxRenderer::BuildRootSignature(D3D12Device& device)
 {
-    // Implementation for creating root signature
-	CD3DX12_ROOT_PARAMETER slotRootParameter[1];
+    // Implementation for creating root signature 
+	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
 
-	// Create a single descriptor table of CBVs
-	CD3DX12_DESCRIPTOR_RANGE cbvTable;
-	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable, D3D12_SHADER_VISIBILITY_ALL);
+	// Create two table parameters:
+	CD3DX12_DESCRIPTOR_RANGE cbvTable0;
+    CD3DX12_DESCRIPTOR_RANGE cbvTable1;
+	cbvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+    cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
+
+	// Create root parameters to bind the descriptor tables to the pipeline
+	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable0);
+    slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable1);
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1, slotRootParameter, 0, nullptr,
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -235,17 +313,37 @@ void BoxRenderer::BuildPSO(D3D12Device& device)
 		throw std::runtime_error("Failed to create pipeline state object");
 }
 
+void BoxRenderer::BuildRenderItems()
+{
+    // Generate the boxes to be rendered TODO: double check this
+    while (_activeIndex < _cubes.size() && _cubes.size() < MAX_NUM_BOXES)
+    {
+        SpawnNewBoxes(10);
+    }
+}
+
+void BoxRenderer::BuildFrameContexts(D3D12Device& device)
+{
+    /*for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+    {
+        device.GetFrameContextPtr()[i].PassCB = std::make_unique<UploadBuffer<PassConstants>>(nullptr, 1, true);
+        device.GetFrameContextPtr()[i].ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(nullptr, _cubes.size(), true);
+    }*/
+
+	device.CreateFrameContexts(1, static_cast<int>(_cubes.size()));
+}
+
 void BoxRenderer::Render(const ImVec4& clearColor)
 {
     ImGui::Render();
 
-    FrameContext* frameContext = m_device->WaitForNextFrame();
+    FrameContext* frameContext = m_device->GetCurrentFrameContext();
     UINT backBufferIdx = m_swapChain->GetCurrentBackBufferIndex();
 
     frameContext->CommandAllocator->Reset();
 
     ID3D12GraphicsCommandList* cmdList = m_device->GetCommandList();
-    cmdList->Reset(frameContext->CommandAllocator, nullptr);
+    cmdList->Reset(frameContext->CommandAllocator, m_pso.Get());
 
 	// TODO: Record commands and the rest
     // ADD: Set viewport and scissor rect (CRITICAL!)
@@ -294,9 +392,33 @@ void BoxRenderer::Render(const ImVec4& clearColor)
 
     cmdList->SetGraphicsRootSignature(GetRootSignature().Get());
 
-	cmdList->SetPipelineState(m_pso.Get());
+	auto passCbvHandle = m_device->GetCurrentFrameContext()->PassCB->Resource();
+	cmdList->SetGraphicsRootConstantBufferView(1, passCbvHandle->GetGPUVirtualAddress());
 
-	D3D12_VERTEX_BUFFER_VIEW vbView = mBoxGeo->VertexBufferView();
+	// cmdList->SetPipelineState(m_pso.Get());
+
+	// Draw the boxes
+	UINT objCbvByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
+
+	auto objCbvHandle = m_device->GetCurrentFrameContext()->ObjectCB->Resource();
+
+    for (size_t i = 0; i < _cubes.size(); ++i)
+    {
+        // Set the object constant buffer descriptor table
+        D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCbvHandle->GetGPUVirtualAddress() + i * objCbvByteSize;
+        cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
+        // Draw the box
+        D3D12_VERTEX_BUFFER_VIEW vbView = mBoxGeo->VertexBufferView();
+        D3D12_INDEX_BUFFER_VIEW ibView = mBoxGeo->IndexBufferView();
+        cmdList->IASetVertexBuffers(0, 1, &vbView);
+        cmdList->IASetIndexBuffer(&ibView);
+        cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        cmdList->DrawIndexedInstanced(
+            mBoxGeo->DrawArgs["box"].IndexCount,
+			1, 0, 0, 0);
+    }
+
+	/*D3D12_VERTEX_BUFFER_VIEW vbView = mBoxGeo->VertexBufferView();
 	D3D12_INDEX_BUFFER_VIEW ibView = mBoxGeo->IndexBufferView();
     cmdList->IASetVertexBuffers(0, 1, &vbView);
     cmdList->IASetIndexBuffer(&ibView);
@@ -306,7 +428,7 @@ void BoxRenderer::Render(const ImVec4& clearColor)
 
     cmdList->DrawIndexedInstanced(
         mBoxGeo->DrawArgs["box"].IndexCount,
-        1, 0, 0, 0);
+        1, 0, 0, 0);*/
 
     ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap();
     cmdList->SetDescriptorHeaps(1, &srvHeap);
@@ -331,17 +453,116 @@ void BoxRenderer::Update(float deltaTime)
     static double totalTime = 0.0;
     totalTime += deltaTime;
 
+	FrameContext* frameContext = m_device->WaitForNextFrame();
+
+	// Update pass constants
     XMMATRIX view = XMMatrixLookAtLH(mPos, mPos + mFront, mUp);
-    XMStoreFloat4x4(&mView, view);
-
-    float angle = static_cast<float>(totalTime * 90.0);
-    const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
-    XMMATRIX world = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
     XMMATRIX proj = XMLoadFloat4x4(&mProj);
-    XMMATRIX worldViewProj = world * view * proj;
+    XMMATRIX viewProj = view * proj;
 
-    // Update the constant buffer with the latest worldViewProj matrix.
-    ObjectConstants objConstants;
-    XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
-    m_objectCB->CopyData(0, objConstants);
+	PassConstants passConstants;
+    XMStoreFloat4x4(&passConstants.View, XMMatrixTranspose(view));
+	XMStoreFloat4x4(&passConstants.Proj, XMMatrixTranspose(proj));
+    XMStoreFloat4x4(&passConstants.ViewProj, XMMatrixTranspose(viewProj));
+
+	frameContext->PassCB->CopyData(0, passConstants);
+
+	// Update object constants
+    for (auto& cube : _cubes)
+    {
+        XMMATRIX world = XMLoadFloat4x4(&mWorld);
+		world = XMMatrixTranslation(XMVectorGetX(cube), XMVectorGetY(cube), XMVectorGetZ(cube));
+
+		ObjectConstants objConstants;
+        XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
+		frameContext->ObjectCB->CopyData(&cube - &_cubes[0], objConstants); // TODO CHECK THIS
+    }
+
+    //XMMATRIX view = XMMatrixLookAtLH(mPos, mPos + mFront, mUp);
+    //XMStoreFloat4x4(&mView, view);
+
+    //float angle = static_cast<float>(totalTime * 90.0);
+    //const XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
+    //XMMATRIX world = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
+    //XMMATRIX proj = XMLoadFloat4x4(&mProj);
+    //XMMATRIX worldViewProj = world * view * proj;
+
+    //// Update the constant buffer with the latest worldViewProj matrix.
+    //ObjectConstants objConstants;
+    //XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
+    //m_objectCB->CopyData(0, objConstants);
+}
+
+void BoxRenderer::SpawnNewBoxes(int count)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0f, 1.0f);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        XMVECTOR newLocation = _cubes[_activeIndex];
+
+        float distance = (dis(gen) + 1.0f) * _spawnRadius;  // Spawn in [R; 2*R]
+        float anglePitch = dis(gen) * XM_2PI;                    // Random pitch angle
+		float angleYaw = dis(gen) * XM_2PI;                      // Random yaw angle
+
+		newLocation += XMVectorSet(distance * XMScalarCos(anglePitch), distance * XMScalarSin(anglePitch), distance * XMScalarSin(angleYaw), 0.0f);
+
+        if (PointInExtents(newLocation) && !PointIntersectsGrid(newLocation))
+        {
+            _cubes.push_back(newLocation);
+            int pointIndexX = ((XMVectorGetX(newLocation) + (_gridWidth / 2.0f)) / _cellSize);
+            int pointIndexY = ((XMVectorGetY(newLocation) + (_gridHeight / 2.0f)) / _cellSize);
+			int pointIndexZ = ((XMVectorGetZ(newLocation) + (_gridDepth / 2.0f)) / _cellSize);
+            if (_grid[pointIndexX][pointIndexY][pointIndexZ] != -1)
+                continue;
+            _grid[pointIndexX][pointIndexY][pointIndexZ] = _cubes.size() - 1;
+        }
+    }
+
+    ++_activeIndex;
+}
+
+bool BoxRenderer::PointInExtents(const DirectX::XMVECTOR& location)
+{
+    return (XMVectorGetX(location) > XMVectorGetX(_minExtent) && XMVectorGetY(location) > XMVectorGetY(_minExtent) && XMVectorGetZ(location) > XMVectorGetZ(_minExtent)) &&
+        (XMVectorGetX(location) < XMVectorGetX(_maxExtent) && XMVectorGetY(location) < XMVectorGetY(_maxExtent) && XMVectorGetZ(location) < XMVectorGetZ(_maxExtent));
+}
+
+bool BoxRenderer::PointIntersectsGrid(const XMVECTOR& location)
+{
+    int pointIndexX = ((XMVectorGetX(location) + (_gridWidth / 2.0f)) / _cellSize);
+    int pointIndexY = ((XMVectorGetY(location) + (_gridHeight / 2.0f)) / _cellSize);
+	int pointIndexZ = ((XMVectorGetZ(location) + (_gridDepth / 2.0f)) / _cellSize);
+
+    for (int x = -1; x <= 1; x++)
+    {
+        for (int y = -1; y <= 1; y++)
+        {
+            for (int z = -1; z <= 1; z++)
+            {
+                int indX = pointIndexX + x;
+                int indY = pointIndexY + y;
+                int indZ = pointIndexZ + z;
+
+                if (indX < 0 || indX >= _cellsNumX)
+                    continue;
+                if (indY < 0 || indY >= _cellsNumY)
+                    continue;
+                if (indZ < 0 || indZ >= _cellsNumZ)
+                    continue;
+
+                int cubeIndex = _grid[indX][indY][indZ];
+                if (cubeIndex == -1)
+                    continue;
+
+                float dist = XMVectorGetX(XMVector3Length(XMVectorSubtract(_cubes[cubeIndex], location)));
+                if (dist <= _spawnRadius)
+                    return true;
+            }
+        }
+    }
+
+    return false;
 }

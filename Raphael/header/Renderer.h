@@ -8,7 +8,10 @@
 #include <tchar.h>
 #include <cassert>
 #include <memory>
+#include <vector>
 #include <DirectXMath.h>
+#include "ShaderStructs.h"
+#include "UploadBuffer.h"
 
 #if defined(DEBUG) || defined(_DEBUG)
 #define _CRTDBG_MAP_ALLOC
@@ -32,6 +35,23 @@ struct FrameContext
 {
     ID3D12CommandAllocator* CommandAllocator = nullptr;
     UINT64 FenceValue = 0;
+
+    // We cannot update a cbuffer until the GPU is done processing the commands
+    // that reference it.  So each frame n eeds their own cbuffers.
+    std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
+    std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
+
+    FrameContext(ID3D12Device* device, int passCount, int objectCount)
+    {
+        if (FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+            IID_PPV_ARGS(&CommandAllocator))))
+        {
+            throw std::runtime_error("Failed to map upload buffer");
+        }
+
+        PassCB = std::make_unique<UploadBuffer<PassConstants>>(device, passCount, true);
+        ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(device, objectCount, true);
+	}
 
     ~FrameContext()
     {
@@ -74,6 +94,7 @@ public:
     ID3D12Device* GetDevice() const { return m_device; }
     ID3D12CommandQueue* GetCommandQueue() const { return m_commandQueue; }
     ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList; }
+    ID3D12CommandAllocator* GetCurrentCommandAllocator() const { return m_commandAllocator; }
     ID3D12DescriptorHeap* GetRTVHeap() const { return m_rtvHeap; }
 	ID3D12DescriptorHeap* GetDSVHeap() const { return m_dsvHeap; }
     ID3D12DescriptorHeap* GetSRVHeap() const { return m_srvHeap; }
@@ -82,6 +103,8 @@ public:
 	DXGI_FORMAT GetDepthStencilFormat() const { return mDepthStencilFormat; }
 
     FrameContext* WaitForNextFrame();
+    FrameContext* GetCurrentFrameContext();
+    // const std::vector<FrameContext>& GetFrameContext() const { return m_frameContexts; }
 
     void SignalAndIncrementFence(FrameContext* frameContext);
 
@@ -94,13 +117,15 @@ public:
 
     bool m_appPaused = false;          // Is the application paused?
 
-private:
+// private:
     bool CreateDescriptorHeaps();
+    bool CreateFrameContexts(int passCount, int objectCount);
 
 private:
     ID3D12Device* m_device = nullptr;
     ID3D12CommandQueue* m_commandQueue = nullptr;
     ID3D12GraphicsCommandList* m_commandList = nullptr;
+	ID3D12CommandAllocator* m_commandAllocator = nullptr;
     ID3D12DescriptorHeap* m_rtvHeap = nullptr;
     ID3D12DescriptorHeap* m_dsvHeap = nullptr;
     ID3D12DescriptorHeap* m_srvHeap = nullptr;
@@ -108,8 +133,11 @@ private:
     ID3D12Fence* m_fence = nullptr;
     HANDLE m_fenceEvent = nullptr;
     UINT64 m_fenceLastSignaled = 0;
+    // TODO: Consider using std::vector as is dynamically sized and handles memory management automatically.
+    // FrameContext m_frameContexts[NUM_FRAMES_IN_FLIGHT]{ FrameContext(m_device, 1, 1), FrameContext(m_device, 1, 1) };
+	std::vector<std::unique_ptr<FrameContext>> m_frameContexts;
+    FrameContext* m_currentFC = nullptr;
     UINT m_frameIndex = 0;
-    FrameContext m_frameContexts[NUM_FRAMES_IN_FLIGHT];
 
     DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
