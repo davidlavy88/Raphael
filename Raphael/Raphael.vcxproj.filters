@@ -107,6 +107,7 @@
     <ClInclude Include="DDSTextureLoader\DDSTextureLoader12.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="header\ShaderStructs.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="imgui\misc\imgui.natstepfilter">
