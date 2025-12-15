@@ -73,16 +73,28 @@ void D3D12Device::Shutdown()
 {
     WaitForGpu();
 
-    /*for (auto& frameContext : m_frameContexts)
-		frameContext.CommandAllocator.Reset();*/
+    // Clear frame contexts
+    m_frameContexts.clear();
 
+    // Reset SRV allocator (?)
+
+    // Release command list and allocator
     if (m_commandList) { m_commandList.Reset(); }
-    if (m_commandQueue) { m_commandQueue.Reset(); }
+    if (m_commandAllocator) { m_commandAllocator.Reset(); }
+
+    // Release descriptor heaps
     if (m_rtvHeap) { m_rtvHeap.Reset(); }
     if (m_dsvHeap) { m_dsvHeap.Reset(); }
     if (m_srvHeap) { m_srvHeap.Reset(); }
+
+    // Release command queue
+    if (m_commandQueue) { m_commandQueue.Reset(); }
+
+    // Release fence and event
     if (m_fence) { m_fence->Release(); m_fence = nullptr; }
     if (m_fenceEvent) { CloseHandle(m_fenceEvent); m_fenceEvent = nullptr; }
+
+    // Release device
     if (m_device) { m_device.Reset(); }
 
 #ifdef DX12_ENABLE_DEBUG_LAYER
