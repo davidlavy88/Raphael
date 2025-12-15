@@ -97,12 +97,7 @@ bool D3D12Device::Initialize()
     if (!CreateDescriptorHeaps())
         return false;
 
-    // Create command allocators for each frame
-    /*for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
-    {
-        if (FAILED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_frameContexts[i].CommandAllocator))))
-            return false;
-    }*/
+    // Create command allocator
     if (FAILED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator))))
         return false;
 
@@ -128,9 +123,6 @@ bool D3D12Device::Initialize()
 void D3D12Device::Shutdown()
 {
     WaitForGpu();
-
-    /*for (auto& frameContext : m_frameContexts)
-        frameContext.~FrameContext();*/
 
     if (m_commandList) { m_commandList->Release(); m_commandList = nullptr; }
     if (m_commandQueue) { m_commandQueue->Release(); m_commandQueue = nullptr; }
@@ -160,6 +152,11 @@ FrameContext* D3D12Device::WaitForNextFrame()
         ::WaitForSingleObject(m_fenceEvent, INFINITE);
     }
     return frameContext;
+}
+
+FrameContext* D3D12Device::GetCurrentFrameContext()
+{
+    return m_frameContexts[m_frameIndex % NUM_FRAMES_IN_FLIGHT].get();
 }
 
 void D3D12Device::SignalAndIncrementFence(FrameContext* frameContext)
@@ -216,7 +213,7 @@ bool D3D12Device::CreateFrameContexts(int passCount, int objectCount)
 {
     for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
     {
-		m_frameContexts.emplace_back(m_device, passCount, objectCount);
+        m_frameContexts.push_back(std::make_unique<FrameContext>(m_device, passCount, objectCount));
     }
 
     return true;
@@ -283,7 +280,6 @@ bool SwapChain::Initialize(HWND hwnd, D3D12Device& device)
     // Create render target views
     CreateRenderTargetViews(device);
 	// Create depth stencil view
-    /// FrameContext* frameContext = device.WaitForNextFrame();
     device.GetCurrentCommandAllocator()->Reset();
     device.GetCommandList()->Reset(device.GetCurrentCommandAllocator(), nullptr);
 
@@ -336,7 +332,6 @@ void SwapChain::Shutdown()
 
 void SwapChain::Resize(UINT width, UINT height, D3D12Device& device)
 {
-    // FrameContext* frameContext = device.WaitForNextFrame();
     device.GetCurrentCommandAllocator()->Reset();
     device.GetCommandList()->Reset(device.GetCurrentCommandAllocator(), nullptr);
 

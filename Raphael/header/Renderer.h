@@ -104,7 +104,7 @@ public:
 
     FrameContext* WaitForNextFrame();
     FrameContext* GetCurrentFrameContext();
-    // const std::vector<FrameContext>& GetFrameContext() const { return m_frameContexts; }
+    FrameContext* GetFrameContext(int index) { return m_frameContexts[index].get(); }
 
     void SignalAndIncrementFence(FrameContext* frameContext);
 
@@ -117,7 +117,6 @@ public:
 
     bool m_appPaused = false;          // Is the application paused?
 
-// private:
     bool CreateDescriptorHeaps();
     bool CreateFrameContexts(int passCount, int objectCount);
 
@@ -125,7 +124,7 @@ private:
     ID3D12Device* m_device = nullptr;
     ID3D12CommandQueue* m_commandQueue = nullptr;
     ID3D12GraphicsCommandList* m_commandList = nullptr;
-	ID3D12CommandAllocator* m_commandAllocator = nullptr;
+    ID3D12CommandAllocator* m_commandAllocator = nullptr;
     ID3D12DescriptorHeap* m_rtvHeap = nullptr;
     ID3D12DescriptorHeap* m_dsvHeap = nullptr;
     ID3D12DescriptorHeap* m_srvHeap = nullptr;
@@ -133,10 +132,9 @@ private:
     ID3D12Fence* m_fence = nullptr;
     HANDLE m_fenceEvent = nullptr;
     UINT64 m_fenceLastSignaled = 0;
-    // TODO: Consider using std::vector as is dynamically sized and handles memory management automatically.
-    // FrameContext m_frameContexts[NUM_FRAMES_IN_FLIGHT]{ FrameContext(m_device, 1, 1), FrameContext(m_device, 1, 1) };
-	std::vector<std::unique_ptr<FrameContext>> m_frameContexts;
-    FrameContext* m_currentFC = nullptr;
+
+    std::vector<std::unique_ptr<FrameContext>> m_frameContexts;
+    FrameContext* m_currentFrameContext = nullptr;
     UINT m_frameIndex = 0;
 
     DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
