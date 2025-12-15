@@ -118,6 +118,7 @@
     <ClInclude Include="header\GameTimer.h" />
     <ClInclude Include="header\DescriptorHeapAllocator.h" />
     <ClInclude Include="header\Device.h" />
+    <ClInclude Include="header\ShaderStructs.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

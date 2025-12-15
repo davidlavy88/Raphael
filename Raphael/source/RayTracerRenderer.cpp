@@ -308,6 +308,15 @@ void RayTracerRenderer::Update(float deltaTime)
     XMMATRIX proj = XMLoadFloat4x4(&mProj);
     // XMMATRIX worldViewProj = world * view * proj;
     XMMATRIX viewProj = view * proj;
+    XMMATRIX cubeTranslation = XMMatrixTranslation(-5.0f, 1.5f, 0.0f);
+    XMFLOAT4 cubeMin = XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f);
+    XMFLOAT4 cubeMax = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    // Transform cube corners by cube translation matrix
+    XMVECTOR cubeMinVec = XMLoadFloat4(&cubeMin);
+    XMVECTOR cubeMaxVec = XMLoadFloat4(&cubeMax);
+    XMVECTOR transformedCubeMin = XMVector3Transform(cubeMinVec, cubeTranslation);
+    XMVECTOR transformedCubeMax = XMVector3Transform(cubeMaxVec, cubeTranslation);
+    
 
     // Compute inverse view-projection matrix for ray generation
     XMMATRIX viewProjInverse = XMMatrixInverse(nullptr, viewProj);
@@ -321,6 +330,9 @@ void RayTracerRenderer::Update(float deltaTime)
     sceneConstants.LightPos = XMFLOAT4(3.0f, 3.0f, -3.0f, 1.0f);         // Light position
     sceneConstants.SphereColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);       // Red sphere
     sceneConstants.PlaneColor = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);        // Green plane
+    XMStoreFloat4(&sceneConstants.CubeMin, transformedCubeMin);
+    XMStoreFloat4(&sceneConstants.CubeMax, transformedCubeMax);
+    sceneConstants.CubeColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);       // Blue cube
 
     mTime += deltaTime;
     XMStoreFloat4x4(&sceneConstants.InvViewProj, XMMatrixTranspose(viewProjInverse));

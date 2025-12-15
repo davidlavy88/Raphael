@@ -14,6 +14,9 @@ cbuffer SceneCB : register(b0)
     float4 lightPos; // w component unused
     float4 sphereColor; // rgb: color, a: unused
     float4 planeColor; // rgb: color, a: unused
+    float4 cubeMin; // min corner of cube
+    float4 cubeMax; // max corner of cube
+    float4 cubeColor; // rgb: color, a: unused
     
 };
 
@@ -114,6 +117,78 @@ bool IntersectPlane(float3 rayOrigin, float3 rayDir, float maxT, out float t)
     return false;
 }
 
+void swap(inout float a, inout float b)
+{
+    float temp = a;
+    a = b;
+    b = temp;
+}
+
+bool IntersectCube(float3 rayOrigin, float3 rayDir, float maxT, out float t, out int axisHit)
+{
+    t = 0.0f;
+    axisHit = -1;
+    float tMin = 0;
+    float tMax = 0;
+    float3 invDir = 1.0f / rayDir;
+    float txMin = (cubeMin.x - rayOrigin.x) * invDir.x;
+    float txMax = (cubeMax.x - rayOrigin.x) * invDir.x;
+    // Depend on ray direction, swap min and max
+    if (txMin > txMax)
+        swap(txMin, txMax);
+    float tyMin = (cubeMin.y - rayOrigin.y) * invDir.y;
+    float tyMax = (cubeMax.y - rayOrigin.y) * invDir.y;
+    if (tyMin > tyMax)
+        swap(tyMin, tyMax);
+    
+    if (txMin > tyMax || tyMin > txMax)
+        return false;
+    
+    // tMin = (txMin > tyMin) ? txMin : tyMin;
+    if (txMin > tyMin)
+    {
+        tMin = txMin;
+        axisHit = 0; // x-axis
+    }
+    else
+    {
+        tMin = tyMin;
+        axisHit = 1; // y-axis)
+    }
+    tMax = (txMax < tyMax) ? txMax : tyMax;
+    
+    float tzMin = (cubeMin.z - rayOrigin.z) * invDir.z;
+    float tzMax = (cubeMax.z - rayOrigin.z) * invDir.z;
+    if (tzMin > tzMax)
+        swap(tzMin, tzMax);
+    
+    if (tzMin > tMax || tMin > tzMax)
+        return false;
+    
+    // tMin = (tMin > tzMin) ? tMin : tzMin;
+    if (tMin < tzMin)
+    {
+        tMin = tzMin;
+        axisHit = 2; // z-axis
+    }
+    tMax = (tMax < tzMax) ? tMax : tzMax;    
+    
+    if (tMin > 0 && tMin < maxT)
+    {
+        t = tMin;
+    }
+    /*else if (tMax > 0 && tMax < maxT)
+    {
+        t = tMax;
+    }*/
+    else
+    {
+        return false;
+    }
+    
+    return true;
+}
+
 // Calculate sphere normal
 float3 SphereNormal(float3 p, float4 sphere)
 {
@@ -124,6 +199,25 @@ float3 SphereNormal(float3 p, float4 sphere)
 float3 PlaneNormal(float4 plane)
 {
     return normalize(plane.xyz);
+}
+
+float3 CubeNormal(float3 hitPoint, int axisHit)
+{
+    float3 normal = float3(0, 0, 0);
+    if (axisHit == 0)
+    {
+        normal = abs(hitPoint.x - cubeMin.x) < abs(hitPoint.x - cubeMax.x) ? float3(-1, 0, 0) : float3(1, 0, 0);
+    }
+    else if (axisHit == 1)
+    {
+        normal = abs(hitPoint.y - cubeMin.y) < abs(hitPoint.y - cubeMax.y) ? float3(0, -1, 0) : float3(0, 1, 0);
+    }
+    else // axisHit == 2
+    {
+        normal = abs(hitPoint.z - cubeMin.z) < abs(hitPoint.z - cubeMax.z) ? float3(0, 0, -1) : float3(0, 0, 1);
+    }
+    
+    return normal;
 }
 
 // Shadow check
@@ -137,7 +231,12 @@ bool IsInShadow(float3 p, float3 lightDir, float lightDistance)
     float3 rayOrigin = p + lightDir * 0.01;
     
     float t;
+    float axisHit;
     if (IntersectSphere(rayOrigin, lightDir, lightDistance, t))
+    {
+        return true; // In shadow
+    }
+    else if (IntersectCube(rayOrigin, lightDir, lightDistance, t, axisHit))
     {
         return true; // In shadow
     }
@@ -244,6 +343,21 @@ float4 PS_Main(VSOut IN) : SV_TARGET
             hitPoint = rayOrigin + rayDir * tSphere;
             hitNormal = SphereNormal(hitPoint, sphereData);
             hitColor = sphereColor;
+        }
+    }
+    
+    // Check intersection with cube
+    {
+        float tCube;
+        int axisHit;
+        if (IntersectCube(rayOrigin, rayDir, tMin, tCube, axisHit))
+        {
+            hitSomething = true;
+            tMin = tCube;
+            hitPoint = rayOrigin + rayDir * tCube;
+            // hitNormal = CubeNormal(axisHit);
+            hitNormal = CubeNormal(hitPoint, axisHit);
+            hitColor = cubeColor;
         }
     }
     

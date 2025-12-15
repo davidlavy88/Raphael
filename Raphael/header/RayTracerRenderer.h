@@ -31,6 +31,9 @@ struct SceneConstants
 	XMFLOAT4 LightPos; // x, y, z: position, w: unused
 	XMFLOAT4 SphereColor;
 	XMFLOAT4 PlaneColor;
+	XMFLOAT4 CubeMin; // x, y, z: min corner
+	XMFLOAT4 CubeMax; // x, y, z: max corner
+	XMFLOAT4 CubeColor;
 };
 
 class RayTracerRenderer : public Renderer
