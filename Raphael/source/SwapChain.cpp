@@ -61,9 +61,8 @@ bool SwapChain::Initialize(HWND hwnd, D3D12Device& device)
     // Create render target views
     CreateRenderTargetViews(device);
     // Create depth stencil view
-    FrameContext* frameContext = device.WaitForNextFrame();
-    frameContext->CommandAllocator->Reset();
-    device.GetCommandList()->Reset(frameContext->CommandAllocator.Get(), nullptr);
+    device.GetCurrentCommandAllocator()->Reset();
+    device.GetCommandList()->Reset(device.GetCurrentCommandAllocator().Get(), nullptr);
 
     CreateDepthStencilView(device, width, height);
 
@@ -114,9 +113,8 @@ void SwapChain::Shutdown()
 
 void SwapChain::Resize(UINT width, UINT height, D3D12Device& device)
 {
-    FrameContext* frameContext = device.WaitForNextFrame();
-    frameContext->CommandAllocator->Reset();
-    device.GetCommandList()->Reset(frameContext->CommandAllocator.Get(), nullptr);
+    device.GetCurrentCommandAllocator()->Reset();
+    device.GetCommandList()->Reset(device.GetCurrentCommandAllocator().Get(), nullptr);
 
     CleanupRenderTargetViews();
     CleanupDepthStencilView();

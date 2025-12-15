@@ -1,8 +1,9 @@
 #include "BoxRenderer.h"
-#include <random>
-
+#include "ShaderStructs.h"
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
+
+#include <random>
 
 BoxRenderer::BoxRenderer()
 {
@@ -35,7 +36,7 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
         return false;
 
     // Reset command list for initialization
-    device.GetCommandList()->Reset(device.GetCurrentCommandAllocator(), nullptr);
+    device.GetCommandList()->Reset(device.GetCurrentCommandAllocator().Get(), nullptr);
 
     BuildRootSignature(device);
     BuildShadersAndInputLayout();
@@ -97,7 +98,7 @@ void BoxRenderer::BuildDescriptorHeaps(D3D12Device& device)
 
     // Implementation for creating descriptor heaps
     D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-    cbvHeapDesc.NumDescriptors = numDescriptors; // Only one constant buffer
+    cbvHeapDesc.NumDescriptors = numDescriptors;
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     cbvHeapDesc.NodeMask = 0;
@@ -158,7 +159,7 @@ void BoxRenderer::BuildConstantBufferViews(D3D12Device& device)
 
         device.GetDevice()->CreateConstantBufferView(
             &cbvDesc,
-			cbvHandle);
+            cbvHandle);
     }
 }
 
@@ -209,16 +210,16 @@ void BoxRenderer::BuildShadersAndInputLayout()
 void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
 {
     // Implementation for creating box geometry
-    std::array<Vertex, 8> vertices =
+    std::array<VertexShaderInput, 8> vertices =
     {
-        Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
-        Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
-        Vertex({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) }),
-        Vertex({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),
-        Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
-        Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
-        Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
-        Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
     };
 
     std::array<std::uint16_t, 36> indices =
@@ -248,7 +249,7 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
         4, 3, 7
     };
 
-    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+    const UINT vbByteSize = (UINT)vertices.size() * sizeof(VertexShaderInput);
     const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
     // Needs finishing setting up vertex and index buffers
@@ -267,7 +268,7 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
     mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(),
         device.GetCommandList().Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
 
-    mBoxGeo->VertexByteStride = sizeof(Vertex);
+    mBoxGeo->VertexByteStride = sizeof(VertexShaderInput);
     mBoxGeo->VertexBufferByteSize = vbByteSize;
     mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
     mBoxGeo->IndexBufferByteSize = ibByteSize;

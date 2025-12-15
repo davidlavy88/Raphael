@@ -46,16 +46,13 @@ bool D3D12Device::Initialize()
     if (!CreateDescriptorHeaps())
         return false;
 
-    // Create command allocators for each frame
-    for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
-    {
-        if (FAILED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_frameContexts[i].CommandAllocator))))
-            return false;
-    }
+    // Create command allocator
+    if (FAILED(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator))))
+        return false;
 
     // Create command list
     if (FAILED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-        m_frameContexts[0].CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList))))
+        m_commandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList))))
         return false;
 
     if (FAILED(m_commandList->Close()))
@@ -76,8 +73,8 @@ void D3D12Device::Shutdown()
 {
     WaitForGpu();
 
-    for (auto& frameContext : m_frameContexts)
-		frameContext.CommandAllocator.Reset();
+    /*for (auto& frameContext : m_frameContexts)
+		frameContext.CommandAllocator.Reset();*/
 
     if (m_commandList) { m_commandList.Reset(); }
     if (m_commandQueue) { m_commandQueue.Reset(); }
@@ -100,13 +97,18 @@ void D3D12Device::Shutdown()
 
 FrameContext* D3D12Device::WaitForNextFrame()
 {
-    FrameContext* frameContext = &m_frameContexts[m_frameIndex % NUM_FRAMES_IN_FLIGHT];
+    FrameContext* frameContext = m_frameContexts[m_frameIndex % NUM_FRAMES_IN_FLIGHT].get();
     if (m_fence->GetCompletedValue() < frameContext->FenceValue)
     {
         m_fence->SetEventOnCompletion(frameContext->FenceValue, m_fenceEvent);
         ::WaitForSingleObject(m_fenceEvent, INFINITE);
     }
     return frameContext;
+}
+
+FrameContext* D3D12Device::GetCurrentFrameContext()
+{
+    return m_frameContexts[m_frameIndex % NUM_FRAMES_IN_FLIGHT].get();
 }
 
 void D3D12Device::SignalAndIncrementFence(FrameContext* frameContext)
@@ -156,5 +158,15 @@ bool D3D12Device::CreateDescriptorHeaps()
         return false;
 
     m_srvAllocator.Initialize(m_device.Get(), m_srvHeap.Get());
+    return true;
+}
+
+bool D3D12Device::CreateFrameContexts(int passCount, int objectCount)
+{
+    for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+    {
+        m_frameContexts.push_back(std::make_unique<FrameContext>(m_device.Get(), passCount, objectCount));
+    }
+
     return true;
 }

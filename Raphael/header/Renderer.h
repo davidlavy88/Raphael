@@ -2,11 +2,6 @@
 
 #include "Device.h"
 #include "SwapChain.h"
-    bool CreateFrameContexts(int passCount, int objectCount);
-    ID3D12CommandAllocator* m_commandAllocator = nullptr;
-
-    std::vector<std::unique_ptr<FrameContext>> m_frameContexts;
-    FrameContext* m_currentFrameContext = nullptr;
 
 class Renderer
 {
