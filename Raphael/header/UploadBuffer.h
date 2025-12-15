@@ -29,7 +29,7 @@ template<typename T>
 class UploadBuffer
 {
 public:
-    UploadBuffer(ID3D12Device* device, UINT elementCount, bool isConstantBuffer) :
+    UploadBuffer(ComPtr<ID3D12Device> device, UINT elementCount, bool isConstantBuffer) :
         mIsConstantBuffer(isConstantBuffer)
     {
         mElementByteSize = sizeof(T);

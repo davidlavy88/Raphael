@@ -2,26 +2,6 @@
 #include "Renderer.h"
 #include "UploadBuffer.h"
 #include "d3dUtil.h"
-/// ADD HERE /// - Include additional headers for cube rendering
-#include <DirectXMath.h>
-#include <DirectXColors.h>
-#include <d3dcompiler.h>
-#include <wrl.h>
-#include <stdexcept>
-#include "d3dx12.h"
-#include <array>
-#include <cstdint>
-#include <vector>
-#include <memory>
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-
-struct Vertex
-{
-    XMFLOAT3 Pos;
-    XMFLOAT4 Color;
-};
 
 // Config constants
 static constexpr int MAX_NUM_BOXES = 100;
@@ -44,9 +24,9 @@ public:
     void BuildRenderItems();
     void BuildFrameContexts(D3D12Device& device);
 
-	void SpawnNewBoxes(int count);
-	bool PointInExtents(const XMVECTOR& location);
-	bool PointIntersectsGrid(const XMVECTOR& location);
+    void SpawnNewBoxes(int count);
+    bool PointInExtents(const XMVECTOR& location);
+    bool PointIntersectsGrid(const XMVECTOR& location);
 
     ComPtr<ID3D12RootSignature> GetRootSignature() const { return m_rootSignature; }
 
@@ -62,7 +42,7 @@ private:
 
     std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
 
-	int m_passCbvOffset = 0;
+    int m_passCbvOffset = 0;
 
     float _spawnRate = 50.0f;
     float _deltaTimeLastSpawn = 0.0f;
@@ -77,9 +57,9 @@ private:
     float _cellSize;
     float _gridWidth;
     float _gridHeight;
-	float _gridDepth;
+    float _gridDepth;
     size_t _cellsNumX;
     size_t _cellsNumY;
-	size_t _cellsNumZ;
+    size_t _cellsNumZ;
     std::vector<std::vector<std::vector<int>>> _grid;
 };
