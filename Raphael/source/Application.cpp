@@ -40,17 +40,9 @@ bool Application::Initialize()
         return false;
     }
 
-    // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
     // Setup ImGui scaling
     ImGuiStyle& style = ImGui::GetStyle();
     style.ScaleAllSizes(m_dpiScale);
-    style.FontScaleDpi = m_dpiScale;
 
     // Show window
     ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);

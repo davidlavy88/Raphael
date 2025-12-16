@@ -380,13 +380,13 @@ void BoxRenderer::Render(const ImVec4& clearColor)
 
     cmdList->SetGraphicsRootSignature(GetRootSignature().Get());
 
-	auto passCbvHandle = m_device->GetCurrentFrameContext()->PassCB->Resource();
+	auto passCbvHandle = frameContext->PassCB->Resource();
 	cmdList->SetGraphicsRootConstantBufferView(1, passCbvHandle->GetGPUVirtualAddress());
 
 	// Draw the boxes
 	UINT objCbvByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
-	auto objCbvHandle = m_device->GetCurrentFrameContext()->ObjectCB->Resource();
+	auto objCbvHandle = frameContext->ObjectCB->Resource();
 
     for (size_t i = 0; i < _cubes.size(); ++i)
     {
