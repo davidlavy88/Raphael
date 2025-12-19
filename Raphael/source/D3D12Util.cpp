@@ -1,10 +1,10 @@
-#include "d3dUtil.h"
+#include "D3D12Util.h"
 #include "d3dx12.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
-ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
+ComPtr<ID3D12Resource> D3D12Util::CreateDefaultBuffer(
     ID3D12Device* device,
     ID3D12GraphicsCommandList* cmdList,
     const void* initData,
@@ -60,7 +60,7 @@ ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
     return defaultBuffer;
 }
 
-ComPtr<ID3DBlob> d3dUtil::CompileShader(
+ComPtr<ID3DBlob> D3D12Util::CompileShader(
     const std::wstring& filename,
     const D3D_SHADER_MACRO* defines,
     const std::string& entrypoint,

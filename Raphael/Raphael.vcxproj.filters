@@ -48,7 +48,7 @@
     <ClCompile Include="source\Renderer.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="source\d3dUtil.cpp">
+    <ClCompile Include="source\D3D12Util.cpp">
       <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader12.cpp">
@@ -110,7 +110,7 @@
     <ClInclude Include="header\UploadBuffer.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="header\d3dUtil.h">
+    <ClInclude Include="header\D3D12Util.h">
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="header\BoxRenderer.h">

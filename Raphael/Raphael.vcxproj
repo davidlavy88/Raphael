@@ -84,7 +84,7 @@
     <ClCompile Include="source\SwapChain.cpp" />
     <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader12.cpp" />
     <ClCompile Include="source\BoxRenderer.cpp" />
-    <ClCompile Include="source\d3dUtil.cpp" />
+    <ClCompile Include="source\D3D12Util.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_win32.cpp" />
@@ -106,7 +106,7 @@
     <ClInclude Include="header\SwapChain.h" />
     <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader12.h" />
     <ClInclude Include="header\BoxRenderer.h" />
-    <ClInclude Include="header\d3dUtil.h" />
+    <ClInclude Include="header\D3D12Util.h" />
     <ClInclude Include="header\d3dx12.h" />
     <ClInclude Include="header\Renderer.h" />
     <ClInclude Include="header\ShaderStructs.h" />

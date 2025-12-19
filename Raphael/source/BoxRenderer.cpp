@@ -196,8 +196,8 @@ void BoxRenderer::BuildRootSignature(D3D12Device& device)
 void BoxRenderer::BuildShadersAndInputLayout()
 {
     // Implementation for compiling shaders and defining input layout
-    m_vsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
-    m_psByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
+    m_vsByteCode = D3D12Util::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
+    m_psByteCode = D3D12Util::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 
     m_inputLayout =
     {
@@ -261,10 +261,10 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
     D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU);
     CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-    mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(),
+    mBoxGeo->VertexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(),
         device.GetCommandList().Get(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
 
-    mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(),
+    mBoxGeo->IndexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(),
         device.GetCommandList().Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
 
     mBoxGeo->VertexByteStride = sizeof(VertexShaderInput);

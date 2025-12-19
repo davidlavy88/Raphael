@@ -1,7 +1,7 @@
 #pragma once
 #include "Renderer.h"
 #include "UploadBuffer.h"
-#include "d3dUtil.h"
+#include "D3D12Util.h"
 #include "Camera.h"
 
 // Config constants

@@ -73,7 +73,7 @@ struct MeshGeometry
 	}
 };
 
-class d3dUtil
+class D3D12Util
 {
 public:
 	static ComPtr<ID3D12Resource> CreateDefaultBuffer(

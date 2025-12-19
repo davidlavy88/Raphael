@@ -1,5 +1,5 @@
 #include "Camera.h"
-#include "d3dUtil.h"
+#include "D3D12Util.h"
 
 Camera::Camera()
 : m_pitch(0.0f),
@@ -7,6 +7,9 @@ m_yaw(0.0f),
 m_speed(0.05f)
 {
 	UpdateLook();
+	m_viewMatrix = XMMatrixIdentity();
+	m_projectionMatrix = XMMatrixIdentity();
+	m_viewProjectionMatrix = XMMatrixIdentity();
 }
 
 void Camera::UpdateLook()
@@ -29,13 +32,15 @@ void Camera::UpdateViewMatrix()
 void Camera::SetProjectionMatrix(float fovY, float aspectRatio, float nearZ, float farZ)
 {
 	m_projectionMatrix = XMMatrixPerspectiveFovLH(fovY, aspectRatio, nearZ, farZ);
+	// Update view-projection matrix
+	m_viewProjectionMatrix = XMMatrixMultiply(m_viewMatrix, m_projectionMatrix);
 }
 
 void Camera::SetPitch(float pitch)
 {
 	m_pitch = pitch;
 	// Make sure that when pitch is out of bounds, screen doesn't get flipped
-	m_pitch = d3dUtil::Clamp(m_pitch, -XM_PIDIV2 + 0.01f, XM_PIDIV2 - 0.01f);
+	m_pitch = D3D12Util::Clamp(m_pitch, -XM_PIDIV2 + 0.01f, XM_PIDIV2 - 0.01f);
 }
 
 void Camera::MoveForward()
