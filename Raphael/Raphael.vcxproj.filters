@@ -48,20 +48,30 @@
     <ClCompile Include="source\Renderer.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="source\RayTracerRenderer.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
     <ClCompile Include="source\d3dUtil.cpp">
       <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader12.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="source\Application.cpp" />
-    <ClCompile Include="source\SwapChain.cpp" />
-    <ClCompile Include="source\GameTimer.cpp" />
-    <ClCompile Include="source\DescriptorHeapAllocator.cpp" />
-    <ClCompile Include="source\Device.cpp" />
+    <ClCompile Include="source\Application.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\DescriptorHeapAllocator.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Device.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\GameTimer.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\SwapChain.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Camera.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -106,19 +116,33 @@
     <ClInclude Include="header\BoxRenderer.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="header\RayTracerRenderer.h">
-      <Filter>headers</Filter>
-    </ClInclude>
     <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader12.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="header\Application.h" />
-    <ClInclude Include="header\SwapChain.h" />
-    <ClInclude Include="header\D3D12CommonHeaders.h" />
-    <ClInclude Include="header\GameTimer.h" />
-    <ClInclude Include="header\DescriptorHeapAllocator.h" />
-    <ClInclude Include="header\Device.h" />
-    <ClInclude Include="header\ShaderStructs.h" />
+    <ClInclude Include="header\Application.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Device.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\D3D12CommonHeaders.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\GameTimer.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\ShaderStructs.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\SwapChain.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\DescriptorHeapAllocator.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Camera.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

@@ -2,6 +2,7 @@
 #include "Renderer.h"
 #include "UploadBuffer.h"
 #include "d3dUtil.h"
+#include "Camera.h"
 
 // Config constants
 static constexpr int MAX_NUM_BOXES = 100;

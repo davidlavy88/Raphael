@@ -76,6 +76,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\Camera.cpp" />
     <ClCompile Include="source\Device.cpp" />
     <ClCompile Include="source\DescriptorHeapAllocator.cpp" />
     <ClCompile Include="source\GameTimer.cpp" />
@@ -84,7 +85,6 @@
     <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader12.cpp" />
     <ClCompile Include="source\BoxRenderer.cpp" />
     <ClCompile Include="source\d3dUtil.cpp" />
-    <ClCompile Include="source\RayTracerRenderer.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_win32.cpp" />
@@ -97,6 +97,7 @@
     <ClCompile Include="source\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="header\Camera.h" />
     <ClInclude Include="header\Device.h" />
     <ClInclude Include="header\DescriptorHeapAllocator.h" />
     <ClInclude Include="header\GameTimer.h" />
@@ -107,7 +108,6 @@
     <ClInclude Include="header\BoxRenderer.h" />
     <ClInclude Include="header\d3dUtil.h" />
     <ClInclude Include="header\d3dx12.h" />
-    <ClInclude Include="header\RayTracerRenderer.h" />
     <ClInclude Include="header\Renderer.h" />
     <ClInclude Include="header\ShaderStructs.h" />
     <ClInclude Include="header\UploadBuffer.h" />

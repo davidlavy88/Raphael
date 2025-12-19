@@ -47,10 +47,10 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
     BuildConstantBufferViews(device);
     BuildPSO(device);
 
-    // Initialize camera position
-    mPos = XMVectorSet(0.0f, 0.0f, -125.0f, 1.0f);
-    mFront = -1 * mPos;
-    mUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    // Initialize camera position, look and up vectors
+    m_camera->SetPosition(XMVectorSet(0.0f, 0.0f, -125.0f, 1.0f));
+    m_camera->SetLook(XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f));
+    m_camera->SetUp(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
     // ADD: Initialize matrices
     RECT clientRect;
@@ -60,9 +60,8 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
     // Initialize world matrix (identity)
     XMStoreFloat4x4(&mWorld, XMMatrixIdentity());
 
-    // Initialize projection matrix
-    XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f * XM_PI, aspect, 1.0f, 1000.0f);
-    XMStoreFloat4x4(&mProj, proj);
+    // Initialize camera projection matrix
+    m_camera->SetProjectionMatrix(0.25f * XM_PI, aspect, 1.0f, 1000.0f);
 
     // Execute the initialization commands
     device.GetCommandList()->Close();
@@ -429,19 +428,17 @@ void BoxRenderer::Update(float deltaTime)
 
 	FrameContext* frameContext = m_device->WaitForNextFrame();
 
-	// Update pass constants
-    XMMATRIX view = XMMatrixLookAtLH(mPos, mPos + mFront, mUp);
-    XMMATRIX proj = XMLoadFloat4x4(&mProj);
-    XMMATRIX viewProj = view * proj;
+    // Update pass constants
+    m_camera->UpdateViewMatrix();
 
-	PassConstants passConstants;
-    XMStoreFloat4x4(&passConstants.View, XMMatrixTranspose(view));
-	XMStoreFloat4x4(&passConstants.Proj, XMMatrixTranspose(proj));
-    XMStoreFloat4x4(&passConstants.ViewProj, XMMatrixTranspose(viewProj));
+    PassConstants passConstants;
+    XMStoreFloat4x4(&passConstants.View, XMMatrixTranspose(m_camera->GetViewMatrix()));
+    XMStoreFloat4x4(&passConstants.Proj, XMMatrixTranspose(m_camera->GetProjectionMatrix()));
+    XMStoreFloat4x4(&passConstants.ViewProj, XMMatrixTranspose(m_camera->GetViewProjectionMatrix()));
 
-	frameContext->PassCB->CopyData(0, passConstants);
+    frameContext->PassCB->CopyData(0, passConstants);
 
-	// Update object constants
+    // Update object constants
     size_t index = 0;
     for (auto& cube : _cubes)
     {

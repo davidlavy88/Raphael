@@ -148,25 +148,25 @@ void Application::Run()
 
                 // Check for keyboard input for camera movement
                 if (ImGui::IsKeyDown(ImGuiKey_W) || ImGui::IsKeyDown(ImGuiKey_UpArrow))
-                    m_renderer.CameraForward();
+                    m_renderer.GetCamera()->MoveForward();
                 if (ImGui::IsKeyDown(ImGuiKey_S) || ImGui::IsKeyDown(ImGuiKey_DownArrow))
-                    m_renderer.CameraBackward();
+                    m_renderer.GetCamera()->MoveBackward();
                 if (ImGui::IsKeyDown(ImGuiKey_A) || ImGui::IsKeyDown(ImGuiKey_LeftArrow))
-                    m_renderer.CameraLeft();
+                    m_renderer.GetCamera()->MoveLeft();
                 if (ImGui::IsKeyDown(ImGuiKey_D) || ImGui::IsKeyDown(ImGuiKey_RightArrow))
-                    m_renderer.CameraRight();
+                    m_renderer.GetCamera()->MoveRight();
 
                 // Main window
                 {
                     static float cameraSpeed = 0.05f;
 
-                    ImGui::Begin("Hello, world!");
+                    ImGui::Begin("D3D12 Training - Parameters");
                     ImGui::ColorEdit3("clear color", (float*)&clearColor);
 
-                    ImGui::SliderFloat("Camera Speed", &cameraSpeed, 0.0f, 0.4f);
-                    m_renderer.SetCameraSpeed(cameraSpeed);
+                    ImGui::SliderFloat(" Set Camera Speed", &cameraSpeed, 0.0f, 0.4f);
+                    m_renderer.GetCamera()->SetSpeed(cameraSpeed);
 
-                    ImGui::Text("Pitch(degrees): %.2f, Yaw(degrees): %.2f", m_renderer.GetPitch() * 180.0f / XM_PI, m_renderer.GetYaw() * 180.0f / XM_PI);
+                    ImGui::Text("Pitch(degrees): %.2f, Yaw(degrees): %.2f", m_renderer.GetCamera()->GetPitch() * 180.0f / XM_PI, m_renderer.GetCamera()->GetYaw() * 180.0f / XM_PI);
 
                     ImGuiIO& io = ImGui::GetIO();
                     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
@@ -229,13 +229,13 @@ bool Application::CreateAppWindow()
     WNDCLASSEXW wc = {
         sizeof(wc), CS_CLASSDC, StaticWndProc, 0L, 0L,
         GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr,
-        L"ImGui Example", nullptr
+        L"Raphael Engine", nullptr
     };
 
     ::RegisterClassExW(&wc);
 
     m_hwnd = ::CreateWindowW(
-        wc.lpszClassName, L"Dear ImGui DirectX12 Example", WS_OVERLAPPEDWINDOW,
+        wc.lpszClassName, L"Raphael Engine - DirectX12 Training", WS_OVERLAPPEDWINDOW,
         100, 100, static_cast<int>(1280 * m_dpiScale), static_cast<int>(800 * m_dpiScale),
         nullptr, nullptr, wc.hInstance, this
     );
@@ -248,7 +248,7 @@ void Application::DestroyAppWindow()
     if (m_hwnd)
     {
         ::DestroyWindow(m_hwnd);
-        ::UnregisterClassW(L"ImGui Example", GetModuleHandle(nullptr));
+        ::UnregisterClassW(L"Raphael Engine", GetModuleHandle(nullptr));
         m_hwnd = nullptr;
     }
 }
