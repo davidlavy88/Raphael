@@ -72,6 +72,12 @@
     <ClCompile Include="source\Camera.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\Material.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Light.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -131,7 +137,7 @@
     <ClInclude Include="header\GameTimer.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="header\ShaderStructs.h">
+    <ClInclude Include="header\GPUStructs.h">
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="header\SwapChain.h">
@@ -141,6 +147,12 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="header\Camera.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Material.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Light.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>

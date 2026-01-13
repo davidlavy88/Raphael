@@ -3,6 +3,8 @@
 #include "UploadBuffer.h"
 #include "D3D12Util.h"
 #include "Camera.h"
+#include "Material.h"
+#include "Light.h"
 
 // Config constants
 static constexpr int MAX_NUM_BOXES = 100;
@@ -16,14 +18,14 @@ public:
     void Render(const ImVec4& clearColor) override;
     void Update(float deltaTime);
 
-    void BuildDescriptorHeaps(D3D12Device& device);
-    void BuildConstantBufferViews(D3D12Device& device);
     void BuildRootSignature(D3D12Device& device);
     void BuildShadersAndInputLayout();
     void BuildBoxGeometry(D3D12Device& device);
     void BuildPSO(D3D12Device& device);
     void BuildRenderItems();
     void BuildFrameContexts(D3D12Device& device);
+    void BuildMaterials();
+    void BuildLights();
 
     void SpawnNewBoxes(int count);
     bool PointInExtents(const XMVECTOR& location);
@@ -42,6 +44,8 @@ private:
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
 
     std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
+    std::unique_ptr<Material> m_boxMaterial = nullptr;
+    std::vector<std::unique_ptr<Light>> m_lights;
 
     int m_passCbvOffset = 0;
 

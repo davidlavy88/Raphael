@@ -1,5 +1,6 @@
 #include "BoxRenderer.h"
-#include "ShaderStructs.h"
+#include "GPUStructs.h"
+#include "Material.h"
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
 
@@ -41,14 +42,14 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
     BuildRootSignature(device);
     BuildShadersAndInputLayout();
     BuildBoxGeometry(device);
+    BuildMaterials();
+    BuildLights();
     BuildRenderItems();
     BuildFrameContexts(device);
-    BuildDescriptorHeaps(device);
-    BuildConstantBufferViews(device);
     BuildPSO(device);
 
     // Initialize camera position, look and up vectors
-    m_camera->SetPosition(XMVectorSet(0.0f, 0.0f, -125.0f, 1.0f));
+    m_camera->SetPosition(XMVectorSet(0.0f, 0.0f, -20.0f, 1.0f));
     m_camera->SetLook(XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f));
     m_camera->SetUp(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
@@ -84,94 +85,17 @@ void BoxRenderer::Shutdown()
     Renderer::Shutdown();
 }
 
-void BoxRenderer::BuildDescriptorHeaps(D3D12Device& device)
-{
-    size_t objCount = _cubes.size();
-
-    // Need one CBV per object per each frame resource
-    // plus one for the pass constants
-    int numDescriptors = (objCount + 1) * NUM_FRAMES_IN_FLIGHT;
-
-    // Set offset for pass CBV in the heap
-    m_passCbvOffset = objCount * NUM_FRAMES_IN_FLIGHT;
-
-    // Implementation for creating descriptor heaps
-    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-    cbvHeapDesc.NumDescriptors = numDescriptors;
-    cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    cbvHeapDesc.NodeMask = 0;
-    if (FAILED(device.GetDevice()->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap))))
-    	throw std::runtime_error("Failed to create CBV descriptor heap");
-}
-
-void BoxRenderer::BuildConstantBufferViews(D3D12Device& device)
-{
-    UINT objCBByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
-    size_t objCount = _cubes.size();
-
-	// Create the object constant buffer view descriptors for each object for each frame resource
-    for (int frameIndex = 0; frameIndex < NUM_FRAMES_IN_FLIGHT; ++frameIndex)
-    {
-		ID3D12Resource* objectCB = device.GetFrameContext(frameIndex)->ObjectCB->Resource();
-        for (int i = 0; i < objCount; ++i)
-        {
-            D3D12_GPU_VIRTUAL_ADDRESS cbAddress = objectCB->GetGPUVirtualAddress();
-
-            // Offset to the ith object constant buffer in the buffer
-            cbAddress += i * objCBByteSize;
-
-			// Offset to the object constant buffer in the descriptor heap
-            int boxCBIndexHeap = i + frameIndex * objCount;
-            CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(
-                m_cbvHeap->GetCPUDescriptorHandleForHeapStart(),
-                boxCBIndexHeap,
-				device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-
-            D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-			cbvDesc.BufferLocation = cbAddress;
-            cbvDesc.SizeInBytes = objCBByteSize;
-
-            device.GetDevice()->CreateConstantBufferView(
-                &cbvDesc,
-				cbvHandle);
-        }
-	}
-
-    UINT passCBByteSize = CalcConstantBufferByteSize(sizeof(PassConstants));
-	// Create the pass constant buffer view descriptor (one per frame resource)
-    for (int frameIndex = 0; frameIndex < NUM_FRAMES_IN_FLIGHT; ++frameIndex)
-    {
-		ID3D12Resource* passCB = device.GetFrameContext(frameIndex)->PassCB->Resource();
-        D3D12_GPU_VIRTUAL_ADDRESS cbAddress = passCB->GetGPUVirtualAddress();
-		
-		// Offset to the pass constant buffer in the descriptor heap
-        int passCBIndexHeap = m_passCbvOffset + frameIndex;
-        CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(
-            m_cbvHeap->GetCPUDescriptorHandleForHeapStart(),
-            passCBIndexHeap,
-			device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-
-		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-        cbvDesc.BufferLocation = cbAddress;
-        cbvDesc.SizeInBytes = passCBByteSize;
-
-        device.GetDevice()->CreateConstantBufferView(
-            &cbvDesc,
-            cbvHandle);
-    }
-}
-
 void BoxRenderer::BuildRootSignature(D3D12Device& device)
 {
     // Implementation for creating root signature 
-	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
+    CD3DX12_ROOT_PARAMETER slotRootParameter[3];
 
     // Create root parameters to bind the constant buffer views to the pipeline
     slotRootParameter[0].InitAsConstantBufferView(0);
     slotRootParameter[1].InitAsConstantBufferView(1);
+    slotRootParameter[2].InitAsConstantBufferView(2);
 
-    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2, slotRootParameter, 0, nullptr,
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter, 0, nullptr,
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     ComPtr<ID3DBlob> serializedRootSig = nullptr;
@@ -202,23 +126,50 @@ void BoxRenderer::BuildShadersAndInputLayout()
     m_inputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 }
 
 void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
 {
     // Implementation for creating box geometry
-    std::array<VertexShaderInput, 8> vertices =
+    std::array<VertexShaderInput, 24> vertices =
     {
-        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
+        // Fill in the front face vertex data.
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) }),
+
+        // Fill in the back face vertex data.
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }),
+
+        // Fill in the top face vertex data.
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }),
+
+        // Fill in the bottom face vertex data.
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) }),
+
+        // Fill in the left face vertex data.
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) }),
+
+        // Fill in the right face vertex data.
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) })
     };
 
     std::array<std::uint16_t, 36> indices =
@@ -228,24 +179,24 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
         0, 2, 3,
 
         // back face
-        4, 6, 5,
-        4, 7, 6,
+        4, 5, 6,
+        4, 6, 7,
 
         // left face
-        4, 5, 1,
-        4, 1, 0,
+        8, 9, 10,
+        8, 10, 11,
 
         // right face
-        3, 2, 6,
-        3, 6, 7,
+        12, 13, 14,
+        12, 14, 15,
 
         // top face
-        1, 5, 6,
-        1, 6, 2,
+        16, 17, 18,
+        16, 18, 19,
 
         // bottom face
-        4, 0, 3,
-        4, 3, 7
+        20, 21, 22,
+        20, 22, 23
     };
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(VertexShaderInput);
@@ -303,7 +254,7 @@ void BoxRenderer::BuildPSO(D3D12Device& device)
     psoDesc.DSVFormat = device.GetDepthStencilFormat();
 
     if (FAILED(device.GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso))))
-    	throw std::runtime_error("Failed to create pipeline state object");
+        throw std::runtime_error("Failed to create pipeline state object");
 }
 
 void BoxRenderer::BuildRenderItems()
@@ -317,7 +268,42 @@ void BoxRenderer::BuildRenderItems()
 
 void BoxRenderer::BuildFrameContexts(D3D12Device& device)
 {
-	device.CreateFrameContexts(1, static_cast<int>(_cubes.size()));
+    device.CreateFrameContexts(1, static_cast<int>(_cubes.size()));
+}
+
+void BoxRenderer::BuildMaterials()
+{
+    std::unique_ptr<Material> boxMat = std::make_unique<Material>("boxMaterial");
+    boxMat->DiffuseAlbedo = XMFLOAT4(Colors::Red);
+    boxMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+    boxMat->Roughness = 0.9f;
+
+    m_boxMaterial = std::move(boxMat);
+}
+
+void BoxRenderer::BuildLights()
+{
+    auto light = std::make_unique<Light>("Directional 0");
+    light->Type = LightType::Directional;
+    light->Color = { 0.8f, 0.8f, 0.8f };
+    // light->FalloffStart = 1.0f;
+    light->Direction = { 0.57735f, -0.57735f, 0.57735f };
+    // light->FalloffEnd = 10.0f;
+    // light->Position = {0.0f, 0.0f, 0.0f};
+    // light->SpotLightIntensity = 64.0f;    
+    m_lights.push_back(std::move(light));
+
+    light = std::make_unique<Light>("Directional 1");
+    light->Type = LightType::Directional;
+    light->Color = { 0.3f, 0.3f, 0.3f };
+    light->Direction = { -0.57735f, -0.57735f, 0.57735f };
+    m_lights.push_back(std::move(light));
+
+    light = std::make_unique<Light>("Directional 2");
+    light->Type = LightType::Directional;
+    light->Color = { 0.15f, 0.15f, 0.15f };
+    light->Direction = { 0.0f, -0.707f, -0.707f };
+    m_lights.push_back(std::move(light));
 }
 
 void BoxRenderer::Render(const ImVec4& clearColor)
@@ -332,7 +318,7 @@ void BoxRenderer::Render(const ImVec4& clearColor)
     ID3D12GraphicsCommandList* cmdList = m_device->GetCommandList().Get();
     cmdList->Reset(frameContext->CommandAllocator.Get(), m_pso.Get());
 
-	// TODO: Record commands and the rest
+    // TODO: Record commands and the rest
     // ADD: Set viewport and scissor rect (CRITICAL!)
     RECT clientRect;
     GetClientRect(GetActiveWindow(), &clientRect);
@@ -355,7 +341,7 @@ void BoxRenderer::Render(const ImVec4& clearColor)
 
     // Indicate a state transition on the resource usage.
     D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swapChain->GetBackBuffer(backBufferIdx),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
     cmdList->ResourceBarrier(1, &barrier);
 
     // Clear the back buffer and depth buffer.
@@ -374,24 +360,27 @@ void BoxRenderer::Render(const ImVec4& clearColor)
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_device->DepthStencilView();
     cmdList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
 
-    ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvHeap.Get() };
-    cmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-
     cmdList->SetGraphicsRootSignature(GetRootSignature().Get());
 
-	auto passCbvHandle = frameContext->PassCB->Resource();
-	cmdList->SetGraphicsRootConstantBufferView(1, passCbvHandle->GetGPUVirtualAddress());
+    auto passCbvHandle = frameContext->PassCB->Resource();
+    cmdList->SetGraphicsRootConstantBufferView(2, passCbvHandle->GetGPUVirtualAddress());
 
-	// Draw the boxes
-	UINT objCbvByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
+    // Draw the boxes
+    UINT objCbvByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
+    UINT matCbvByteSize = CalcConstantBufferByteSize(sizeof(MaterialConstants));
 
-	auto objCbvHandle = frameContext->ObjectCB->Resource();
+    auto objCbvHandle = frameContext->ObjectCB->Resource();
+    auto matCbvHandle = frameContext->MaterialCB->Resource();
 
     for (size_t i = 0; i < _cubes.size(); ++i)
     {
-        // Set the object constant buffer descriptor table
+        // Set the object constant buffer view
         D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCbvHandle->GetGPUVirtualAddress() + i * objCbvByteSize;
+        D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCbvHandle->GetGPUVirtualAddress() + i * matCbvByteSize;
+        
         cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
+        cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
+        
         // Draw the box
         D3D12_VERTEX_BUFFER_VIEW vbView = mBoxGeo->VertexBufferView();
         D3D12_INDEX_BUFFER_VIEW ibView = mBoxGeo->IndexBufferView();
@@ -436,18 +425,40 @@ void BoxRenderer::Update(float deltaTime)
     XMStoreFloat4x4(&passConstants.Proj, XMMatrixTranspose(m_camera->GetProjectionMatrix()));
     XMStoreFloat4x4(&passConstants.ViewProj, XMMatrixTranspose(m_camera->GetViewProjectionMatrix()));
 
+    XMVECTOR eyePos = m_camera->GetPosition();
+    XMStoreFloat3(&passConstants.EyePosW, eyePos);
+    
+    passConstants.AmbientLight = { 0.0f, 0.0f, 0.35f, 1.0f };
+    passConstants.Lights[0].Direction = m_lights[0].get()->Direction;
+    passConstants.Lights[0].Color = m_lights[0].get()->Color;
+    passConstants.Lights[1].Direction = m_lights[1].get()->Direction;
+    passConstants.Lights[1].Color = m_lights[1].get()->Color;
+    passConstants.Lights[2].Direction = m_lights[2].get()->Direction;
+    passConstants.Lights[2].Color = m_lights[2].get()->Color;
+
     frameContext->PassCB->CopyData(0, passConstants);
+
+    // Update material constants
+    MaterialConstants matConstants;
+    matConstants.DiffuseAlbedo = m_boxMaterial->DiffuseAlbedo;
+    matConstants.FresnelR0 = m_boxMaterial->FresnelR0;
+    matConstants.Roughness = m_boxMaterial->Roughness;
 
     // Update object constants
     size_t index = 0;
     for (auto& cube : _cubes)
     {
         XMMATRIX world = XMLoadFloat4x4(&mWorld);
-    	world = XMMatrixTranslation(XMVectorGetX(cube), XMVectorGetY(cube), XMVectorGetZ(cube));
+        world = XMMatrixTranslation(XMVectorGetX(cube), XMVectorGetY(cube), XMVectorGetZ(cube));
 
         ObjectConstants objConstants;
         XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-        frameContext->ObjectCB->CopyData(index++, objConstants);
+        frameContext->ObjectCB->CopyData(index, objConstants);
+
+        // Copy material data for each cube
+        frameContext->MaterialCB->CopyData(index, matConstants);
+
+        index++;
     }
 }
 

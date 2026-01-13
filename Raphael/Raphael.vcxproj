@@ -76,6 +76,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\Light.cpp" />
+    <ClCompile Include="source\Material.cpp" />
     <ClCompile Include="source\Camera.cpp" />
     <ClCompile Include="source\Device.cpp" />
     <ClCompile Include="source\DescriptorHeapAllocator.cpp" />
@@ -104,12 +106,14 @@
     <ClInclude Include="header\Application.h" />
     <ClInclude Include="header\D3D12CommonHeaders.h" />
     <ClInclude Include="header\SwapChain.h" />
+    <ClInclude Include="header\Light.h" />
+    <ClInclude Include="header\Material.h" />
     <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader12.h" />
     <ClInclude Include="header\BoxRenderer.h" />
     <ClInclude Include="header\D3D12Util.h" />
     <ClInclude Include="header\d3dx12.h" />
     <ClInclude Include="header\Renderer.h" />
-    <ClInclude Include="header\ShaderStructs.h" />
+    <ClInclude Include="header\GPUStructs.h" />
     <ClInclude Include="header\UploadBuffer.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
