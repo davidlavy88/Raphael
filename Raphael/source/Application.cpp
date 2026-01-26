@@ -174,7 +174,7 @@ void Application::Run()
                 }
 
                 // Render frame
-                float deltaTime = 0.01;
+                float deltaTime = 0.01f;
                 m_renderer.Update(deltaTime);
                 m_renderer.Render(clearColor);
 

@@ -19,6 +19,15 @@ struct FrameContext
     std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
     std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
 
+    FrameContext(ID3D12Device* device)
+    {
+        if (FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+            IID_PPV_ARGS(&CommandAllocator))))
+        {
+            throw std::runtime_error("Failed to map upload buffer");
+        }
+    }
+
     FrameContext(ID3D12Device* device, int passCount, int objectCount)
     {
         if (FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -68,6 +77,7 @@ public:
     bool m_appPaused = false;          // Is the application paused?
 
     bool CreateDescriptorHeaps();
+    bool CreateFrameContexts();
     bool CreateFrameContexts(int passCount, int objectCount);
 
 private:

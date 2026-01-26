@@ -8,27 +8,27 @@
 
 BoxRenderer::BoxRenderer()
 {
-    _cubes.push_back(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
-    _activeIndex = 0;
+    m_cubes.push_back(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
+    m_activeIndex = 0;
 
-    _cellSize = _spawnRadius / std::sqrt(2);
-    _gridWidth = XMVectorGetX(_maxExtent) - XMVectorGetX(_minExtent);
-    _gridHeight = XMVectorGetY(_maxExtent) - XMVectorGetY(_minExtent);
-    _gridDepth = XMVectorGetZ(_maxExtent) - XMVectorGetZ(_minExtent);
-    _cellsNumX = static_cast<size_t>(ceilf(_gridWidth / _cellSize));
-    _cellsNumY = static_cast<size_t>(ceilf(_gridHeight / _cellSize));
-    _cellsNumZ = static_cast<size_t>(ceilf(_gridDepth / _cellSize));
+    m_cellSize = m_spawnRadius / std::sqrt(2);
+    m_gridWidth = XMVectorGetX(m_maxExtent) - XMVectorGetX(m_minExtent);
+    m_gridHeight = XMVectorGetY(m_maxExtent) - XMVectorGetY(m_minExtent);
+    m_gridDepth = XMVectorGetZ(m_maxExtent) - XMVectorGetZ(m_minExtent);
+    m_cellsNumX = static_cast<size_t>(ceilf(m_gridWidth / m_cellSize));
+    m_cellsNumY = static_cast<size_t>(ceilf(m_gridHeight / m_cellSize));
+    m_cellsNumZ = static_cast<size_t>(ceilf(m_gridDepth / m_cellSize));
 
     // initialize 3D grid with -1 (indicating empty cells)
-    _grid = std::vector<std::vector<std::vector<int>>>(_cellsNumX,
-        std::vector<std::vector<int>>(_cellsNumY,
-			std::vector<int>(_cellsNumZ, -1)));
+    m_grid = std::vector<std::vector<std::vector<int>>>(m_cellsNumX,
+        std::vector<std::vector<int>>(m_cellsNumY,
+			std::vector<int>(m_cellsNumZ, -1)));
 
     //  grid cell coordinates where the first cube (at position 0, 0, 0) should be stored in a 3D spatial grid (center cell of the grid).
-    int pointIndexX = static_cast<int>(ceilf((_gridWidth / 2) / _cellSize));
-    int pointIndexY = static_cast<int>(ceilf((_gridHeight / 2) / _cellSize));
-    int pointIndexZ = static_cast<int>(ceilf((_gridDepth / 2) / _cellSize));
-    _grid[pointIndexX][pointIndexY][pointIndexZ] = 0;
+    int pointIndexX = static_cast<int>(ceilf((m_gridWidth / 2) / m_cellSize));
+    int pointIndexY = static_cast<int>(ceilf((m_gridHeight / 2) / m_cellSize));
+    int pointIndexZ = static_cast<int>(ceilf((m_gridDepth / 2) / m_cellSize));
+    m_grid[pointIndexX][pointIndexY][pointIndexZ] = 0;
 }
 
 bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
@@ -77,7 +77,7 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
 
 void BoxRenderer::Shutdown()
 {
-    mBoxGeo.reset();
+    m_boxGeo.reset();
     m_pso.Reset();
     m_rootSignature.Reset();
     m_cbvHeap.Reset();
@@ -203,32 +203,32 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
     const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
     // Needs finishing setting up vertex and index buffers
-    mBoxGeo = std::make_unique<MeshGeometry>();
-    mBoxGeo->Name = "boxGeo";
+    m_boxGeo = std::make_unique<MeshGeometry>();
+    m_boxGeo->Name = "boxGeo";
 
-    D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU);
-    CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+    D3DCreateBlob(vbByteSize, &m_boxGeo->VertexBufferCPU);
+    CopyMemory(m_boxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
 
-    D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU);
-    CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+    D3DCreateBlob(ibByteSize, &m_boxGeo->IndexBufferCPU);
+    CopyMemory(m_boxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-    mBoxGeo->VertexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(),
-        device.GetCommandList().Get(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
+    m_boxGeo->VertexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(),
+        device.GetCommandList().Get(), vertices.data(), vbByteSize, m_boxGeo->VertexBufferUploader);
 
-    mBoxGeo->IndexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(),
-        device.GetCommandList().Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
+    m_boxGeo->IndexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(),
+        device.GetCommandList().Get(), indices.data(), ibByteSize, m_boxGeo->IndexBufferUploader);
 
-    mBoxGeo->VertexByteStride = sizeof(VertexShaderInput);
-    mBoxGeo->VertexBufferByteSize = vbByteSize;
-    mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
-    mBoxGeo->IndexBufferByteSize = ibByteSize;
+    m_boxGeo->VertexByteStride = sizeof(VertexShaderInput);
+    m_boxGeo->VertexBufferByteSize = vbByteSize;
+    m_boxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
+    m_boxGeo->IndexBufferByteSize = ibByteSize;
 
     SubmeshGeometry submesh;
     submesh.IndexCount = (UINT)indices.size();
     submesh.StartIndexLocation = 0;
     submesh.BaseVertexLocation = 0;
 
-    mBoxGeo->DrawArgs["box"] = submesh;
+    m_boxGeo->DrawArgs["box"] = submesh;
 }
 
 void BoxRenderer::BuildPSO(D3D12Device& device)
@@ -260,7 +260,7 @@ void BoxRenderer::BuildPSO(D3D12Device& device)
 void BoxRenderer::BuildRenderItems()
 {
     // Generate the boxes to be rendered TODO: double check this
-    while (_activeIndex < _cubes.size() && _cubes.size() < MAX_NUM_BOXES)
+    while (m_activeIndex < m_cubes.size() && m_cubes.size() < MAX_NUM_BOXES)
     {
         SpawnNewBoxes(10);
     }
@@ -268,7 +268,7 @@ void BoxRenderer::BuildRenderItems()
 
 void BoxRenderer::BuildFrameContexts(D3D12Device& device)
 {
-    device.CreateFrameContexts(1, static_cast<int>(_cubes.size()));
+    device.CreateFrameContexts(1, static_cast<int>(m_cubes.size()));
 }
 
 void BoxRenderer::BuildMaterials()
@@ -372,7 +372,7 @@ void BoxRenderer::Render(const ImVec4& clearColor)
     auto objCbvHandle = frameContext->ObjectCB->Resource();
     auto matCbvHandle = frameContext->MaterialCB->Resource();
 
-    for (size_t i = 0; i < _cubes.size(); ++i)
+    for (size_t i = 0; i < m_cubes.size(); ++i)
     {
         // Set the object constant buffer view
         D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCbvHandle->GetGPUVirtualAddress() + i * objCbvByteSize;
@@ -382,13 +382,13 @@ void BoxRenderer::Render(const ImVec4& clearColor)
         cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
         
         // Draw the box
-        D3D12_VERTEX_BUFFER_VIEW vbView = mBoxGeo->VertexBufferView();
-        D3D12_INDEX_BUFFER_VIEW ibView = mBoxGeo->IndexBufferView();
+        D3D12_VERTEX_BUFFER_VIEW vbView = m_boxGeo->VertexBufferView();
+        D3D12_INDEX_BUFFER_VIEW ibView = m_boxGeo->IndexBufferView();
         cmdList->IASetVertexBuffers(0, 1, &vbView);
         cmdList->IASetIndexBuffer(&ibView);
         cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList->DrawIndexedInstanced(
-            mBoxGeo->DrawArgs["box"].IndexCount,
+            m_boxGeo->DrawArgs["box"].IndexCount,
 			1, 0, 0, 0);
     }
 
@@ -446,7 +446,7 @@ void BoxRenderer::Update(float deltaTime)
 
     // Update object constants
     size_t index = 0;
-    for (auto& cube : _cubes)
+    for (auto& cube : m_cubes)
     {
         XMMATRIX world = XMLoadFloat4x4(&mWorld);
         world = XMMatrixTranslation(XMVectorGetX(cube), XMVectorGetY(cube), XMVectorGetZ(cube));
@@ -470,40 +470,40 @@ void BoxRenderer::SpawnNewBoxes(int count)
 
     for (size_t i = 0; i < count; ++i)
     {
-        XMVECTOR newLocation = _cubes[_activeIndex];
+        XMVECTOR newLocation = m_cubes[m_activeIndex];
 
-        float distance = (dis(gen) + 1.0f) * _spawnRadius;  // Spawn in [R; 2*R]
-        float anglePitch = dis(gen) * XM_2PI;               // Random pitch angle
-        float angleYaw = dis(gen) * XM_2PI;                 // Random yaw angle
+        float distance = static_cast<float>(dis(gen) + 1.0f) * m_spawnRadius;  // Spawn in [R; 2*R]
+        float anglePitch = static_cast<float>(dis(gen)) * XM_2PI;               // Random pitch angle
+        float angleYaw = static_cast<float>(dis(gen)) * XM_2PI;                 // Random yaw angle
 
         newLocation += XMVectorSet(distance * XMScalarCos(anglePitch), distance * XMScalarSin(anglePitch), distance * XMScalarSin(angleYaw), 0.0f);
 
         if (PointInExtents(newLocation) && !PointIntersectsGrid(newLocation))
         {
-            _cubes.push_back(newLocation);
-            int pointIndexX = ((XMVectorGetX(newLocation) + (_gridWidth / 2.0f)) / _cellSize);
-            int pointIndexY = ((XMVectorGetY(newLocation) + (_gridHeight / 2.0f)) / _cellSize);
-            int pointIndexZ = ((XMVectorGetZ(newLocation) + (_gridDepth / 2.0f)) / _cellSize);
-            if (_grid[pointIndexX][pointIndexY][pointIndexZ] != -1)
+            m_cubes.push_back(newLocation);
+            int pointIndexX = static_cast<int>((XMVectorGetX(newLocation) + (m_gridWidth / 2.0f)) / m_cellSize);
+            int pointIndexY = static_cast<int>((XMVectorGetY(newLocation) + (m_gridHeight / 2.0f)) / m_cellSize);
+            int pointIndexZ = static_cast<int>((XMVectorGetZ(newLocation) + (m_gridDepth / 2.0f)) / m_cellSize);
+            if (m_grid[pointIndexX][pointIndexY][pointIndexZ] != -1)
                 continue;
-            _grid[pointIndexX][pointIndexY][pointIndexZ] = _cubes.size() - 1;
+            m_grid[pointIndexX][pointIndexY][pointIndexZ] = m_cubes.size() - 1;
         }
     }
 
-    ++_activeIndex;
+    ++m_activeIndex;
 }
 
 bool BoxRenderer::PointInExtents(const DirectX::XMVECTOR& location)
 {
-    return (XMVectorGetX(location) > XMVectorGetX(_minExtent) && XMVectorGetY(location) > XMVectorGetY(_minExtent) && XMVectorGetZ(location) > XMVectorGetZ(_minExtent)) &&
-        (XMVectorGetX(location) < XMVectorGetX(_maxExtent) && XMVectorGetY(location) < XMVectorGetY(_maxExtent) && XMVectorGetZ(location) < XMVectorGetZ(_maxExtent));
+    return (XMVectorGetX(location) > XMVectorGetX(m_minExtent) && XMVectorGetY(location) > XMVectorGetY(m_minExtent) && XMVectorGetZ(location) > XMVectorGetZ(m_minExtent)) &&
+        (XMVectorGetX(location) < XMVectorGetX(m_maxExtent) && XMVectorGetY(location) < XMVectorGetY(m_maxExtent) && XMVectorGetZ(location) < XMVectorGetZ(m_maxExtent));
 }
 
 bool BoxRenderer::PointIntersectsGrid(const XMVECTOR& location)
 {
-    int pointIndexX = ((XMVectorGetX(location) + (_gridWidth / 2.0f)) / _cellSize);
-    int pointIndexY = ((XMVectorGetY(location) + (_gridHeight / 2.0f)) / _cellSize);
-    int pointIndexZ = ((XMVectorGetZ(location) + (_gridDepth / 2.0f)) / _cellSize);
+    int pointIndexX = static_cast<int>((XMVectorGetX(location) + (m_gridWidth / 2.0f)) / m_cellSize);
+    int pointIndexY = static_cast<int>((XMVectorGetY(location) + (m_gridHeight / 2.0f)) / m_cellSize);
+    int pointIndexZ = static_cast<int>((XMVectorGetZ(location) + (m_gridDepth / 2.0f)) / m_cellSize);
 
     for (int x = -1; x <= 1; x++)
     {
@@ -515,19 +515,19 @@ bool BoxRenderer::PointIntersectsGrid(const XMVECTOR& location)
                 int indY = pointIndexY + y;
                 int indZ = pointIndexZ + z;
 
-                if (indX < 0 || indX >= _cellsNumX)
+                if (indX < 0 || indX >= m_cellsNumX)
                     continue;
-                if (indY < 0 || indY >= _cellsNumY)
+                if (indY < 0 || indY >= m_cellsNumY)
                     continue;
-                if (indZ < 0 || indZ >= _cellsNumZ)
+                if (indZ < 0 || indZ >= m_cellsNumZ)
                     continue;
 
-                int cubeIndex = _grid[indX][indY][indZ];
+                int cubeIndex = m_grid[indX][indY][indZ];
                 if (cubeIndex == -1)
                     continue;
 
-                float dist = XMVectorGetX(XMVector3Length(XMVectorSubtract(_cubes[cubeIndex], location)));
-                if (dist <= _spawnRadius)
+                float dist = XMVectorGetX(XMVector3Length(XMVectorSubtract(m_cubes[cubeIndex], location)));
+                if (dist <= m_spawnRadius)
                     return true;
             }
         }

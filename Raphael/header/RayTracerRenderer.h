@@ -1,21 +1,8 @@
 #pragma once
 #include "Renderer.h"
 #include "UploadBuffer.h"
-#include "d3dUtil.h"
-/// ADD HERE /// - Include additional headers for cube rendering
-#include <DirectXMath.h>
-#include <DirectXColors.h>
-#include <d3dcompiler.h>
-#include <wrl.h>
-#include <stdexcept>
-#include "d3dx12.h"
-#include <array>
-#include <cstdint>
-#include <vector>
-#include <memory>
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
+#include "D3D12Util.h"
+#include "Camera.h"
 
 struct Vertex
 {
@@ -25,15 +12,15 @@ struct Vertex
 struct SceneConstants
 {
     XMFLOAT4X4 InvViewProj;
-	XMFLOAT4 CameraPos;
-	XMFLOAT4 Sphere; // x, y, z: center, w: radius
-	XMFLOAT4 Plane;  // x, y, z: normal, w: d
-	XMFLOAT4 LightPos; // x, y, z: position, w: unused
-	XMFLOAT4 SphereColor;
-	XMFLOAT4 PlaneColor;
-	XMFLOAT4 CubeMin; // x, y, z: min corner
-	XMFLOAT4 CubeMax; // x, y, z: max corner
-	XMFLOAT4 CubeColor;
+    XMFLOAT4 CameraPos;
+    XMFLOAT4 Sphere; // x, y, z: center, w: radius
+    XMFLOAT4 Plane;  // x, y, z: normal, w: d
+    XMFLOAT4 LightPos; // x, y, z: position, w: unused
+    XMFLOAT4 SphereColor;
+    XMFLOAT4 PlaneColor;
+    XMFLOAT4 CubeMin; // x, y, z: min corner
+    XMFLOAT4 CubeMax; // x, y, z: max corner
+    XMFLOAT4 CubeColor;
 };
 
 class RayTracerRenderer : public Renderer
@@ -49,6 +36,7 @@ public:
     void BuildRootSignature(D3D12Device& device);
     void BuildShadersAndInputLayout();
     void BuildFullscreenGeometry(D3D12Device& device);
+    void BuildFrameContexts(D3D12Device& device);
     void BuildPSO(D3D12Device& device);
 
     ComPtr<ID3D12RootSignature> GetRootSignature() const { return m_rootSignature; }
@@ -67,5 +55,5 @@ private:
 
     std::unique_ptr<MeshGeometry> m_fullscreenGeo = nullptr;
 
-    float mTime = 0.0f;
+    float m_time = 0.0f;
 };

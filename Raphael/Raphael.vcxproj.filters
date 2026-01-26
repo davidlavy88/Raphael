@@ -78,6 +78,7 @@
     <ClCompile Include="source\Light.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="source\RayTracerRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -155,6 +156,7 @@
     <ClInclude Include="header\Light.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="header\RayTracerRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">
