@@ -43,28 +43,28 @@ private:
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
 
-    std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
+    std::unique_ptr<MeshGeometry> m_boxGeo = nullptr;
     std::unique_ptr<Material> m_boxMaterial = nullptr;
     std::vector<std::unique_ptr<Light>> m_lights;
 
     int m_passCbvOffset = 0;
 
-    float _spawnRate = 50.0f;
-    float _deltaTimeLastSpawn = 0.0f;
-    float _spawnRadius = 10.0f;
+    float m_spawnRate = 50.0f;
+    float m_deltaTimeLastSpawn = 0.0f;
+    float m_spawnRadius = 10.0f;
 
-    DirectX::XMVECTOR _minExtent = { -100.0f, -100.0f, -100.0f, 1.0f };
-    DirectX::XMVECTOR _maxExtent = { 100.0f,  100.0f, 100.0f, 1.0f };
+    DirectX::XMVECTOR m_minExtent = { -100.0f, -100.0f, -100.0f, 1.0f };
+    DirectX::XMVECTOR m_maxExtent = { 100.0f,  100.0f, 100.0f, 1.0f };
 
-    std::vector<DirectX::XMVECTOR> _cubes;
-    size_t _activeIndex;
+    std::vector<DirectX::XMVECTOR> m_cubes;
+    size_t m_activeIndex;
 
-    float _cellSize;
-    float _gridWidth;
-    float _gridHeight;
-    float _gridDepth;
-    size_t _cellsNumX;
-    size_t _cellsNumY;
-    size_t _cellsNumZ;
-    std::vector<std::vector<std::vector<int>>> _grid;
+    float m_cellSize;
+    float m_gridWidth;
+    float m_gridHeight;
+    float m_gridDepth;
+    size_t m_cellsNumX;
+    size_t m_cellsNumY;
+    size_t m_cellsNumZ;
+    std::vector<std::vector<std::vector<int>>> m_grid;
 };

@@ -173,6 +173,16 @@ bool D3D12Device::CreateDescriptorHeaps()
     return true;
 }
 
+bool D3D12Device::CreateFrameContexts()
+{
+    for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+    {
+        m_frameContexts.push_back(std::make_unique<FrameContext>(m_device.Get()));
+    }
+
+    return true;
+}
+
 bool D3D12Device::CreateFrameContexts(int passCount, int objectCount)
 {
     for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)

@@ -9,21 +9,20 @@ bool RayTracerRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HW
         return false;
 
     // Reset command list for initialization
-    FrameContext* frameContext = device.WaitForNextFrame();
-    frameContext->CommandAllocator->Reset();
-    device.GetCommandList()->Reset(frameContext->CommandAllocator.Get(), nullptr);
+    device.GetCommandList()->Reset(device.GetCurrentCommandAllocator().Get(), nullptr);
 
     BuildDescriptorHeaps(device);
     BuildConstantBuffers(device);
     BuildRootSignature(device);
     BuildShadersAndInputLayout();
-	BuildFullscreenGeometry(device);
+    BuildFullscreenGeometry(device);
+    BuildFrameContexts(device);
     BuildPSO(device);
 
-    // Initialize camera position
-    mPos = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
-    mFront = -1 * mPos;
-    mUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    // Initialize camera position, look and up vectors
+    m_camera->SetPosition(XMVectorSet(0.0f, 0.0f, -20.0f, 1.0f));
+    m_camera->SetLook(XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f));
+    m_camera->SetUp(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
     // ADD: Initialize matrices
     RECT clientRect;
@@ -33,15 +32,13 @@ bool RayTracerRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HW
     // Initialize world matrix (identity)
     XMStoreFloat4x4(&mWorld, XMMatrixIdentity());
 
-    // Initialize projection matrix
-    XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f * XM_PI, aspect, 1.0f, 1000.0f);
-    XMStoreFloat4x4(&mProj, proj);
+    // Initialize camera projection matrix
+    m_camera->SetProjectionMatrix(0.25f * XM_PI, aspect, 1.0f, 1000.0f);
 
     // Execute the initialization commands
     device.GetCommandList()->Close();
     ID3D12CommandList* cmdLists[] = { device.GetCommandList().Get()};
     device.GetCommandQueue()->ExecuteCommandLists(1, cmdLists);
-    // device.SignalAndIncrementFence(frameContext);
 
     // Wait until initialization is complete
     device.WaitForGpu();
@@ -128,8 +125,8 @@ void RayTracerRenderer::BuildRootSignature(D3D12Device& device)
 void RayTracerRenderer::BuildShadersAndInputLayout()
 {
     // Implementation for compiling shaders and defining input layout
-    m_vsByteCode = d3dUtil::CompileShader(L"Shaders\\simpleGpuRt.hlsl", nullptr, "VS_Main", "vs_5_0");
-    m_psByteCode = d3dUtil::CompileShader(L"Shaders\\simpleGpuRt.hlsl", nullptr, "PS_Main", "ps_5_0");
+    m_vsByteCode = D3D12Util::CompileShader(L"Shaders\\simpleGpuRt.hlsl", nullptr, "VS_Main", "vs_5_0");
+    m_psByteCode = D3D12Util::CompileShader(L"Shaders\\simpleGpuRt.hlsl", nullptr, "PS_Main", "ps_5_0");
 
     m_inputLayout =
     {
@@ -166,9 +163,9 @@ void RayTracerRenderer::BuildFullscreenGeometry(D3D12Device& device)
     D3DCreateBlob(ibByteSize, &m_fullscreenGeo->IndexBufferCPU);
     CopyMemory(m_fullscreenGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-    m_fullscreenGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(), device.GetCommandList().Get(),
+    m_fullscreenGeo->VertexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(), device.GetCommandList().Get(),
         vertices.data(), vbByteSize, m_fullscreenGeo->VertexBufferUploader);
-    m_fullscreenGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(device.GetDevice().Get(), device.GetCommandList().Get(),
+    m_fullscreenGeo->IndexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(), device.GetCommandList().Get(),
         indices.data(), ibByteSize, m_fullscreenGeo->IndexBufferUploader);
 
     m_fullscreenGeo->VertexByteStride = sizeof(Vertex);
@@ -181,7 +178,12 @@ void RayTracerRenderer::BuildFullscreenGeometry(D3D12Device& device)
     submesh.StartIndexLocation = 0;
     submesh.BaseVertexLocation = 0;
 
-	m_fullscreenGeo->DrawArgs["quad"] = submesh;
+    m_fullscreenGeo->DrawArgs["quad"] = submesh;
+}
+
+void RayTracerRenderer::BuildFrameContexts(D3D12Device& device)
+{
+    device.CreateFrameContexts();
 }
 
 void RayTracerRenderer::BuildPSO(D3D12Device& device)
@@ -212,7 +214,7 @@ void RayTracerRenderer::Render(const ImVec4& clearColor)
 {
     ImGui::Render();
 
-    FrameContext* frameContext = m_device->WaitForNextFrame();
+    FrameContext* frameContext = m_device->GetCurrentFrameContext();
     UINT backBufferIdx = m_swapChain->GetCurrentBackBufferIndex();
 
     frameContext->CommandAllocator->Reset();
@@ -301,11 +303,12 @@ void RayTracerRenderer::Render(const ImVec4& clearColor)
 
 void RayTracerRenderer::Update(float deltaTime)
 {
-    XMMATRIX view = XMMatrixLookAtLH(mPos, mPos + mFront, mUp);
-    XMStoreFloat4x4(&mView, view);
+    // Update pass constants
+    m_camera->UpdateViewMatrix();
 
+    XMMATRIX view = m_camera->GetViewMatrix();
     XMMATRIX world = XMLoadFloat4x4(&mWorld);
-    XMMATRIX proj = XMLoadFloat4x4(&mProj);
+    XMMATRIX proj = m_camera->GetProjectionMatrix();
     // XMMATRIX worldViewProj = world * view * proj;
     XMMATRIX viewProj = view * proj;
     XMMATRIX cubeTranslation = XMMatrixTranslation(-5.0f, 1.5f, 0.0f);
@@ -324,8 +327,8 @@ void RayTracerRenderer::Update(float deltaTime)
     // Update the constant buffer with the latest worldViewProj matrix.
     SceneConstants sceneConstants;
     // Initialize scene parameters
-    XMStoreFloat4(&sceneConstants.CameraPos, mPos);                 // Update camera position
-    sceneConstants.Sphere = XMFLOAT4(1.2 * sinf(mTime), 0.0f, 2.8f * cosf(mTime), 1.0f);        // Sphere moving in elliptical path
+    XMStoreFloat4(&sceneConstants.CameraPos, m_camera->GetPosition());                 // Update camera position
+    sceneConstants.Sphere = XMFLOAT4(1.2 * sinf(m_time), 0.0f, 2.8f * cosf(m_time), 1.0f);        // Sphere moving in elliptical path
     sceneConstants.Plane = XMFLOAT4(0.0f, 1.0f, 0.0f, 2.0f);         // Plane with normal (0,1,0), distance 2
     sceneConstants.LightPos = XMFLOAT4(3.0f, 3.0f, -3.0f, 1.0f);         // Light position
     sceneConstants.SphereColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);       // Red sphere
@@ -334,7 +337,7 @@ void RayTracerRenderer::Update(float deltaTime)
     XMStoreFloat4(&sceneConstants.CubeMax, transformedCubeMax);
     sceneConstants.CubeColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);       // Blue cube
 
-    mTime += deltaTime;
+    m_time += deltaTime;
     XMStoreFloat4x4(&sceneConstants.InvViewProj, XMMatrixTranspose(viewProjInverse));
     m_sceneCB->CopyData(0, sceneConstants);
 }
