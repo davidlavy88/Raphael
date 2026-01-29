@@ -76,6 +76,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
     <ClCompile Include="source\Material.cpp" />
     <ClCompile Include="source\Camera.cpp" />
@@ -110,6 +111,7 @@
     <ClInclude Include="header\SwapChain.h" />
     <ClInclude Include="header\Light.h" />
     <ClInclude Include="header\Material.h" />
+    <ClInclude Include="header\PoissonDiskDistribution.h" />
     <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader12.h" />
     <ClInclude Include="header\BoxRenderer.h" />
     <ClInclude Include="header\D3D12Util.h" />

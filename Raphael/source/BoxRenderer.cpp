@@ -4,31 +4,10 @@
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
 
-#include <random>
-
 BoxRenderer::BoxRenderer()
 {
-    m_cubes.push_back(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
-    m_activeIndex = 0;
-
-    m_cellSize = m_spawnRadius / std::sqrt(2);
-    m_gridWidth = XMVectorGetX(m_maxExtent) - XMVectorGetX(m_minExtent);
-    m_gridHeight = XMVectorGetY(m_maxExtent) - XMVectorGetY(m_minExtent);
-    m_gridDepth = XMVectorGetZ(m_maxExtent) - XMVectorGetZ(m_minExtent);
-    m_cellsNumX = static_cast<size_t>(ceilf(m_gridWidth / m_cellSize));
-    m_cellsNumY = static_cast<size_t>(ceilf(m_gridHeight / m_cellSize));
-    m_cellsNumZ = static_cast<size_t>(ceilf(m_gridDepth / m_cellSize));
-
-    // initialize 3D grid with -1 (indicating empty cells)
-    m_grid = std::vector<std::vector<std::vector<int>>>(m_cellsNumX,
-        std::vector<std::vector<int>>(m_cellsNumY,
-			std::vector<int>(m_cellsNumZ, -1)));
-
-    //  grid cell coordinates where the first cube (at position 0, 0, 0) should be stored in a 3D spatial grid (center cell of the grid).
-    int pointIndexX = static_cast<int>(ceilf((m_gridWidth / 2) / m_cellSize));
-    int pointIndexY = static_cast<int>(ceilf((m_gridHeight / 2) / m_cellSize));
-    int pointIndexZ = static_cast<int>(ceilf((m_gridDepth / 2) / m_cellSize));
-    m_grid[pointIndexX][pointIndexY][pointIndexZ] = 0;
+    // Initialize Poisson disk distribution
+    m_poissonDisk = std::make_unique<PoissonDiskDistribution>(m_spawnRadius, m_minExtent, m_maxExtent);
 }
 
 bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
@@ -259,16 +238,16 @@ void BoxRenderer::BuildPSO(D3D12Device& device)
 
 void BoxRenderer::BuildRenderItems()
 {
-    // Generate the boxes to be rendered TODO: double check this
-    while (m_activeIndex < m_cubes.size() && m_cubes.size() < MAX_NUM_BOXES)
+    // Generate the boxes to be rendered
+    while (m_poissonDisk->HasActiveSamples() && m_poissonDisk->GetSampleCount() < MAX_NUM_BOXES)
     {
-        SpawnNewBoxes(10);
+        m_poissonDisk->SpawnNewSamples(10);
     }
 }
 
 void BoxRenderer::BuildFrameContexts(D3D12Device& device)
 {
-    device.CreateFrameContexts(1, static_cast<int>(m_cubes.size()));
+    device.CreateFrameContexts(1, static_cast<int>(m_poissonDisk->GetSampleCount()));
 }
 
 void BoxRenderer::BuildMaterials()
@@ -372,7 +351,8 @@ void BoxRenderer::Render(const ImVec4& clearColor)
     auto objCbvHandle = frameContext->ObjectCB->Resource();
     auto matCbvHandle = frameContext->MaterialCB->Resource();
 
-    for (size_t i = 0; i < m_cubes.size(); ++i)
+    const auto& cubes = m_poissonDisk->GetSamples();
+    for (size_t i = 0; i < cubes.size(); ++i)
     {
         // Set the object constant buffer view
         D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCbvHandle->GetGPUVirtualAddress() + i * objCbvByteSize;
@@ -445,8 +425,9 @@ void BoxRenderer::Update(float deltaTime)
     matConstants.Roughness = m_boxMaterial->Roughness;
 
     // Update object constants
+    const auto& cubes = m_poissonDisk->GetSamples();
     size_t index = 0;
-    for (auto& cube : m_cubes)
+    for (auto& cube : cubes)
     {
         XMMATRIX world = XMLoadFloat4x4(&mWorld);
         world = XMMatrixTranslation(XMVectorGetX(cube), XMVectorGetY(cube), XMVectorGetZ(cube));
@@ -460,78 +441,4 @@ void BoxRenderer::Update(float deltaTime)
 
         index++;
     }
-}
-
-void BoxRenderer::SpawnNewBoxes(int count)
-{
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(0.0f, 1.0f);
-
-    for (size_t i = 0; i < count; ++i)
-    {
-        XMVECTOR newLocation = m_cubes[m_activeIndex];
-
-        float distance = static_cast<float>(dis(gen) + 1.0f) * m_spawnRadius;  // Spawn in [R; 2*R]
-        float anglePitch = static_cast<float>(dis(gen)) * XM_2PI;               // Random pitch angle
-        float angleYaw = static_cast<float>(dis(gen)) * XM_2PI;                 // Random yaw angle
-
-        newLocation += XMVectorSet(distance * XMScalarCos(anglePitch), distance * XMScalarSin(anglePitch), distance * XMScalarSin(angleYaw), 0.0f);
-
-        if (PointInExtents(newLocation) && !PointIntersectsGrid(newLocation))
-        {
-            m_cubes.push_back(newLocation);
-            int pointIndexX = static_cast<int>((XMVectorGetX(newLocation) + (m_gridWidth / 2.0f)) / m_cellSize);
-            int pointIndexY = static_cast<int>((XMVectorGetY(newLocation) + (m_gridHeight / 2.0f)) / m_cellSize);
-            int pointIndexZ = static_cast<int>((XMVectorGetZ(newLocation) + (m_gridDepth / 2.0f)) / m_cellSize);
-            if (m_grid[pointIndexX][pointIndexY][pointIndexZ] != -1)
-                continue;
-            m_grid[pointIndexX][pointIndexY][pointIndexZ] = m_cubes.size() - 1;
-        }
-    }
-
-    ++m_activeIndex;
-}
-
-bool BoxRenderer::PointInExtents(const DirectX::XMVECTOR& location)
-{
-    return (XMVectorGetX(location) > XMVectorGetX(m_minExtent) && XMVectorGetY(location) > XMVectorGetY(m_minExtent) && XMVectorGetZ(location) > XMVectorGetZ(m_minExtent)) &&
-        (XMVectorGetX(location) < XMVectorGetX(m_maxExtent) && XMVectorGetY(location) < XMVectorGetY(m_maxExtent) && XMVectorGetZ(location) < XMVectorGetZ(m_maxExtent));
-}
-
-bool BoxRenderer::PointIntersectsGrid(const XMVECTOR& location)
-{
-    int pointIndexX = static_cast<int>((XMVectorGetX(location) + (m_gridWidth / 2.0f)) / m_cellSize);
-    int pointIndexY = static_cast<int>((XMVectorGetY(location) + (m_gridHeight / 2.0f)) / m_cellSize);
-    int pointIndexZ = static_cast<int>((XMVectorGetZ(location) + (m_gridDepth / 2.0f)) / m_cellSize);
-
-    for (int x = -1; x <= 1; x++)
-    {
-        for (int y = -1; y <= 1; y++)
-        {
-            for (int z = -1; z <= 1; z++)
-            {
-                int indX = pointIndexX + x;
-                int indY = pointIndexY + y;
-                int indZ = pointIndexZ + z;
-
-                if (indX < 0 || indX >= m_cellsNumX)
-                    continue;
-                if (indY < 0 || indY >= m_cellsNumY)
-                    continue;
-                if (indZ < 0 || indZ >= m_cellsNumZ)
-                    continue;
-
-                int cubeIndex = m_grid[indX][indY][indZ];
-                if (cubeIndex == -1)
-                    continue;
-
-                float dist = XMVectorGetX(XMVector3Length(XMVectorSubtract(m_cubes[cubeIndex], location)));
-                if (dist <= m_spawnRadius)
-                    return true;
-            }
-        }
-    }
-
-    return false;
 }

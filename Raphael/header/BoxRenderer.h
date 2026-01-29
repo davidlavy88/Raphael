@@ -5,6 +5,7 @@
 #include "Camera.h"
 #include "Material.h"
 #include "Light.h"
+#include "PoissonDiskDistribution.h"
 
 // Config constants
 static constexpr int MAX_NUM_BOXES = 100;
@@ -26,10 +27,6 @@ public:
     void BuildFrameContexts(D3D12Device& device);
     void BuildMaterials();
     void BuildLights();
-
-    void SpawnNewBoxes(int count);
-    bool PointInExtents(const XMVECTOR& location);
-    bool PointIntersectsGrid(const XMVECTOR& location);
 
     ComPtr<ID3D12RootSignature> GetRootSignature() const { return m_rootSignature; }
 
@@ -56,15 +53,5 @@ private:
     DirectX::XMVECTOR m_minExtent = { -100.0f, -100.0f, -100.0f, 1.0f };
     DirectX::XMVECTOR m_maxExtent = { 100.0f,  100.0f, 100.0f, 1.0f };
 
-    std::vector<DirectX::XMVECTOR> m_cubes;
-    size_t m_activeIndex;
-
-    float m_cellSize;
-    float m_gridWidth;
-    float m_gridHeight;
-    float m_gridDepth;
-    size_t m_cellsNumX;
-    size_t m_cellsNumY;
-    size_t m_cellsNumZ;
-    std::vector<std::vector<std::vector<int>>> m_grid;
+    std::unique_ptr<PoissonDiskDistribution> m_poissonDisk;
 };

@@ -78,7 +78,12 @@
     <ClCompile Include="source\Light.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="source\RayTracerRenderer.cpp" />
+    <ClCompile Include="source\RayTracerRenderer.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="source\PoissonDiskDistribution.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -156,7 +161,12 @@
     <ClInclude Include="header\Light.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="header\RayTracerRenderer.h" />
+    <ClInclude Include="header\RayTracerRenderer.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\PoissonDiskDistribution.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">
