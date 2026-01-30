@@ -13,12 +13,13 @@ static constexpr int MAX_NUM_BOXES = 100;
 class BoxRenderer : public Renderer
 {
 public:
-    BoxRenderer();
+    BoxRenderer() = default;
     bool Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd) override;
     void Shutdown();
     void Render(const ImVec4& clearColor) override;
     void Update(float deltaTime);
 
+    // Build functions
     void BuildRootSignature(D3D12Device& device);
     void BuildShadersAndInputLayout();
     void BuildBoxGeometry(D3D12Device& device);
@@ -27,6 +28,12 @@ public:
     void BuildFrameContexts(D3D12Device& device);
     void BuildMaterials();
     void BuildLights();
+    
+    // UI control
+    void RenderUI();
+    
+    // Switching modes
+    void SwitchRenderMode(bool usePoissonDisk);
 
     ComPtr<ID3D12RootSignature> GetRootSignature() const { return m_rootSignature; }
 
@@ -54,4 +61,8 @@ private:
     DirectX::XMVECTOR m_maxExtent = { 100.0f,  100.0f, 100.0f, 1.0f };
 
     std::unique_ptr<PoissonDiskDistribution> m_poissonDisk;
+    
+    // Rendering mode toggle
+    bool m_usePoissonDisk = false;
+    DirectX::XMVECTOR m_singleBoxPosition = { 0.0f, 0.0f, 0.0f, 0.0f };
 };

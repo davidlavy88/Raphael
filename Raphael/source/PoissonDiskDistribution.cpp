@@ -3,14 +3,15 @@
 
 PoissonDiskDistribution::PoissonDiskDistribution(float spawnRadius, 
                                                  const XMVECTOR& minExtent, 
-                                                 const XMVECTOR& maxExtent)
+                                                 const XMVECTOR& maxExtent,
+                                                 const XMVECTOR& initialSamplePos)
     : m_spawnRadius(spawnRadius)
     , m_minExtent(minExtent)
     , m_maxExtent(maxExtent)
     , m_activeIndex(0)
 {
     // Add initial sample at origin
-    m_samples.push_back(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f));
+    m_samples.push_back(initialSamplePos);
     
     // Calculate grid dimensions
     m_cellSize = m_spawnRadius / std::sqrt(2.0f);

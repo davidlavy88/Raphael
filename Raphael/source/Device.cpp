@@ -175,6 +175,21 @@ bool D3D12Device::CreateDescriptorHeaps()
 
 bool D3D12Device::CreateFrameContexts()
 {
+    // Ensure GPU is idle before destroying frame contexts
+#ifdef _DEBUG
+    if (!m_frameContexts.empty())
+    {
+        // Verify all frames are complete
+        for (auto& frameContext : m_frameContexts)
+        {
+            assert(m_fence->GetCompletedValue() >= frameContext->FenceValue &&
+                "GPU is still using frame contexts! Call WaitForGpu() first!");
+        }
+    }
+#endif
+
+    m_frameContexts.clear();
+
     for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
     {
         m_frameContexts.push_back(std::make_unique<FrameContext>(m_device.Get()));
@@ -185,6 +200,21 @@ bool D3D12Device::CreateFrameContexts()
 
 bool D3D12Device::CreateFrameContexts(int passCount, int objectCount)
 {
+    // Ensure GPU is idle before destroying frame contexts
+#ifdef _DEBUG
+    if (!m_frameContexts.empty())
+    {
+        // Verify all frames are complete
+        for (auto& frameContext : m_frameContexts)
+        {
+            assert(m_fence->GetCompletedValue() >= frameContext->FenceValue &&
+                "GPU is still using frame contexts! Call WaitForGpu() first!");
+        }
+    }
+#endif
+
+    m_frameContexts.clear();
+
     for (int i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
     {
         m_frameContexts.push_back(std::make_unique<FrameContext>(m_device.Get(), passCount, objectCount));

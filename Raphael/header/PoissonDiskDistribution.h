@@ -5,7 +5,7 @@
 class PoissonDiskDistribution
 {
 public:
-    PoissonDiskDistribution(float spawnRadius, const XMVECTOR& minExtent, const XMVECTOR& maxExtent);
+    PoissonDiskDistribution(float spawnRadius, const XMVECTOR& minExtent, const XMVECTOR& maxExtent, const XMVECTOR& initialSamplePos);
 
     // Generate new sample points around an existing point
     void SpawnNewSamples(int count);

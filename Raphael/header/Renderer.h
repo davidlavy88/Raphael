@@ -12,6 +12,7 @@ public:
     void NewFrame();
     virtual void Update(float deltaTime) {}
     virtual void Render(const ImVec4& clearColor);
+    virtual void RenderUI() {}
 
     // Convenience overrides for handling mouse input.
     virtual void ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y);

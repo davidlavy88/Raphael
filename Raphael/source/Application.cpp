@@ -173,6 +173,9 @@ void Application::Run()
                     ImGui::End();
                 }
 
+                // Render BoxRenderer UI
+                m_renderer.RenderUI();
+
                 // Render frame
                 float deltaTime = 0.01f;
                 m_renderer.Update(deltaTime);

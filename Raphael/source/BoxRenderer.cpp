@@ -4,16 +4,13 @@
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
 
-BoxRenderer::BoxRenderer()
-{
-    // Initialize Poisson disk distribution
-    m_poissonDisk = std::make_unique<PoissonDiskDistribution>(m_spawnRadius, m_minExtent, m_maxExtent);
-}
-
 bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwnd)
 {
     if (!Renderer::Initialize(device, swapChain, hwnd))
         return false;
+
+    // Initialize Poisson disk distribution
+    m_poissonDisk = std::make_unique<PoissonDiskDistribution>(m_spawnRadius, m_minExtent, m_maxExtent, m_singleBoxPosition);
 
     // Reset command list for initialization
     device.GetCommandList()->Reset(device.GetCurrentCommandAllocator().Get(), nullptr);
@@ -247,7 +244,9 @@ void BoxRenderer::BuildRenderItems()
 
 void BoxRenderer::BuildFrameContexts(D3D12Device& device)
 {
-    device.CreateFrameContexts(1, static_cast<int>(m_poissonDisk->GetSampleCount()));
+    // Create frame contexts based on current mode
+    int numObjects = m_usePoissonDisk ? static_cast<int>(m_poissonDisk->GetSampleCount()) : 1;
+    device.CreateFrameContexts(1, numObjects);
 }
 
 void BoxRenderer::BuildMaterials()
@@ -283,6 +282,42 @@ void BoxRenderer::BuildLights()
     light->Color = { 0.15f, 0.15f, 0.15f };
     light->Direction = { 0.0f, -0.707f, -0.707f };
     m_lights.push_back(std::move(light));
+}
+
+void BoxRenderer::RenderUI()
+{
+    ImGui::Begin("Box Renderer Settings");
+    
+    bool previousMode = m_usePoissonDisk;
+    ImGui::Checkbox("Use Poisson Disk Distribution", &m_usePoissonDisk);
+    
+    // If mode changed, rebuild frame contexts
+    if (previousMode != m_usePoissonDisk)
+    {
+        SwitchRenderMode(m_usePoissonDisk);
+    }
+    
+    if (m_usePoissonDisk)
+    {
+        ImGui::Text("Rendering Mode: Multiple Random Boxes");
+        ImGui::Text("Number of boxes: %zu", m_poissonDisk->GetSampleCount());
+    }
+    else
+    {
+        ImGui::Text("Rendering Mode: Single Box");
+    }
+    
+    ImGui::End();
+}
+
+void BoxRenderer::SwitchRenderMode(bool usePoissonDisk)
+{
+    // Wait for GPU to finish current work
+    m_device->WaitForGpu();
+    
+    // Rebuild frame contexts with new object count
+    int numObjects = usePoissonDisk ? static_cast<int>(m_poissonDisk->GetSampleCount()) : 1;
+    m_device->CreateFrameContexts(1, numObjects);
 }
 
 void BoxRenderer::Render(const ImVec4& clearColor)
@@ -351,12 +386,35 @@ void BoxRenderer::Render(const ImVec4& clearColor)
     auto objCbvHandle = frameContext->ObjectCB->Resource();
     auto matCbvHandle = frameContext->MaterialCB->Resource();
 
-    const auto& cubes = m_poissonDisk->GetSamples();
-    for (size_t i = 0; i < cubes.size(); ++i)
+    if (m_usePoissonDisk)
     {
-        // Set the object constant buffer view
-        D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCbvHandle->GetGPUVirtualAddress() + i * objCbvByteSize;
-        D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCbvHandle->GetGPUVirtualAddress() + i * matCbvByteSize;
+        // Render Poisson disk distribution
+        const auto& cubes = m_poissonDisk->GetSamples();
+        for (size_t i = 0; i < cubes.size(); ++i)
+        {
+            // Set the object constant buffer view
+            D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCbvHandle->GetGPUVirtualAddress() + i * objCbvByteSize;
+            D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCbvHandle->GetGPUVirtualAddress() + i * matCbvByteSize;
+            
+            cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
+            cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
+            
+            // Draw the box
+            D3D12_VERTEX_BUFFER_VIEW vbView = m_boxGeo->VertexBufferView();
+            D3D12_INDEX_BUFFER_VIEW ibView = m_boxGeo->IndexBufferView();
+            cmdList->IASetVertexBuffers(0, 1, &vbView);
+            cmdList->IASetIndexBuffer(&ibView);
+            cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            cmdList->DrawIndexedInstanced(
+                m_boxGeo->DrawArgs["box"].IndexCount,
+                1, 0, 0, 0);
+        }
+    }
+    else
+    {
+        // Render single box
+        D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objCbvHandle->GetGPUVirtualAddress();
+        D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCbvHandle->GetGPUVirtualAddress();
         
         cmdList->SetGraphicsRootConstantBufferView(0, objCBAddress);
         cmdList->SetGraphicsRootConstantBufferView(1, matCBAddress);
@@ -369,7 +427,7 @@ void BoxRenderer::Render(const ImVec4& clearColor)
         cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         cmdList->DrawIndexedInstanced(
             m_boxGeo->DrawArgs["box"].IndexCount,
-			1, 0, 0, 0);
+            1, 0, 0, 0);
     }
 
     ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap().Get();
@@ -424,21 +482,37 @@ void BoxRenderer::Update(float deltaTime)
     matConstants.FresnelR0 = m_boxMaterial->FresnelR0;
     matConstants.Roughness = m_boxMaterial->Roughness;
 
-    // Update object constants
-    const auto& cubes = m_poissonDisk->GetSamples();
-    size_t index = 0;
-    for (auto& cube : cubes)
+    if (m_usePoissonDisk)
     {
+        // Update object constants for Poisson disk distribution
+        const auto& cubes = m_poissonDisk->GetSamples();
+        size_t index = 0;
+        for (auto& cube : cubes)
+        {
+            XMMATRIX world = XMLoadFloat4x4(&mWorld);
+            world = XMMatrixTranslation(XMVectorGetX(cube), XMVectorGetY(cube), XMVectorGetZ(cube));
+
+            ObjectConstants objConstants;
+            XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
+            frameContext->ObjectCB->CopyData(index, objConstants);
+
+            // Copy material data for each cube
+            frameContext->MaterialCB->CopyData(index, matConstants);
+
+            index++;
+        }
+    }
+    else
+    {
+        // Update object constants for single box
         XMMATRIX world = XMLoadFloat4x4(&mWorld);
-        world = XMMatrixTranslation(XMVectorGetX(cube), XMVectorGetY(cube), XMVectorGetZ(cube));
+        world = XMMatrixTranslation(XMVectorGetX(m_singleBoxPosition), XMVectorGetY(m_singleBoxPosition), XMVectorGetZ(m_singleBoxPosition));
 
         ObjectConstants objConstants;
         XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-        frameContext->ObjectCB->CopyData(index, objConstants);
+        frameContext->ObjectCB->CopyData(0, objConstants);
 
-        // Copy material data for each cube
-        frameContext->MaterialCB->CopyData(index, matConstants);
-
-        index++;
+        // Copy material data for single box
+        frameContext->MaterialCB->CopyData(0, matConstants);
     }
 }
