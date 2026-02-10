@@ -26,8 +26,9 @@ protected:
     SwapChain* m_swapChain = nullptr;
     Camera* m_camera = nullptr;
 
-    XMFLOAT4X4 mWorld;
+    XMFLOAT4X4 m_world;
+    XMFLOAT4X4 m_texTransform;
     
 
-    POINT mLastMousePos;
+    POINT m_lastMousePos;
 };

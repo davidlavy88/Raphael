@@ -30,7 +30,7 @@ bool RayTracerRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HW
     float aspect = static_cast<float>(clientRect.right) / clientRect.bottom;
 
     // Initialize world matrix (identity)
-    XMStoreFloat4x4(&mWorld, XMMatrixIdentity());
+    XMStoreFloat4x4(&m_world, XMMatrixIdentity());
 
     // Initialize camera projection matrix
     m_camera->SetProjectionMatrix(0.25f * XM_PI, aspect, 1.0f, 1000.0f);
@@ -307,7 +307,7 @@ void RayTracerRenderer::Update(float deltaTime)
     m_camera->UpdateViewMatrix();
 
     XMMATRIX view = m_camera->GetViewMatrix();
-    XMMATRIX world = XMLoadFloat4x4(&mWorld);
+    XMMATRIX world = XMLoadFloat4x4(&m_world);
     XMMATRIX proj = m_camera->GetProjectionMatrix();
     // XMMATRIX worldViewProj = world * view * proj;
     XMMATRIX viewProj = view * proj;

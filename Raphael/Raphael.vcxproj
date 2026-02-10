@@ -86,7 +86,7 @@
     <ClCompile Include="source\Application.cpp" />
     <ClCompile Include="source\RayTracerRenderer.cpp" />
     <ClCompile Include="source\SwapChain.cpp" />
-    <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader12.cpp" />
+    <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader.cpp" />
     <ClCompile Include="source\BoxRenderer.cpp" />
     <ClCompile Include="source\D3D12Util.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
@@ -112,7 +112,8 @@
     <ClInclude Include="header\Light.h" />
     <ClInclude Include="header\Material.h" />
     <ClInclude Include="header\PoissonDiskDistribution.h" />
-    <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader12.h" />
+    <ClInclude Include="header\Texture.h" />
+    <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader.h" />
     <ClInclude Include="header\BoxRenderer.h" />
     <ClInclude Include="header\D3D12Util.h" />
     <ClInclude Include="header\d3dx12.h" />

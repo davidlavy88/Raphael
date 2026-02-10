@@ -119,8 +119,8 @@ void Renderer::Render(const ImVec4& clearColor)
 
 void Renderer::ImGuiOnMouseDown(ImGuiMouseButton button, float x, float y)
 {
-    mLastMousePos.x = static_cast<LONG>(x);
-    mLastMousePos.y = static_cast<LONG>(y);
+    m_lastMousePos.x = static_cast<LONG>(x);
+    m_lastMousePos.y = static_cast<LONG>(y);
 }
 
 void Renderer::ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y)
@@ -128,20 +128,20 @@ void Renderer::ImGuiOnMouseMove(ImGuiMouseButton button, float x, float y)
     if (button == ImGuiMouseButton_Left)
     {
         // Make each pixel correspond to a quarter of a degree.
-        float dx = XMConvertToRadians(4 * m_camera->GetSpeed() * static_cast<float>(x - mLastMousePos.x));
-        float dy = XMConvertToRadians(4 * m_camera->GetSpeed() * static_cast<float>(y - mLastMousePos.y));
+        float dx = XMConvertToRadians(4 * m_camera->GetSpeed() * static_cast<float>(x - m_lastMousePos.x));
+        float dy = XMConvertToRadians(4 * m_camera->GetSpeed() * static_cast<float>(y - m_lastMousePos.y));
 
         m_camera->SetPitch(m_camera->GetPitch() + dy);
         m_camera->SetYaw(m_camera->GetYaw() + dx);
     }
     else if (button == ImGuiMouseButton_Right)
     {
-        m_camera->MoveUpDown(static_cast<float>(y - mLastMousePos.y));
+        m_camera->MoveUpDown(static_cast<float>(y - m_lastMousePos.y));
     }
 
     // Calculate the new front vector
     m_camera->UpdateLook();
 
-    mLastMousePos.x = static_cast<LONG>(x);
-    mLastMousePos.y = static_cast<LONG>(y);
+    m_lastMousePos.x = static_cast<LONG>(x);
+    m_lastMousePos.y = static_cast<LONG>(y);
 }

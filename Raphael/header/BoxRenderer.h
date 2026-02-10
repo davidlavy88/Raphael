@@ -5,6 +5,7 @@
 #include "Camera.h"
 #include "Material.h"
 #include "Light.h"
+#include "Texture.h"
 #include "PoissonDiskDistribution.h"
 
 // Config constants
@@ -20,7 +21,9 @@ public:
     void Update(float deltaTime);
 
     // Build functions
+    void LoadTextures(D3D12Device& device);
     void BuildRootSignature(D3D12Device& device);
+    void BuildDescriptorHeaps(D3D12Device& device);
     void BuildShadersAndInputLayout();
     void BuildBoxGeometry(D3D12Device& device);
     void BuildPSO(D3D12Device& device);
@@ -37,6 +40,8 @@ public:
 
     ComPtr<ID3D12RootSignature> GetRootSignature() const { return m_rootSignature; }
 
+    std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+
 private:
     ComPtr<ID3D12DescriptorHeap> m_cbvHeap = nullptr;
     ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
@@ -49,6 +54,7 @@ private:
 
     std::unique_ptr<MeshGeometry> m_boxGeo = nullptr;
     std::unique_ptr<Material> m_boxMaterial = nullptr;
+    std::unique_ptr<Texture> m_boxTexture = nullptr;
     std::vector<std::unique_ptr<Light>> m_lights;
 
     int m_passCbvOffset = 0;

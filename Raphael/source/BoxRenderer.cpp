@@ -1,6 +1,7 @@
 #include "BoxRenderer.h"
 #include "GPUStructs.h"
 #include "Material.h"
+#include "DDSTextureLoader/DDSTextureLoader.h"
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
 
@@ -15,7 +16,9 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
     // Reset command list for initialization
     device.GetCommandList()->Reset(device.GetCurrentCommandAllocator().Get(), nullptr);
 
+    LoadTextures(device);
     BuildRootSignature(device);
+    BuildDescriptorHeaps(device);
     BuildShadersAndInputLayout();
     BuildBoxGeometry(device);
     BuildMaterials();
@@ -35,7 +38,7 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
     float aspect = static_cast<float>(clientRect.right) / clientRect.bottom;
 
     // Initialize world matrix (identity)
-    XMStoreFloat4x4(&mWorld, XMMatrixIdentity());
+    XMStoreFloat4x4(&m_world, XMMatrixIdentity());
 
     // Initialize camera projection matrix
     m_camera->SetProjectionMatrix(0.25f * XM_PI, aspect, 1.0f, 1000.0f);
@@ -57,21 +60,44 @@ void BoxRenderer::Shutdown()
     m_pso.Reset();
     m_rootSignature.Reset();
     m_cbvHeap.Reset();
+	m_boxTexture.reset();
 
     Renderer::Shutdown();
 }
 
+void BoxRenderer::LoadTextures(D3D12Device& device)
+{
+    auto woodCrateTexture = std::make_unique<Texture>("woodCrateTex", L"Textures/WoodCrate01.dds");
+    if (FAILED(DirectX::CreateDDSTextureFromFile12(device.GetDevice().Get(),
+        device.GetCommandList().Get(),
+        woodCrateTexture->Filename.c_str(),
+        woodCrateTexture->Resource,
+        woodCrateTexture->UploadHeap)))
+    {
+        throw std::runtime_error("Failed to load texture " + std::string(woodCrateTexture->Filename.begin(), woodCrateTexture->Filename.end()));
+    }
+
+    m_boxTexture = std::move(woodCrateTexture);
+}
+
 void BoxRenderer::BuildRootSignature(D3D12Device& device)
 {
-    // Implementation for creating root signature 
-    CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+    CD3DX12_DESCRIPTOR_RANGE textureTable;
+    textureTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-    // Create root parameters to bind the constant buffer views to the pipeline
+    // Implementation for creating root signature 
+    CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+
+    // Create root parameters to bind the descriptor table & constant buffer views to the pipeline
+    // As a performance tip, order from most frequent to least frequent.
     slotRootParameter[0].InitAsConstantBufferView(0);
     slotRootParameter[1].InitAsConstantBufferView(1);
     slotRootParameter[2].InitAsConstantBufferView(2);
+    slotRootParameter[3].InitAsDescriptorTable(1, &textureTable, D3D12_SHADER_VISIBILITY_PIXEL);
 
-    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter, 0, nullptr,
+    auto staticSamplers = GetStaticSamplers();
+
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter, (UINT)staticSamplers.size(), staticSamplers.data(),
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     ComPtr<ID3DBlob> serializedRootSig = nullptr;
@@ -93,6 +119,27 @@ void BoxRenderer::BuildRootSignature(D3D12Device& device)
     }
 }
 
+void BoxRenderer::BuildDescriptorHeaps(D3D12Device& device)
+{
+    // Create shader resource view for the texture
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Format = m_boxTexture->Resource->GetDesc().Format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.MipLevels = m_boxTexture->Resource->GetDesc().MipLevels;
+    srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+    // Allocate descriptor from the SRV heap
+    device.GetSRVAllocator().Alloc(&m_boxTexture->SrvCpuHandle, &m_boxTexture->SrvGpuHandle);
+
+    // Create the SRV
+    device.GetDevice()->CreateShaderResourceView(
+        m_boxTexture->Resource.Get(),
+        &srvDesc,
+        m_boxTexture->SrvCpuHandle);
+}
+
 void BoxRenderer::BuildShadersAndInputLayout()
 {
     // Implementation for compiling shaders and defining input layout
@@ -102,50 +149,62 @@ void BoxRenderer::BuildShadersAndInputLayout()
     m_inputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 }
 
 void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
 {
+    // How to Visualize UV Mapping for a Cube
+    //           [Top]
+    //            (2)
+    //
+    //    [Left][Front][Right][Back]
+    //    (4)     (0)      (5)      (1)
+    //
+    //          [Bottom]
+    //            (3)
+    
+
     // Implementation for creating box geometry
     std::array<VertexShaderInput, 24> vertices =
     {
         // Fill in the front face vertex data.
-        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) }),
 
         // Fill in the back face vertex data.
-        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }),
-
-        // Fill in the top face vertex data.
-        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) }),
 
         // Fill in the bottom face vertex data.
-        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) }),
+
+        // Fill in the top face vertex data.
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) }),
 
         // Fill in the left face vertex data.
-        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) }),
 
         // Fill in the right face vertex data.
-        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }),
-        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) })
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) }),
+        VertexShaderInput({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) })
     };
 
     std::array<std::uint16_t, 36> indices =
@@ -251,8 +310,8 @@ void BoxRenderer::BuildFrameContexts(D3D12Device& device)
 
 void BoxRenderer::BuildMaterials()
 {
-    std::unique_ptr<Material> boxMat = std::make_unique<Material>("boxMaterial");
-    boxMat->DiffuseAlbedo = XMFLOAT4(Colors::Red);
+    std::unique_ptr<Material> boxMat = std::make_unique<Material>("woodCrate");
+    boxMat->DiffuseAlbedo = XMFLOAT4(Colors::White);
     boxMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
     boxMat->Roughness = 0.9f;
 
@@ -371,13 +430,20 @@ void BoxRenderer::Render(const ImVec4& clearColor)
     cmdList->ClearDepthStencilView(m_device->DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
     // Specify the buffers we are going to render to.
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_device->DepthStencilView();
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_device->DepthStencilView();
     cmdList->OMSetRenderTargets(1, &rtvHandle, true, &dsvHandle);
+
+    // Set descriptor heaps
+    ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap().Get();
+    cmdList->SetDescriptorHeaps(1, &srvHeap);
 
     cmdList->SetGraphicsRootSignature(GetRootSignature().Get());
 
     auto passCbvHandle = frameContext->PassCB->Resource();
     cmdList->SetGraphicsRootConstantBufferView(2, passCbvHandle->GetGPUVirtualAddress());
+
+    // Bind texture
+    cmdList->SetGraphicsRootDescriptorTable(3, m_boxTexture->SrvGpuHandle);
 
     // Draw the boxes
     UINT objCbvByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
@@ -430,9 +496,6 @@ void BoxRenderer::Render(const ImVec4& clearColor)
             1, 0, 0, 0);
     }
 
-    ID3D12DescriptorHeap* srvHeap = m_device->GetSRVHeap().Get();
-    cmdList->SetDescriptorHeaps(1, &srvHeap);
-
     // Render ImGui
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmdList);
 
@@ -453,7 +516,7 @@ void BoxRenderer::Update(float deltaTime)
     static double totalTime = 0.0;
     totalTime += deltaTime;
 
-	FrameContext* frameContext = m_device->WaitForNextFrame();
+    FrameContext* frameContext = m_device->WaitForNextFrame();
 
     // Update pass constants
     m_camera->UpdateViewMatrix();
@@ -466,7 +529,7 @@ void BoxRenderer::Update(float deltaTime)
     XMVECTOR eyePos = m_camera->GetPosition();
     XMStoreFloat3(&passConstants.EyePosW, eyePos);
     
-    passConstants.AmbientLight = { 0.0f, 0.0f, 0.35f, 1.0f };
+    passConstants.AmbientLight = { 0.5f, 0.5f, 0.5f, 1.0f };
     passConstants.Lights[0].Direction = m_lights[0].get()->Direction;
     passConstants.Lights[0].Color = m_lights[0].get()->Color;
     passConstants.Lights[1].Direction = m_lights[1].get()->Direction;
@@ -489,7 +552,7 @@ void BoxRenderer::Update(float deltaTime)
         size_t index = 0;
         for (auto& cube : cubes)
         {
-            XMMATRIX world = XMLoadFloat4x4(&mWorld);
+            XMMATRIX world = XMLoadFloat4x4(&m_world);
             world = XMMatrixTranslation(XMVectorGetX(cube), XMVectorGetY(cube), XMVectorGetZ(cube));
 
             ObjectConstants objConstants;
@@ -505,7 +568,7 @@ void BoxRenderer::Update(float deltaTime)
     else
     {
         // Update object constants for single box
-        XMMATRIX world = XMLoadFloat4x4(&mWorld);
+        XMMATRIX world = XMLoadFloat4x4(&m_world);
         world = XMMatrixTranslation(XMVectorGetX(m_singleBoxPosition), XMVectorGetY(m_singleBoxPosition), XMVectorGetZ(m_singleBoxPosition));
 
         ObjectConstants objConstants;
@@ -515,4 +578,60 @@ void BoxRenderer::Update(float deltaTime)
         // Copy material data for single box
         frameContext->MaterialCB->CopyData(0, matConstants);
     }
+}
+
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> BoxRenderer::GetStaticSamplers()
+{
+    // Defining all six static samplers and keep them available for the root signature
+
+    const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
+        0, // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+    const CD3DX12_STATIC_SAMPLER_DESC pointClamp(
+        1, // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP);  // addressW
+
+    const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
+        2, // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+
+    const CD3DX12_STATIC_SAMPLER_DESC linearClamp(
+        3, // shaderRegister
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+
+    const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(
+        4, // shaderRegister
+        D3D12_FILTER_ANISOTROPIC, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressW
+        0.0f,                             // mipLODBias
+        8);                               // maxAnisotropy
+
+    const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(
+        5, // shaderRegister
+        D3D12_FILTER_ANISOTROPIC, // filter
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressW
+        0.0f,                              // mipLODBias
+        8);                                // maxAnisotropy
+
+    return {
+        pointWrap, pointClamp,
+        linearWrap, linearClamp,
+        anisotropicWrap, anisotropicClamp };
 }

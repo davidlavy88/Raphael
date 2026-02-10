@@ -51,9 +51,6 @@
     <ClCompile Include="source\D3D12Util.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader12.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
     <ClCompile Include="source\Application.cpp">
       <Filter>source</Filter>
     </ClCompile>
@@ -82,6 +79,9 @@
       <Filter>source</Filter>
     </ClCompile>
     <ClCompile Include="source\PoissonDiskDistribution.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader.cpp">
       <Filter>source</Filter>
     </ClCompile>
   </ItemGroup>
@@ -128,9 +128,6 @@
     <ClInclude Include="header\BoxRenderer.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader12.h">
-      <Filter>headers</Filter>
-    </ClInclude>
     <ClInclude Include="header\Application.h">
       <Filter>headers</Filter>
     </ClInclude>
@@ -165,6 +162,12 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="header\PoissonDiskDistribution.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="header\Texture.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>

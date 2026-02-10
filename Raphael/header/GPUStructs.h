@@ -19,13 +19,15 @@ static XMFLOAT4X4 XM4x4Identity()
 struct VertexShaderInput
 {
 	VertexShaderInput() {}
-	VertexShaderInput(const XMFLOAT3& pos, const XMFLOAT3& normal)
+	VertexShaderInput(const XMFLOAT3& pos, const XMFLOAT3& normal, const XMFLOAT2& texC)
 		: Pos(pos)
 		, Normal(normal)
+		, TexC(texC)
 	{}
 
 	XMFLOAT3 Pos;
 	XMFLOAT3 Normal;
+	XMFLOAT2 TexC;
 };
 
 struct LightConstants
@@ -41,6 +43,7 @@ struct LightConstants
 struct ObjectConstants
 {
 	XMFLOAT4X4 World = XM4x4Identity();
+	XMFLOAT4X4 TexTransform = XM4x4Identity();
 };
 
 struct PassConstants
