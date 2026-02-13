@@ -170,6 +170,10 @@
     <ClInclude Include="header\Texture.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="Utilities\tinygltf\stb_image.h" />
+    <ClInclude Include="Utilities\tinygltf\json.hpp" />
+    <ClInclude Include="Utilities\tinygltf\stb_image_write.h" />
+    <ClInclude Include="Utilities\tinygltf\tiny_gltf.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

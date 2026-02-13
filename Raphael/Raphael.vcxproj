@@ -50,7 +50,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -67,7 +67,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,6 +129,10 @@
     <ClInclude Include="Utilities\imgui\imstb_textedit.h" />
     <ClInclude Include="Utilities\imgui\imstb_truetype.h" />
     <ClInclude Include="Utilities\imgui\misc\imgui_stdlib.h" />
+    <ClInclude Include="Utilities\tinygltf\json.hpp" />
+    <ClInclude Include="Utilities\tinygltf\stb_image.h" />
+    <ClInclude Include="Utilities\tinygltf\stb_image_write.h" />
+    <ClInclude Include="Utilities\tinygltf\tiny_gltf.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter" />
