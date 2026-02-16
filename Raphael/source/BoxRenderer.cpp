@@ -82,154 +82,209 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
         throw std::runtime_error("Failed to load glTF model: " + err);
     }
     // TODO: Add warning handling
-    
-    // Process the loaded model data and create vertex/index buffers
-    // Step 1: Get the first mesh
-    const tinygltf::Mesh& mesh = gltfModel.meshes[0];
-    OutputDebugStringA(("Loading mesh: " + mesh.name + "\n").c_str());
-
-    // Step 2: Get the first primitive from the mesh
-    const tinygltf::Primitive& primitive = mesh.primitives[0];
-
-    // Step 3: Extract vertex positions
-    std::vector<VertexShaderInput> vertices;
-
-    // Find the POSITION attribute
-    auto positionAttrIt = primitive.attributes.find("POSITION");
-    if (positionAttrIt == primitive.attributes.end())
-    {
-        throw std::runtime_error("Mesh primitive does not contain POSITION attribute");
-    }
-    
-    int positionAccessorIndex = positionAttrIt->second;
-    // This accessor describes how to read the position data (e.g., type, count, etc.)
-    const tinygltf::Accessor& positionAccessor = gltfModel.accessors[positionAccessorIndex];
-    // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
-    const tinygltf::BufferView& positionBufferView = gltfModel.bufferViews[positionAccessor.bufferView];
-    // This buffer contains the actual binary data for the positions
-    const tinygltf::Buffer& positionBuffer = gltfModel.buffers[positionBufferView.buffer];
-
-    // Calculate the pointer to the position data
-    const float* positionData = reinterpret_cast<const float*>(&positionBuffer.data[positionBufferView.byteOffset + positionAccessor.byteOffset]);
-    
-    size_t vertexCount = positionAccessor.count;
-    OutputDebugStringA(("Vertex count: " + std::to_string(vertexCount) + "\n").c_str());
-
-    // Step 4: Extract vertex normals (if available)
-
-    // Step 5: Extract texture coordinates (if available)
-
-    // Step 6: Create vertex array
-    vertices.resize(vertexCount);
-    for (size_t i = 0; i < vertexCount; ++i)
-    {
-        vertices[i].Pos = XMFLOAT3(positionData[i * 3], positionData[i * 3 + 1], positionData[i * 3 + 2]);
-
-        // TODO: Set normals and texture coordinates if available
-        vertices[i].Normal = XMFLOAT3(0.0f, 1.0f, 0.0f);
-        vertices[i].TexC = XMFLOAT2(0.0f, 0.0f);
-    }
-
-    // Step 7: Extract indices
-    std::vector<std::uint16_t> indices;
-
-    if (primitive.indices >= 0)
-    {
-        // This accessor describes how to read the index data (e.g., type, count, etc.)
-        const tinygltf::Accessor& indexAccessor = gltfModel.accessors[primitive.indices]; 
-        // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
-        const tinygltf::BufferView& indexBufferView = gltfModel.bufferViews[indexAccessor.bufferView]; 
-        // This buffer contains the actual binary data for the indices
-        const tinygltf::Buffer& indexBuffer = gltfModel.buffers[indexBufferView.buffer]; 
-
-        size_t indexCount = indexAccessor.count;
-        OutputDebugStringA(("Index count: " + std::to_string(indexCount) + "\n").c_str());
-
-        indices.resize(indexCount);
-
-        // Calculate a pointer to the index data 
-        // glTF uses a hierarchical data structure:
-        // Buffer : Contains all binary data
-        // BufferView : Describes a slice of that buffer(like "indices start at byte 1000")
-        // Accessor : Describes how to interpret that view(like "skip 20 more bytes, then read as uint16")
-        // 
-        // Visual example of indexBuffer.data layout:
-        // 
-        // |------------------| <- Start of buffer
-        // |   ...            |
-        // |------------------| <- indexBufferView.byteOffset (Buffer view starts here)
-        // |   ...            |
-        // |------------------| <- indexAccessor.byteOffset (Accessor offset within view)
-        // |   ...            |
-        // |   Index Data     | <- Actual index data starts here
-        // |   ...            |
-        // |------------------| <- End of buffer    
-        
-
-        // gltf supports different index types (e.g. unsigned byte, unsigned short, unsigned int). Need to handle them accordingly
-        // we use void* to cast to the correct type based on indexAccessor.componentType
-        const void* indexDataPtr = &indexBuffer.data[
-            indexBufferView.byteOffset + // How many bytes into the buffer the view starts
-            indexAccessor.byteOffset // Additional offset within the view to reach index data
-        ];
-
-        if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
-        {
-            const std::uint16_t* indexData = reinterpret_cast<const std::uint16_t*>(indexDataPtr);
-            for (size_t i = 0; i < indexCount; ++i)
-            {
-                indices[i] = indexData[i];
-            }
-        }
-        else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
-        {
-            const std::uint32_t* indexData = reinterpret_cast<const std::uint32_t*>(indexDataPtr);
-            for (size_t i = 0; i < indexCount; ++i)
-            {
-                indices[i] = static_cast<std::uint16_t>(indexData[i]);
-            }
-        } 
-        else
-        {
-            throw std::runtime_error("Unsupported index component type in glTF model");
-        }
-    }
-    else
-    {
-        throw std::runtime_error("Mesh primitive does not contain indices");
-    }
-
-    // Step 8: Create MeshGeometry object and upload vertex/index data to GPU
-    // TODO: This should be refactored later
-    const UINT vbByteSize = static_cast<UINT>(vertices.size() * sizeof(VertexShaderInput));
-    const UINT ibByteSize = static_cast<UINT>(indices.size() * sizeof(std::uint16_t));
 
     m_boxGeo = std::make_unique<MeshGeometry>();
-    m_boxGeo->Name = mesh.name.empty() ? "gltfMesh" : mesh.name;
+    m_boxGeo->Name = "gltfMesh";
+
+    std::vector<VertexShaderInput> totalVertices;
+    std::vector<std::uint16_t> totalIndices;
+    
+    size_t meshIndex = 0;
+    UINT vertexOffset = 0;
+    UINT indexOffset = 0;
+
+    for (const tinygltf::Mesh& mesh : gltfModel.meshes)
+    {
+        // Process the loaded model data and create vertex/index buffers
+        // Step 1: Get meshes
+        OutputDebugStringA(("Loading mesh: " + mesh.name + "\n").c_str());
+
+        size_t primitiveIndex = 0;
+    	size_t primitiveCount = mesh.primitives.size();
+        // Step 2: Get primitives from the mesh
+        for (const tinygltf::Primitive& primitive : mesh.primitives)
+        {
+            std::string primitiveName = mesh.name + "_primitive_" + std::to_string(primitiveIndex);
+            OutputDebugStringA(("Loading primitive: " + primitiveName + "\n").c_str());
+
+            // Step 3: Extract vertex positions
+            std::vector<VertexShaderInput> vertices;
+
+            // Find the POSITION attribute
+            auto positionAttrIt = primitive.attributes.find("POSITION");
+            if (positionAttrIt == primitive.attributes.end())
+            {
+                throw std::runtime_error("Mesh primitive does not contain POSITION attribute");
+            }
+
+            int positionAccessorIndex = positionAttrIt->second;
+            // This accessor describes how to read the position data (e.g., type, count, etc.)
+            const tinygltf::Accessor& positionAccessor = gltfModel.accessors[positionAccessorIndex];
+            // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
+            const tinygltf::BufferView& positionBufferView = gltfModel.bufferViews[positionAccessor.bufferView];
+            // This buffer contains the actual binary data for the positions
+            const tinygltf::Buffer& positionBuffer = gltfModel.buffers[positionBufferView.buffer];
+
+            // Calculate the pointer to the position data
+            const float* positionData = reinterpret_cast<const float*>(&positionBuffer.data[positionBufferView.byteOffset + positionAccessor.byteOffset]);
+
+            size_t vertexCount = positionAccessor.count;
+            OutputDebugStringA(("Vertex count: " + std::to_string(vertexCount) + "\n").c_str());
+
+            // Step 4: Extract vertex normals (if available)
+            auto normalAttrIt = primitive.attributes.find("NORMAL");
+            if (normalAttrIt == primitive.attributes.end())
+            {
+                throw std::runtime_error("Mesh primitive does not contain POSITION attribute");
+            }
+
+            int normalAccessorIndex = normalAttrIt->second;
+            // This accessor describes how to read the normal data (e.g., type, count, etc.)
+            const tinygltf::Accessor& normalAccessor = gltfModel.accessors[normalAccessorIndex];
+            // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
+            const tinygltf::BufferView& normalBufferView = gltfModel.bufferViews[normalAccessor.bufferView];
+            // This buffer contains the actual binary data for the normals
+            const tinygltf::Buffer& normalBuffer = gltfModel.buffers[normalBufferView.buffer];
+
+            // Calculate the pointer to the normal data
+            const float* normalData = reinterpret_cast<const float*>(&normalBuffer.data[normalBufferView.byteOffset + normalAccessor.byteOffset]);
+
+            // Step 5: Extract texture coordinates (if available)
+            auto texCoordAttrIt = primitive.attributes.find("TEXCOORD_0");
+            if (texCoordAttrIt == primitive.attributes.end())
+            {
+                throw std::runtime_error("Mesh primitive does not contain POSITION attribute");
+            }
+
+            int textureAccessorIndex = texCoordAttrIt->second;
+            // This accessor describes how to read the texture data (e.g., type, count, etc.)
+            const tinygltf::Accessor& textureAccessor = gltfModel.accessors[textureAccessorIndex];
+            // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
+            const tinygltf::BufferView& textureBufferView = gltfModel.bufferViews[textureAccessor.bufferView];
+            // This buffer contains the actual binary data for the textures
+            const tinygltf::Buffer& textureBuffer = gltfModel.buffers[textureBufferView.buffer];
+
+            // Calculate the pointer to the position data
+            const float* textureData = reinterpret_cast<const float*>(&textureBuffer.data[textureBufferView.byteOffset + textureAccessor.byteOffset]);
+
+            // Step 6: Create vertex array
+            vertices.resize(vertexCount);
+            for (size_t i = 0; i < vertexCount; ++i)
+            {
+                vertices[i].Pos = XMFLOAT3(positionData[i * 3], positionData[i * 3 + 1], positionData[i * 3 + 2]);
+
+                // TODO: Set normals and texture coordinates if available
+                vertices[i].Normal = XMFLOAT3(normalData[i * 3], normalData[i * 3 + 1], normalData[i * 3 + 2]);
+                vertices[i].TexC = XMFLOAT2(textureData[i * 2], textureData[i * 2 + 1]);
+            }
+
+            // Step 7: Extract indices
+            std::vector<std::uint16_t> indices;
+
+            if (primitive.indices >= 0)
+            {
+                // This accessor describes how to read the index data (e.g., type, count, etc.)
+                const tinygltf::Accessor& indexAccessor = gltfModel.accessors[primitive.indices];
+                // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
+                const tinygltf::BufferView& indexBufferView = gltfModel.bufferViews[indexAccessor.bufferView];
+                // This buffer contains the actual binary data for the indices
+                const tinygltf::Buffer& indexBuffer = gltfModel.buffers[indexBufferView.buffer];
+
+                size_t indexCount = indexAccessor.count;
+                OutputDebugStringA(("Index count: " + std::to_string(indexCount) + "\n").c_str());
+
+                indices.resize(indexCount);
+
+                // Calculate a pointer to the index data 
+                // glTF uses a hierarchical data structure:
+                // Buffer : Contains all binary data
+                // BufferView : Describes a slice of that buffer(like "indices start at byte 1000")
+                // Accessor : Describes how to interpret that view(like "skip 20 more bytes, then read as uint16")
+                // 
+                // Visual example of indexBuffer.data layout:
+                // 
+                // |------------------| <- Start of buffer
+                // |   ...            |
+                // |------------------| <- indexBufferView.byteOffset (Buffer view starts here)
+                // |   ...            |
+                // |------------------| <- indexAccessor.byteOffset (Accessor offset within view)
+                // |   ...            |
+                // |   Index Data     | <- Actual index data starts here
+                // |   ...            |
+                // |------------------| <- End of buffer    
+
+
+                // gltf supports different index types (e.g. unsigned byte, unsigned short, unsigned int). Need to handle them accordingly
+                // we use void* to cast to the correct type based on indexAccessor.componentType
+                const void* indexDataPtr = &indexBuffer.data[
+                    indexBufferView.byteOffset + // How many bytes into the buffer the view starts
+                        indexAccessor.byteOffset // Additional offset within the view to reach index data
+                ];
+
+                if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+                {
+                    const std::uint16_t* indexData = reinterpret_cast<const std::uint16_t*>(indexDataPtr);
+                    for (size_t i = 0; i < indexCount; ++i)
+                    {
+                        indices[i] = indexData[i];
+                    }
+                }
+                else if (indexAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
+                {
+                    const std::uint32_t* indexData = reinterpret_cast<const std::uint32_t*>(indexDataPtr);
+                    for (size_t i = 0; i < indexCount; ++i)
+                    {
+                        indices[i] = static_cast<std::uint16_t>(indexData[i]);
+                    }
+                }
+                else
+                {
+                    throw std::runtime_error("Unsupported index component type in glTF model");
+                }
+            }
+            else
+            {
+                throw std::runtime_error("Mesh primitive does not contain indices");
+            }
+
+            // Step 8: Create MeshGeometry object and upload vertex/index data to GPU
+            // TODO: This should be refactored later
+            SubmeshGeometry submesh;
+            submesh.IndexCount = (UINT)indices.size();
+            submesh.StartIndexLocation = indexOffset;
+            submesh.BaseVertexLocation = vertexOffset ;
+
+            m_boxGeo->DrawArgs[primitiveName] = submesh;
+
+            vertexOffset += vertices.size();
+            indexOffset += indices.size();
+
+            totalVertices.insert(totalVertices.end(), vertices.begin(), vertices.end());
+            totalIndices.insert(totalIndices.end(), indices.begin(), indices.end());
+            primitiveIndex++;
+        }
+        meshIndex++;
+    }
+
+    const UINT vbByteSize = static_cast<UINT>(totalVertices.size() * sizeof(VertexShaderInput));
+    const UINT ibByteSize = static_cast<UINT>(totalIndices.size() * sizeof(std::uint16_t));
 
     D3DCreateBlob(vbByteSize, &m_boxGeo->VertexBufferCPU);
-    CopyMemory(m_boxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+    CopyMemory(m_boxGeo->VertexBufferCPU->GetBufferPointer(), totalVertices.data(), vbByteSize);
 
     D3DCreateBlob(ibByteSize, &m_boxGeo->IndexBufferCPU);
-    CopyMemory(m_boxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+    CopyMemory(m_boxGeo->IndexBufferCPU->GetBufferPointer(), totalIndices.data(), ibByteSize);
 
     m_boxGeo->VertexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(),
-        device.GetCommandList().Get(), vertices.data(), vbByteSize, m_boxGeo->VertexBufferUploader);
+        device.GetCommandList().Get(), totalVertices.data(), vbByteSize, m_boxGeo->VertexBufferUploader);
 
     m_boxGeo->IndexBufferGPU = D3D12Util::CreateDefaultBuffer(device.GetDevice().Get(),
-        device.GetCommandList().Get(), indices.data(), ibByteSize, m_boxGeo->IndexBufferUploader);
+        device.GetCommandList().Get(), totalIndices.data(), ibByteSize, m_boxGeo->IndexBufferUploader);
 
     m_boxGeo->VertexByteStride = sizeof(VertexShaderInput);
     m_boxGeo->VertexBufferByteSize = vbByteSize;
     m_boxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
     m_boxGeo->IndexBufferByteSize = ibByteSize;
-
-    SubmeshGeometry submesh;
-    submesh.IndexCount = (UINT)indices.size();
-    submesh.StartIndexLocation = 0;
-    submesh.BaseVertexLocation = 0;
-
-    m_boxGeo->DrawArgs["gltfMesh"] = submesh;
 
     OutputDebugStringA("glTF model loaded successfully!\n");
 }
@@ -642,9 +697,12 @@ void BoxRenderer::Render(const ImVec4& clearColor)
             cmdList->IASetVertexBuffers(0, 1, &vbView);
             cmdList->IASetIndexBuffer(&ibView);
             cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            cmdList->DrawIndexedInstanced(
-                m_boxGeo->DrawArgs["gltfMesh"].IndexCount,
-                1, 0, 0, 0);
+            for (const auto& [name, submesh] : m_boxGeo->DrawArgs)
+            {
+                cmdList->DrawIndexedInstanced(
+                    m_boxGeo->DrawArgs[name].IndexCount,
+                    1, m_boxGeo->DrawArgs[name].StartIndexLocation, m_boxGeo->DrawArgs[name].BaseVertexLocation, 0);
+            }
         }
     }
     else
@@ -662,9 +720,12 @@ void BoxRenderer::Render(const ImVec4& clearColor)
         cmdList->IASetVertexBuffers(0, 1, &vbView);
         cmdList->IASetIndexBuffer(&ibView);
         cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        cmdList->DrawIndexedInstanced(
-            m_boxGeo->DrawArgs["gltfMesh"].IndexCount,
-            1, 0, 0, 0);
+        for (const auto& [name, submesh] : m_boxGeo->DrawArgs)
+        {
+            cmdList->DrawIndexedInstanced(
+                m_boxGeo->DrawArgs[name].IndexCount,
+                1, m_boxGeo->DrawArgs[name].StartIndexLocation, m_boxGeo->DrawArgs[name].BaseVertexLocation, 0);
+        }
     }
 
     // Render ImGui
