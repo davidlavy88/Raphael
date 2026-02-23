@@ -81,9 +81,8 @@
     <ClCompile Include="source\PoissonDiskDistribution.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
+    <ClCompile Include="Utilities\TextureLoader\DDSTextureLoader.cpp" />
+    <ClCompile Include="Utilities\TextureLoader\WICTextureLoader12.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -164,9 +163,6 @@
     <ClInclude Include="header\PoissonDiskDistribution.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader.h">
-      <Filter>headers</Filter>
-    </ClInclude>
     <ClInclude Include="header\Texture.h">
       <Filter>headers</Filter>
     </ClInclude>
@@ -174,6 +170,8 @@
     <ClInclude Include="Utilities\tinygltf\json.hpp" />
     <ClInclude Include="Utilities\tinygltf\stb_image_write.h" />
     <ClInclude Include="Utilities\tinygltf\tiny_gltf.h" />
+    <ClInclude Include="Utilities\TextureLoader\DDSTextureLoader.h" />
+    <ClInclude Include="Utilities\TextureLoader\WICTextureLoader12.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

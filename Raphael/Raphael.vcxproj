@@ -86,7 +86,6 @@
     <ClCompile Include="source\Application.cpp" />
     <ClCompile Include="source\RayTracerRenderer.cpp" />
     <ClCompile Include="source\SwapChain.cpp" />
-    <ClCompile Include="Utilities\DDSTextureLoader\DDSTextureLoader.cpp" />
     <ClCompile Include="source\BoxRenderer.cpp" />
     <ClCompile Include="source\D3D12Util.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
@@ -99,6 +98,8 @@
     <ClCompile Include="Utilities\imgui\imgui_widgets.cpp" />
     <ClCompile Include="Utilities\imgui\misc\imgui_stdlib.cpp" />
     <ClCompile Include="source\main.cpp" />
+    <ClCompile Include="Utilities\TextureLoader\DDSTextureLoader.cpp" />
+    <ClCompile Include="Utilities\TextureLoader\WICTextureLoader12.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="header\Camera.h" />
@@ -113,7 +114,6 @@
     <ClInclude Include="header\Material.h" />
     <ClInclude Include="header\PoissonDiskDistribution.h" />
     <ClInclude Include="header\Texture.h" />
-    <ClInclude Include="Utilities\DDSTextureLoader\DDSTextureLoader.h" />
     <ClInclude Include="header\BoxRenderer.h" />
     <ClInclude Include="header\D3D12Util.h" />
     <ClInclude Include="header\d3dx12.h" />
@@ -129,6 +129,8 @@
     <ClInclude Include="Utilities\imgui\imstb_textedit.h" />
     <ClInclude Include="Utilities\imgui\imstb_truetype.h" />
     <ClInclude Include="Utilities\imgui\misc\imgui_stdlib.h" />
+    <ClInclude Include="Utilities\TextureLoader\DDSTextureLoader.h" />
+    <ClInclude Include="Utilities\TextureLoader\WICTextureLoader12.h" />
     <ClInclude Include="Utilities\tinygltf\json.hpp" />
     <ClInclude Include="Utilities\tinygltf\stb_image.h" />
     <ClInclude Include="Utilities\tinygltf\stb_image_write.h" />
