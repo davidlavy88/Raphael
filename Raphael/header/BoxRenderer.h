@@ -7,6 +7,7 @@
 #include "Light.h"
 #include "Texture.h"
 #include "PoissonDiskDistribution.h"
+#include "tinygltf/tiny_gltf.h"
 
 // Config constants
 static constexpr int MAX_NUM_BOXES = 100;
@@ -53,8 +54,9 @@ private:
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
 
     std::unique_ptr<MeshGeometry> m_boxGeo = nullptr;
-    std::unique_ptr<Material> m_boxMaterial = nullptr;
-    std::unique_ptr<Texture> m_boxTexture = nullptr;
+    std::unique_ptr<tinygltf::Model> m_gltfModel = nullptr;
+    std::unordered_map<std::string, std::unique_ptr<Material>> m_boxMaterial;
+    std::unordered_map<std::string, std::unique_ptr<Texture>> m_boxTexture;
     std::vector<std::unique_ptr<Light>> m_lights;
 
     int m_passCbvOffset = 0;

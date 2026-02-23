@@ -1,7 +1,8 @@
 #include "BoxRenderer.h"
 #include "GPUStructs.h"
 #include "Material.h"
-#include "DDSTextureLoader/DDSTextureLoader.h"
+#include "TextureLoader/DDSTextureLoader.h"
+#include "TextureLoader/WICTextureLoader12.h"
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
 
@@ -15,17 +16,23 @@ bool BoxRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND hwn
     if (!Renderer::Initialize(device, swapChain, hwnd))
         return false;
 
+    // Init COM
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
     // Initialize Poisson disk distribution
     m_poissonDisk = std::make_unique<PoissonDiskDistribution>(m_spawnRadius, m_minExtent, m_maxExtent, m_singleBoxPosition);
+
+    // Initialize the gltf model container
+    m_gltfModel = std::make_unique<tinygltf::Model>();
 
     // Reset command list for initialization
     device.GetCommandList()->Reset(device.GetCurrentCommandAllocator().Get(), nullptr);
 
-    LoadTextures(device);
     BuildRootSignature(device);
-    BuildDescriptorHeaps(device);
-    BuildShadersAndInputLayout();
     BuildBoxGeometry(device);
+    LoadTextures(device);
+    BuildDescriptorHeaps(device);
+    BuildShadersAndInputLayout();    
     BuildMaterials();
     BuildLights();
     BuildRenderItems();
@@ -65,19 +72,21 @@ void BoxRenderer::Shutdown()
     m_pso.Reset();
     m_rootSignature.Reset();
     m_cbvHeap.Reset();
-    m_boxTexture.reset();
+    for (auto& texture : m_boxTexture)
+    {
+        texture.second.reset();
+    }
 
     Renderer::Shutdown();
 }
 
 void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
 {
-    tinygltf::Model gltfModel;
     tinygltf::TinyGLTF loader;
     std::string err, warn;
 
     // Load the glTF model from file
-    if (!loader.LoadASCIIFromFile(&gltfModel, &err, &warn, "Models/sora/scene.gltf"))
+    if (!loader.LoadASCIIFromFile(m_gltfModel.get(), &err, &warn, "Models/sora/scene.gltf"))
     {
         throw std::runtime_error("Failed to load glTF model: " + err);
     }
@@ -93,14 +102,14 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
     UINT vertexOffset = 0;
     UINT indexOffset = 0;
 
-    for (const tinygltf::Mesh& mesh : gltfModel.meshes)
+    for (const tinygltf::Mesh& mesh : m_gltfModel->meshes)
     {
         // Process the loaded model data and create vertex/index buffers
         // Step 1: Get meshes
         OutputDebugStringA(("Loading mesh: " + mesh.name + "\n").c_str());
 
         size_t primitiveIndex = 0;
-    	size_t primitiveCount = mesh.primitives.size();
+        size_t primitiveCount = mesh.primitives.size();
         // Step 2: Get primitives from the mesh
         for (const tinygltf::Primitive& primitive : mesh.primitives)
         {
@@ -119,11 +128,11 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
 
             int positionAccessorIndex = positionAttrIt->second;
             // This accessor describes how to read the position data (e.g., type, count, etc.)
-            const tinygltf::Accessor& positionAccessor = gltfModel.accessors[positionAccessorIndex];
+            const tinygltf::Accessor& positionAccessor = m_gltfModel->accessors[positionAccessorIndex];
             // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
-            const tinygltf::BufferView& positionBufferView = gltfModel.bufferViews[positionAccessor.bufferView];
+            const tinygltf::BufferView& positionBufferView = m_gltfModel->bufferViews[positionAccessor.bufferView];
             // This buffer contains the actual binary data for the positions
-            const tinygltf::Buffer& positionBuffer = gltfModel.buffers[positionBufferView.buffer];
+            const tinygltf::Buffer& positionBuffer = m_gltfModel->buffers[positionBufferView.buffer];
 
             // Calculate the pointer to the position data
             const float* positionData = reinterpret_cast<const float*>(&positionBuffer.data[positionBufferView.byteOffset + positionAccessor.byteOffset]);
@@ -140,11 +149,11 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
 
             int normalAccessorIndex = normalAttrIt->second;
             // This accessor describes how to read the normal data (e.g., type, count, etc.)
-            const tinygltf::Accessor& normalAccessor = gltfModel.accessors[normalAccessorIndex];
+            const tinygltf::Accessor& normalAccessor = m_gltfModel->accessors[normalAccessorIndex];
             // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
-            const tinygltf::BufferView& normalBufferView = gltfModel.bufferViews[normalAccessor.bufferView];
+            const tinygltf::BufferView& normalBufferView = m_gltfModel->bufferViews[normalAccessor.bufferView];
             // This buffer contains the actual binary data for the normals
-            const tinygltf::Buffer& normalBuffer = gltfModel.buffers[normalBufferView.buffer];
+            const tinygltf::Buffer& normalBuffer = m_gltfModel->buffers[normalBufferView.buffer];
 
             // Calculate the pointer to the normal data
             const float* normalData = reinterpret_cast<const float*>(&normalBuffer.data[normalBufferView.byteOffset + normalAccessor.byteOffset]);
@@ -158,11 +167,11 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
 
             int textureAccessorIndex = texCoordAttrIt->second;
             // This accessor describes how to read the texture data (e.g., type, count, etc.)
-            const tinygltf::Accessor& textureAccessor = gltfModel.accessors[textureAccessorIndex];
+            const tinygltf::Accessor& textureAccessor = m_gltfModel->accessors[textureAccessorIndex];
             // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
-            const tinygltf::BufferView& textureBufferView = gltfModel.bufferViews[textureAccessor.bufferView];
+            const tinygltf::BufferView& textureBufferView = m_gltfModel->bufferViews[textureAccessor.bufferView];
             // This buffer contains the actual binary data for the textures
-            const tinygltf::Buffer& textureBuffer = gltfModel.buffers[textureBufferView.buffer];
+            const tinygltf::Buffer& textureBuffer = m_gltfModel->buffers[textureBufferView.buffer];
 
             // Calculate the pointer to the position data
             const float* textureData = reinterpret_cast<const float*>(&textureBuffer.data[textureBufferView.byteOffset + textureAccessor.byteOffset]);
@@ -184,11 +193,11 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
             if (primitive.indices >= 0)
             {
                 // This accessor describes how to read the index data (e.g., type, count, etc.)
-                const tinygltf::Accessor& indexAccessor = gltfModel.accessors[primitive.indices];
+                const tinygltf::Accessor& indexAccessor = m_gltfModel->accessors[primitive.indices];
                 // This buffer view describes the layout of the buffer (e.g., byte offset, stride, etc.)
-                const tinygltf::BufferView& indexBufferView = gltfModel.bufferViews[indexAccessor.bufferView];
+                const tinygltf::BufferView& indexBufferView = m_gltfModel->bufferViews[indexAccessor.bufferView];
                 // This buffer contains the actual binary data for the indices
-                const tinygltf::Buffer& indexBuffer = gltfModel.buffers[indexBufferView.buffer];
+                const tinygltf::Buffer& indexBuffer = m_gltfModel->buffers[indexBufferView.buffer];
 
                 size_t indexCount = indexAccessor.count;
                 OutputDebugStringA(("Index count: " + std::to_string(indexCount) + "\n").c_str());
@@ -291,17 +300,79 @@ void BoxRenderer::BuildBoxGeometry(D3D12Device& device)
 
 void BoxRenderer::LoadTextures(D3D12Device& device)
 {
-    auto woodCrateTexture = std::make_unique<Texture>("woodCrateTex", L"Textures/WoodCrate01.dds");
-    if (FAILED(DirectX::CreateDDSTextureFromFile12(device.GetDevice().Get(),
-        device.GetCommandList().Get(),
-        woodCrateTexture->Filename.c_str(),
-        woodCrateTexture->Resource,
-        woodCrateTexture->UploadHeap)))
+    size_t i = 0;
+    for (const tinygltf::Texture& texture : m_gltfModel->textures)
     {
-        throw std::runtime_error("Failed to load texture " + std::string(woodCrateTexture->Filename.begin(), woodCrateTexture->Filename.end()));
-    }
+        if (texture.source < 0 || texture.source >= m_gltfModel->images.size())
+        {
+            throw std::runtime_error("Texture source index out of bounds in gltf model");
+        }
 
-    m_boxTexture = std::move(woodCrateTexture);
+        const tinygltf::Image& image = m_gltfModel->images[texture.source];
+
+        // Upload image to GPU as a texture resource
+        std::string texturePath = "Models/sora/" + image.uri;
+        std::wstring imageUri{ texturePath.begin(), texturePath.end() };
+
+        std::string textureName = image.uri;
+
+        std::unique_ptr<Texture> gltfTexture = std::make_unique<Texture>(textureName, imageUri);
+
+        // WIC loader needs these additional outputs
+        std::unique_ptr<uint8_t[]> decodedData;
+        D3D12_SUBRESOURCE_DATA subresource = {};
+
+        // Load the texture from file
+        HRESULT hr = DirectX::LoadWICTextureFromFile(
+            device.GetDevice().Get(),
+            imageUri.c_str(),
+            gltfTexture->Resource.GetAddressOf(),  // Creates the texture resource
+            decodedData,                            // Stores decoded pixel data
+            subresource);                           // Contains upload info
+
+        if (FAILED(hr))
+        {
+            throw std::runtime_error("Failed to load texture " + std::string(imageUri.begin(), imageUri.end()));
+        }
+
+        // Now manually upload the texture data to GPU
+        const UINT64 uploadBufferSize = GetRequiredIntermediateSize(
+            gltfTexture->Resource.Get(), 0, 1);
+
+        // Create upload heap
+        CD3DX12_HEAP_PROPERTIES uploadHeapProps(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC uploadBufferDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
+
+        hr = device.GetDevice()->CreateCommittedResource(
+            &uploadHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &uploadBufferDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&gltfTexture->UploadHeap));
+
+        if (FAILED(hr))
+        {
+            throw std::runtime_error("Failed to create upload heap for texture");
+        }
+
+        // Copy data to the intermediate upload heap and schedule a copy 
+        // from the upload heap to the texture
+        UpdateSubresources(
+            device.GetCommandList().Get(),
+            gltfTexture->Resource.Get(),
+            gltfTexture->UploadHeap.Get(),
+            0, 0, 1, &subresource);
+
+        // Transition texture to PIXEL_SHADER_RESOURCE state
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            gltfTexture->Resource.Get(),
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        device.GetCommandList()->ResourceBarrier(1, &barrier);
+
+        m_boxTexture[textureName] = std::move(gltfTexture);
+    }
 }
 
 void BoxRenderer::BuildRootSignature(D3D12Device& device)
@@ -345,23 +416,28 @@ void BoxRenderer::BuildRootSignature(D3D12Device& device)
 
 void BoxRenderer::BuildDescriptorHeaps(D3D12Device& device)
 {
-    // Create shader resource view for the texture
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Format = m_boxTexture->Resource->GetDesc().Format;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.MipLevels = m_boxTexture->Resource->GetDesc().MipLevels;
-    srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+    for (const auto& [name, texture] : m_boxTexture)
+    {
+        OutputDebugStringA(("Creating descriptor heap for texture: " + name + "\n").c_str());
 
-    // Allocate descriptor from the SRV heap
-    device.GetSRVAllocator().Alloc(&m_boxTexture->SrvCpuHandle, &m_boxTexture->SrvGpuHandle);
+        // Create shader resource view for the texture
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Format = texture->Resource->GetDesc().Format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.MipLevels = texture->Resource->GetDesc().MipLevels;
+        srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 
-    // Create the SRV
-    device.GetDevice()->CreateShaderResourceView(
-        m_boxTexture->Resource.Get(),
-        &srvDesc,
-        m_boxTexture->SrvCpuHandle);
+        // Allocate descriptor from the SRV heap
+        device.GetSRVAllocator().Alloc(&texture->SrvCpuHandle, &texture->SrvGpuHandle);
+
+        // Create the SRV
+        device.GetDevice()->CreateShaderResourceView(
+            texture->Resource.Get(),
+            &srvDesc,
+            texture->SrvCpuHandle);
+    }
 }
 
 void BoxRenderer::BuildShadersAndInputLayout()
@@ -536,12 +612,20 @@ void BoxRenderer::BuildFrameContexts(D3D12Device& device)
 
 void BoxRenderer::BuildMaterials()
 {
-    std::unique_ptr<Material> boxMat = std::make_unique<Material>("woodCrate");
-    boxMat->DiffuseAlbedo = XMFLOAT4(Colors::White);
-    boxMat->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
-    boxMat->Roughness = 0.9f;
+    auto texture_it = m_boxTexture.begin();
+    auto material_it = m_gltfModel->materials.begin();
+    for (; material_it != m_gltfModel->materials.end() && texture_it != m_boxTexture.end(); ++material_it, ++texture_it)
+    {
+        const tinygltf::Material& material = *material_it;
+        const std::string& texture = texture_it->first;
+        std::unique_ptr<Material> gltfMaterial = std::make_unique<Material>(material.name);
+        gltfMaterial->DiffuseTextureName = texture;
+        gltfMaterial->DiffuseAlbedo = XMFLOAT4(Colors::White);
+        gltfMaterial->FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+        gltfMaterial->Roughness = 0.9f;
 
-    m_boxMaterial = std::move(boxMat);
+        m_boxMaterial[material.name] = std::move(gltfMaterial);
+    }
 }
 
 void BoxRenderer::BuildLights()
@@ -550,7 +634,7 @@ void BoxRenderer::BuildLights()
     light->Type = LightType::Directional;
     light->Color = { 0.8f, 0.8f, 0.8f };
     // light->FalloffStart = 1.0f;
-    light->Direction = { 0.57735f, -0.57735f, 0.57735f };
+    light->Direction = { 0.57735f, -0.57735f, -0.57735f };
     // light->FalloffEnd = 10.0f;
     // light->Position = {0.0f, 0.0f, 0.0f};
     // light->SpotLightIntensity = 64.0f;    
@@ -668,9 +752,6 @@ void BoxRenderer::Render(const ImVec4& clearColor)
     auto passCbvHandle = frameContext->PassCB->Resource();
     cmdList->SetGraphicsRootConstantBufferView(2, passCbvHandle->GetGPUVirtualAddress());
 
-    // Bind texture
-    cmdList->SetGraphicsRootDescriptorTable(3, m_boxTexture->SrvGpuHandle);
-
     // Draw the boxes
     UINT objCbvByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
     UINT matCbvByteSize = CalcConstantBufferByteSize(sizeof(MaterialConstants));
@@ -697,8 +778,12 @@ void BoxRenderer::Render(const ImVec4& clearColor)
             cmdList->IASetVertexBuffers(0, 1, &vbView);
             cmdList->IASetIndexBuffer(&ibView);
             cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            // TODO: Match each primitive to its corresponding texture/material for multiple meshes
+            auto texture_it = m_boxTexture.begin();
             for (const auto& [name, submesh] : m_boxGeo->DrawArgs)
             {
+                // Bind texture
+                cmdList->SetGraphicsRootDescriptorTable(3, (texture_it++)->second->SrvGpuHandle);
                 cmdList->DrawIndexedInstanced(
                     m_boxGeo->DrawArgs[name].IndexCount,
                     1, m_boxGeo->DrawArgs[name].StartIndexLocation, m_boxGeo->DrawArgs[name].BaseVertexLocation, 0);
@@ -720,8 +805,11 @@ void BoxRenderer::Render(const ImVec4& clearColor)
         cmdList->IASetVertexBuffers(0, 1, &vbView);
         cmdList->IASetIndexBuffer(&ibView);
         cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        auto texture_it = m_boxTexture.begin();
         for (const auto& [name, submesh] : m_boxGeo->DrawArgs)
         {
+            // Bind texture
+            cmdList->SetGraphicsRootDescriptorTable(3, (texture_it++)->second->SrvGpuHandle);
             cmdList->DrawIndexedInstanced(
                 m_boxGeo->DrawArgs[name].IndexCount,
                 1, m_boxGeo->DrawArgs[name].StartIndexLocation, m_boxGeo->DrawArgs[name].BaseVertexLocation, 0);
@@ -772,10 +860,11 @@ void BoxRenderer::Update(float deltaTime)
     frameContext->PassCB->CopyData(0, passConstants);
 
     // Update material constants
+    // TODO: Support multiple materials if we have multiple boxes with different materials in the future
     MaterialConstants matConstants;
-    matConstants.DiffuseAlbedo = m_boxMaterial->DiffuseAlbedo;
-    matConstants.FresnelR0 = m_boxMaterial->FresnelR0;
-    matConstants.Roughness = m_boxMaterial->Roughness;
+    matConstants.DiffuseAlbedo = XMFLOAT4(Colors::White);
+    matConstants.FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
+    matConstants.Roughness = 0.9f;
 
     if (m_usePoissonDisk)
     {

@@ -14,6 +14,7 @@ public:
 
 	std::string Name;
 
+	std::string DiffuseTextureName;
 	XMFLOAT4 DiffuseAlbedo;
 	XMFLOAT3 FresnelR0;
 	float Roughness;
