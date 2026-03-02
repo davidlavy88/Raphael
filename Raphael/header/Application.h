@@ -18,6 +18,9 @@ public:
     void Run();
     LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+    // Test abstract renderer interface
+    void TestRendererInterface();
+
 private:
     bool CreateAppWindow();
     void DestroyAppWindow();
@@ -34,5 +37,3 @@ private:
     BoxRenderer m_renderer;
 #endif
 };
-
-

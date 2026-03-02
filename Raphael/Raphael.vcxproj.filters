@@ -83,6 +83,9 @@
     </ClCompile>
     <ClCompile Include="Utilities\TextureLoader\DDSTextureLoader.cpp" />
     <ClCompile Include="Utilities\TextureLoader\WICTextureLoader12.cpp" />
+    <ClCompile Include="DX12\CommandList.cpp" />
+    <ClCompile Include="DX12\DeviceDx12.cpp" />
+    <ClCompile Include="DX12\ResourceDx12.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -172,6 +175,12 @@
     <ClInclude Include="Utilities\tinygltf\tiny_gltf.h" />
     <ClInclude Include="Utilities\TextureLoader\DDSTextureLoader.h" />
     <ClInclude Include="Utilities\TextureLoader\WICTextureLoader12.h" />
+    <ClInclude Include="DX12\CommandList.h" />
+    <ClInclude Include="DX12\Constants.h" />
+    <ClInclude Include="DX12\DeviceDx12.h" />
+    <ClInclude Include="DX12\ObjectDescriptors.h" />
+    <ClInclude Include="DX12\Interfaces.h" />
+    <ClInclude Include="DX12\ResourceDx12.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

@@ -5,11 +5,18 @@
 #include "imgui/backends/imgui_impl_dx12.h"
 #include <imgui_internal.h>
 
+#include "../DX12/DeviceDx12.h"
+#include "../DX12/ResourceDx12.h"
+#include "../DX12/CommandList.h"
+
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 bool Application::Initialize()
 {
+    // Add test code for renderer interface
+    TestRendererInterface();
+
     // Make process DPI aware and obtain main monitor scale
     ImGui_ImplWin32_EnableDpiAwareness();
     m_dpiScale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
@@ -275,4 +282,38 @@ LRESULT WINAPI Application::StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         return app->HandleMessage(hWnd, msg, wParam, lParam);
 
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+
+void Application::TestRendererInterface()
+{
+    // This function can be used to test the abstract renderer interface
+    using namespace raphael::graphics;
+
+    DeviceDesc deviceDesc = {};
+    deviceDesc.enableDebugLayer = true;
+
+    std::unique_ptr<IDevice> device = CreateDevice(deviceDesc);
+
+    // Create buffer resource
+    ResourceDesc bufferDesc = {};
+    bufferDesc.type = ResourceDesc::ResourceType::Buffer;
+    bufferDesc.usage = ResourceDesc::Usage::Upload;
+    bufferDesc.width = 1024;
+
+    std::unique_ptr<IResource> bufferResource;
+    bufferResource = device->createResource(bufferDesc);
+
+    // Create command list
+    CommandListDesc cmdListDesc = {};
+    std::unique_ptr<CommandList> commandList;
+    commandList = device->createCommandList(cmdListDesc);
+
+    // Test command list recording
+    commandList->begin();
+    commandList->end();
+
+    // Execute command list
+    device->executeCommandList(commandList.get());
+    device->waitForGpu();
+
 }

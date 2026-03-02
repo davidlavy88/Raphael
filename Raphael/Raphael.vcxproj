@@ -76,6 +76,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DX12\CommandList.cpp" />
+    <ClCompile Include="DX12\DeviceDx12.cpp" />
+    <ClCompile Include="DX12\ResourceDx12.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
     <ClCompile Include="source\Material.cpp" />
@@ -102,6 +105,11 @@
     <ClCompile Include="Utilities\TextureLoader\WICTextureLoader12.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DX12\CommandList.h" />
+    <ClInclude Include="DX12\Constants.h" />
+    <ClInclude Include="DX12\DeviceDx12.h" />
+    <ClInclude Include="DX12\ObjectDescriptors.h" />
+    <ClInclude Include="DX12\Interfaces.h" />
     <ClInclude Include="header\Camera.h" />
     <ClInclude Include="header\Device.h" />
     <ClInclude Include="header\DescriptorHeapAllocator.h" />
@@ -120,6 +128,7 @@
     <ClInclude Include="header\Renderer.h" />
     <ClInclude Include="header\GPUStructs.h" />
     <ClInclude Include="header\UploadBuffer.h" />
+    <ClInclude Include="DX12\ResourceDx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />
