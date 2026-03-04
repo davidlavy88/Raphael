@@ -2,7 +2,7 @@
 #include "Interfaces.h"
 #include "../header/D3D12CommonHeaders.h"
 
-namespace raphael::graphics
+namespace raphael
 {
     class DeviceDx12 : public IDevice
     {
@@ -27,10 +27,10 @@ namespace raphael::graphics
         void createFence();
 
     private:
-        DeviceDesc m_desc;
+        DeviceDesc m_desc = {};
         ComPtr<ID3D12Device> m_nativeDevice;
         ComPtr<ID3D12CommandQueue> m_commandQueue;
-        ComPtr<ID3D12Fence> m_fence = nullptr;
+        ComPtr<ID3D12Fence> m_fence;
         HANDLE m_fenceEvent = nullptr;
         UINT64 m_fenceLastSignaled = 0;
 
@@ -41,4 +41,4 @@ namespace raphael::graphics
         return std::make_unique<DeviceDx12>(desc);
     }
 
-} // namespace raphael::graphics
+} // namespace raphael

@@ -287,7 +287,7 @@ LRESULT WINAPI Application::StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 void Application::TestRendererInterface()
 {
     // This function can be used to test the abstract renderer interface
-    using namespace raphael::graphics;
+    using namespace raphael;
 
     DeviceDesc deviceDesc = {};
     deviceDesc.enableDebugLayer = true;

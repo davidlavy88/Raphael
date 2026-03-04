@@ -1,7 +1,7 @@
 #include "CommandList.h"
 #include "DeviceDx12.h"
 
-namespace raphael::graphics
+namespace raphael
 {
     CommandList::CommandList(DeviceDx12* device, const CommandListDesc& desc)
         : m_device(device), m_desc(desc), m_isRecording(false)
@@ -64,4 +64,4 @@ namespace raphael::graphics
 
         m_isRecording = false;
     }
-}
+} // namespace raphael

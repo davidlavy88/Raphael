@@ -2,7 +2,7 @@
 #include "ObjectDescriptors.h"
 #include "../header/D3D12CommonHeaders.h"
 
-namespace raphael::graphics
+namespace raphael
 {
     class DeviceDx12;
     class IResource;
@@ -22,11 +22,11 @@ namespace raphael::graphics
         ID3D12CommandAllocator* getCommandAllocator() const { return m_commandAllocator.Get(); }
 
     private:
-        CommandListDesc m_desc;
-        DeviceDx12* m_device;
+        CommandListDesc m_desc = {};
+        DeviceDx12* m_device = nullptr;
         ComPtr<ID3D12GraphicsCommandList> m_commandList;
         ComPtr<ID3D12CommandAllocator> m_commandAllocator;
-        bool m_isRecording; // Track recording state
+        bool m_isRecording = false; // Track recording state
 
     };
-} // namespace raphael::graphics
+} // namespace raphael

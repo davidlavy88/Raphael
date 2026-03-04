@@ -2,7 +2,7 @@
 #include "Interfaces.h"
 #include "DeviceDx12.h"
 
-namespace raphael::graphics
+namespace raphael
 {
     class ResourceDx12 : public IResource
     {
@@ -21,8 +21,8 @@ namespace raphael::graphics
         void createTexture2D(const ResourceDesc& desc);
 
     private:
-        DeviceDx12* m_device;
-        ResourceDesc m_desc;
+        DeviceDx12* m_device = nullptr;
+        ResourceDesc m_desc = {};
         ComPtr<ID3D12Resource> m_resource;
     };
-} // namespace raphael::graphics
+} // namespace raphael

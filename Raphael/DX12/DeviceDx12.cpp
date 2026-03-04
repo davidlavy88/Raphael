@@ -1,7 +1,7 @@
 #include "DeviceDx12.h"
 #include "ResourceDx12.h"
 
-namespace raphael::graphics
+namespace raphael
 {
     DeviceDx12::DeviceDx12(const DeviceDesc& desc)
         : m_desc(desc)
@@ -109,4 +109,4 @@ namespace raphael::graphics
             ::WaitForSingleObject(m_fenceEvent, INFINITE);
         }
     }
-}
+} // namespace raphael

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace raphael::graphics
+namespace raphael
 {
     enum RenderMode
     {
@@ -26,4 +26,4 @@ namespace raphael::graphics
     {
         Direct
     };
-} // namespace raphael::graphics
+} // namespace raphael

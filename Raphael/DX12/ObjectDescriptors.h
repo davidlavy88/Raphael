@@ -3,7 +3,7 @@
 #include <dxgiformat.h>
 #include "Constants.h"
 
-namespace raphael::graphics
+namespace raphael
 {
 
     // Device initialization
@@ -33,8 +33,7 @@ namespace raphael::graphics
 
     struct CommandListDesc {
         const char* debugName = nullptr;
-
         CommandListType type = CommandListType::Direct;
     };
-} // namespace raphael::graphics
+} // namespace raphael
 

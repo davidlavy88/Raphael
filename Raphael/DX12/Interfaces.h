@@ -2,7 +2,7 @@
 #include "ObjectDescriptors.h"
 #include "CommandList.h"
 
-namespace raphael::graphics
+namespace raphael
 {
     class IResource;
 
@@ -27,4 +27,4 @@ namespace raphael::graphics
         virtual const ResourceDesc& getDesc() const = 0;
         virtual ~IResource() = default;
     };
-}
+} // namespace raphael
