@@ -92,6 +92,7 @@
     <ClCompile Include="source\BoxRenderer.cpp" />
     <ClCompile Include="source\D3D12Util.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
+    <ClCompile Include="source\TestApp.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="Utilities\imgui\imgui.cpp" />
@@ -129,6 +130,7 @@
     <ClInclude Include="header\GPUStructs.h" />
     <ClInclude Include="header\UploadBuffer.h" />
     <ClInclude Include="DX12\ResourceDx12.h" />
+    <ClInclude Include="header\TestApp.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />
