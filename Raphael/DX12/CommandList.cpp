@@ -1,5 +1,8 @@
 #include "CommandList.h"
 #include "DeviceDx12.h"
+#include "PipelineDx12.h"
+#include "DescriptorHeapDx12.h"
+#include "RootSignatureDx12.h"
 
 namespace raphael
 {
@@ -63,5 +66,22 @@ namespace raphael
         }
 
         m_isRecording = false;
+    }
+
+    void CommandList::setPipeline(PipelineDx12* pipeline)
+    {
+        ID3D12PipelineState* pipelineState = pipeline->getNativePipelineState();
+        m_commandList->SetPipelineState(pipelineState);
+    }
+
+    void CommandList::setDescriptorHeaps(DescriptorHeapDx12* heap, uint32_t count)
+    {
+        ID3D12DescriptorHeap* descriptorHeap = heap->getNativeHeap();
+        m_commandList->SetDescriptorHeaps(count, &descriptorHeap);
+    }
+
+    void CommandList::setGraphicsRootSignature(RootSignatureDx12* rootSignature)
+    {
+        m_commandList->SetGraphicsRootSignature(rootSignature->getNativeDevice());
     }
 } // namespace raphael

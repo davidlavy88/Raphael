@@ -1,9 +1,12 @@
 #pragma once
-#include "Interfaces.h"
-#include "../header/D3D12CommonHeaders.h"
+#include "D3D12CommonHeaders.h"
+#include "DescriptorHeapDx12.h"
+#include "ResourceDx12.h"
+#include "PipelineDx12.h"
 
 namespace raphael
 {
+
     class DeviceDx12 : public IDevice
     {
     public:
@@ -12,10 +15,12 @@ namespace raphael
 
         // IDevice interface implementation
         const DeviceDesc& getDesc() const override { return m_desc; }
-        std::unique_ptr<IResource> createResource(const ResourceDesc& desc) override;
-        std::unique_ptr<CommandList> createCommandList(const CommandListDesc& desc) override;
-        void executeCommandList(CommandList* commandList) override;
-        void waitForGpu() override;
+        std::unique_ptr<ResourceDx12> createResource(const ResourceDesc& desc);
+        std::unique_ptr<CommandList> createCommandList(const CommandListDesc& desc);
+        std::unique_ptr<PipelineDx12> createPipeline(const PipelineDesc& desc);
+        std::unique_ptr<DescriptorHeapDx12> createDescriptorHeap(const DescriptorHeapDesc& desc);
+        void executeCommandList(CommandList* commandList);
+        void waitForGpu();
 
         // DX12 specific methods
         ID3D12Device* getNativeDevice() const { return m_nativeDevice.Get(); }
@@ -36,7 +41,7 @@ namespace raphael
 
     };
 
-    inline std::unique_ptr<IDevice> CreateDevice(const DeviceDesc& desc)
+    inline std::unique_ptr<DeviceDx12> CreateDevice(const DeviceDesc& desc)
     {
         return std::make_unique<DeviceDx12>(desc);
     }

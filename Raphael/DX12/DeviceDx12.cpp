@@ -1,5 +1,4 @@
 #include "DeviceDx12.h"
-#include "ResourceDx12.h"
 
 namespace raphael
 {
@@ -16,7 +15,11 @@ namespace raphael
         waitForGpu();
         
         // Release fence event
-        if (m_fenceEvent) { CloseHandle(m_fenceEvent); m_fenceEvent = nullptr; }
+        if (m_fenceEvent) 
+        { 
+            CloseHandle(m_fenceEvent); 
+            m_fenceEvent = nullptr; 
+        }
     }
 
     void DeviceDx12::initializeDevice(const DeviceDesc& desc)
@@ -82,7 +85,7 @@ namespace raphael
         m_fenceLastSignaled = 0;
     }
 
-    std::unique_ptr<IResource> DeviceDx12::createResource(const ResourceDesc& desc)
+    std::unique_ptr<ResourceDx12> DeviceDx12::createResource(const ResourceDesc& desc)
     {
         // *outResource = new ResourceDx12(this, desc);
         return std::make_unique<ResourceDx12>(this, desc);
@@ -92,6 +95,16 @@ namespace raphael
     {
         //*outCommandList = new CommandList(this, desc);
         return std::make_unique<CommandList>(this, desc);
+    }
+
+    std::unique_ptr<PipelineDx12> DeviceDx12::createPipeline(const PipelineDesc& desc)
+    {
+        return std::make_unique<PipelineDx12>(this, desc);
+    }
+
+    std::unique_ptr<DescriptorHeapDx12> DeviceDx12::createDescriptorHeap(const DescriptorHeapDesc& desc)
+    {
+        return std::make_unique<DescriptorHeapDx12>(this, desc);
     }
 
     void DeviceDx12::executeCommandList(CommandList* commandList)

@@ -50,7 +50,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -67,7 +67,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -76,9 +76,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DX12\DescriptorHeapDx12.cpp" />
     <ClCompile Include="DX12\CommandList.cpp" />
     <ClCompile Include="DX12\DeviceDx12.cpp" />
     <ClCompile Include="DX12\ResourceDx12.cpp" />
+    <ClCompile Include="DX12\PipelineDx12.cpp" />
+    <ClCompile Include="DX12\ShaderDx12.cpp" />
+    <ClCompile Include="DX12\RootSignatureDx12.cpp" />
+    <ClCompile Include="DX12\InputLayoutDx12.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
     <ClCompile Include="source\Material.cpp" />
@@ -106,6 +111,7 @@
     <ClCompile Include="Utilities\TextureLoader\WICTextureLoader12.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DX12\DescriptorHeapDx12.h" />
     <ClInclude Include="DX12\CommandList.h" />
     <ClInclude Include="DX12\Constants.h" />
     <ClInclude Include="DX12\DeviceDx12.h" />
@@ -131,6 +137,10 @@
     <ClInclude Include="header\UploadBuffer.h" />
     <ClInclude Include="DX12\ResourceDx12.h" />
     <ClInclude Include="header\TestApp.h" />
+    <ClInclude Include="DX12\PipelineDx12.h" />
+    <ClInclude Include="DX12\ShaderDx12.h" />
+    <ClInclude Include="DX12\RootSignatureDx12.h" />
+    <ClInclude Include="DX12\InputLayoutDx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />
