@@ -10,6 +10,7 @@ namespace raphael
     {
     public:
         ResourceDx12(DeviceDx12* device, const ResourceDesc& desc);
+        ResourceDx12(DeviceDx12* device, ID3D12Resource* resource);
         ~ResourceDx12() = default;
 
         // IResource interface
@@ -17,15 +18,17 @@ namespace raphael
 
         // DX12 specific methods
         ID3D12Resource* getNativeResource() const { return m_resource.Get(); }
-
-    private:
-        void createBuffer(const ResourceDesc& desc);
-        void createTexture2D(const ResourceDesc& desc);
+        bool map(void** data);
+        void unmap();
 
         void initAsCbv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
         void initAsSrv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
         void initAsRtv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
         void initAsDsv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
+
+    private:
+        void createBuffer(const ResourceDesc& desc);
+        void createTexture2D(const ResourceDesc& desc);
 
     private:
         DeviceDx12* m_device = nullptr;

@@ -1,5 +1,7 @@
 #include "ResourceDx12.h"
 #include "DeviceDx12.h"
+#include "UtilDx12.h"
+#include "UtilDx12.h"
 
 namespace raphael
 {
@@ -16,6 +18,36 @@ namespace raphael
             break;
         default:
             throw std::runtime_error("Unsupported resource type");
+        }
+    }
+
+    ResourceDx12::ResourceDx12(DeviceDx12* device, ID3D12Resource* resource)
+        : m_device(device)
+    {
+        // ComPtr will automatically AddRef the resource, so we can just assign it
+        m_resource.Attach(resource);
+        // Retrieve resource description to fill m_desc
+        D3D12_RESOURCE_DESC resDesc = m_resource->GetDesc();
+        m_desc.width = static_cast<uint32_t>(resDesc.Width);
+        m_desc.height = resDesc.Height;
+        // TODO: Assuming only swapchain use for now. Determine resource type based on dimension in the future (switch case)
+        m_desc.type = ResourceDesc::ResourceType::Texture2D;
+    }
+
+    bool ResourceDx12::map(void** data)
+    {
+        if (FAILED(m_resource->Map(0, nullptr, data)))
+        {
+            return false;
+        }
+        return true;
+    }
+
+    void ResourceDx12::unmap()
+    {
+        if (m_resource != nullptr)
+        {
+            m_resource->Unmap(0, nullptr);
         }
     }
 
@@ -37,7 +69,13 @@ namespace raphael
             break;
         }
 
-        CD3DX12_RESOURCE_DESC resDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.width);
+        // Translate bind flags to D3D12 resource flags
+        // Check for UAV support (usually needed for compute buffers or structured buffers that will be written to by shaders)
+        D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+        if (hasFlag(desc.bindFlags, ResourceBindFlags::UnorderedAccess))
+            resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        CD3DX12_RESOURCE_DESC resDesc = CD3DX12_RESOURCE_DESC::Buffer(desc.width, resourceFlags);
         if (FAILED(m_device->getNativeDevice()->CreateCommittedResource(
             &heapProp,
             D3D12_HEAP_FLAG_NONE,
@@ -54,18 +92,58 @@ namespace raphael
     void ResourceDx12::createTexture2D(const ResourceDesc& desc)
     {
         CD3DX12_HEAP_PROPERTIES heapProp(D3D12_HEAP_TYPE_DEFAULT);
+
+        // Translate bind flags to D3D12 resource flags
+        D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
+        if (hasFlag(desc.bindFlags, ResourceBindFlags::RenderTarget))
+            resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+        if (hasFlag(desc.bindFlags, ResourceBindFlags::DepthStencil))
+            resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+        if (hasFlag(desc.bindFlags, ResourceBindFlags::UnorderedAccess))
+            resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
         CD3DX12_RESOURCE_DESC resDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-            desc.format,
+            convertFormatToDXGI(desc.format),
             desc.width,
-            desc.height
+            desc.height,
+            1, 0, 1, 0,
+            resourceFlags
         ); // Default values for other fields like MipLevels, SampleDesc, etc. can be set as needed. For now, no mipmaps
+
+        // For textures that will be used as render targets or depth stencils, we should specify an optimized clear value. 
+        // This is optional but can improve performance when clearing these resources.
+        D3D12_CLEAR_VALUE* pOptClear = nullptr;
+        D3D12_CLEAR_VALUE optClear;
+        if (hasFlag(desc.bindFlags, ResourceBindFlags::RenderTarget))
+        {
+            optClear.Format = convertFormatToDXGI(desc.format);
+            optClear.Color[0] = 0.0f; // Clear to black
+            optClear.Color[1] = 0.0f;
+            optClear.Color[2] = 0.0f;
+            optClear.Color[3] = 1.0f; // Full alpha
+            pOptClear = &optClear;
+        }
+        else if (hasFlag(desc.bindFlags, ResourceBindFlags::DepthStencil))
+        {
+            optClear.Format = convertFormatToDXGI(desc.format);
+            optClear.DepthStencil.Depth = 1.0f; // Clear depth to far plane
+            optClear.DepthStencil.Stencil = 0; // Clear stencil to 0
+            pOptClear = &optClear;
+        }
+
+        // Choose initial state based on bind flags. 
+        // For simplicity, we will use COMMON for most resources
+        D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
+        // If the resource will be used as a depth stencil, we can start it in the DEPTH_WRITE state to optimize for depth clears and writes.
+        if (hasFlag(desc.bindFlags, ResourceBindFlags::DepthStencil))
+            initialState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
         if (FAILED(m_device->getNativeDevice()->CreateCommittedResource(
             &heapProp,
             D3D12_HEAP_FLAG_NONE,
             &resDesc,
-            D3D12_RESOURCE_STATE_COMMON,
-            nullptr,
+            initialState,
+            pOptClear,
             IID_PPV_ARGS(&m_resource)
         )))
         {
@@ -94,7 +172,7 @@ namespace raphael
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Texture2D.MipLevels = 1; // Assuming no mipmaps for simplicity
-            srvDesc.Format = m_desc.format;
+            srvDesc.Format = convertFormatToDXGI(m_desc.format);
             m_device->getNativeDevice()->CreateShaderResourceView(m_resource.Get(), &srvDesc, handle);
         }
     }
@@ -102,10 +180,20 @@ namespace raphael
     void ResourceDx12::initAsRtv(D3D12_CPU_DESCRIPTOR_HANDLE handle)
     {
         // TODO: Implement RTV creation based on resource type and format
+        if (m_desc.type == ResourceDesc::ResourceType::Texture2D)
+        {
+            // nullptr as pDesc lets D3D12 infer the view from the resource desc.
+            // WARNING: Use an explicit desc if typeless formats or specific mip/array targeting is needed.
+            m_device->getNativeDevice()->CreateRenderTargetView(m_resource.Get(), nullptr, handle);
+        }
     }
 
     void ResourceDx12::initAsDsv(D3D12_CPU_DESCRIPTOR_HANDLE handle)
     {
         // TODO: Implement DSV creation based on resource type and format. Note that only textures with depth formats can be used as DSVs, so you may want to add validation here.
+        // nullptr as pDesc lets D3D12 infer the view from the resource desc. 
+        // WARNING: Use an explicit desc if typeless formats or specific mip/array targeting is needed.
+        m_device->getNativeDevice()->CreateDepthStencilView(m_resource.Get(), nullptr, handle);
+
     }
 } // namespace raphael

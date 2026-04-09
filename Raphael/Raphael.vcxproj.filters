@@ -92,6 +92,7 @@
     <ClCompile Include="DX12\ShaderDx12.cpp" />
     <ClCompile Include="DX12\RootSignatureDx12.cpp" />
     <ClCompile Include="DX12\InputLayoutDx12.cpp" />
+    <ClCompile Include="DX12\SwapChainDx12.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -193,6 +194,10 @@
     <ClInclude Include="DX12\ShaderDx12.h" />
     <ClInclude Include="DX12\RootSignatureDx12.h" />
     <ClInclude Include="DX12\InputLayoutDx12.h" />
+    <ClInclude Include="DX12\SwapChainDx12.h" />
+    <ClInclude Include="DX12\FrameContext.h" />
+    <ClInclude Include="DX12\UploadBuffer.h" />
+    <ClInclude Include="DX12\UtilDx12.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

@@ -22,10 +22,8 @@ namespace raphael
             const std::string& entrypoint,
             const std::string& target);
 
-    public:
-        std::unordered_map<ShaderDesc::ShaderType, ComPtr<ID3DBlob>> m_shaderObjs;
-
     private:
+        std::unordered_map<ShaderDesc::ShaderType, ComPtr<ID3DBlob>> m_shaderObjs;
         ShaderDesc m_desc = {};
     };
 }

@@ -3,6 +3,7 @@
 #include "DescriptorHeapDx12.h"
 #include "ResourceDx12.h"
 #include "PipelineDx12.h"
+#include "SwapChainDx12.h"
 
 namespace raphael
 {
@@ -19,8 +20,13 @@ namespace raphael
         std::unique_ptr<CommandList> createCommandList(const CommandListDesc& desc);
         std::unique_ptr<PipelineDx12> createPipeline(const PipelineDesc& desc);
         std::unique_ptr<DescriptorHeapDx12> createDescriptorHeap(const DescriptorHeapDesc& desc);
+        std::unique_ptr<SwapChainDx12> createSwapChain(DescriptorHeapDx12* rtvHeap, const SwapChainDesc& desc);
         void executeCommandList(CommandList* commandList);
-        void waitForGpu();
+        void waitForGpu(); // TODO: Probably don't need this method
+        ComPtr<ID3D12CommandAllocator> createCommandAllocator();
+        void signalFence(UINT64 value);
+        void waitForFence(UINT64 value);
+        UINT64 getNextFenceValue() { return ++m_fenceLastSignaled; }
 
         // DX12 specific methods
         ID3D12Device* getNativeDevice() const { return m_nativeDevice.Get(); }
@@ -40,10 +46,4 @@ namespace raphael
         UINT64 m_fenceLastSignaled = 0;
 
     };
-
-    inline std::unique_ptr<DeviceDx12> CreateDevice(const DeviceDesc& desc)
-    {
-        return std::make_unique<DeviceDx12>(desc);
-    }
-
 } // namespace raphael

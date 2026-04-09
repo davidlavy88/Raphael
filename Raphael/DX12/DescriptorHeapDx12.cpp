@@ -48,7 +48,8 @@ namespace raphael
 
         m_descriptorSize = m_device->getNativeDevice()->GetDescriptorHandleIncrementSize(m_heapType);
         m_descriptorHandle.cpuHandle = m_heap->GetCPUDescriptorHandleForHeapStart();
-        m_descriptorHandle.gpuHandle = m_heap->GetGPUDescriptorHandleForHeapStart();
+        if (m_desc.shaderVisible)
+            m_descriptorHandle.gpuHandle = m_heap->GetGPUDescriptorHandleForHeapStart();
     }
 
     // TODO: Handle RTV vs DSV since DSV only has one handle vs RTV which can have multiple
@@ -67,14 +68,20 @@ namespace raphael
         UINT index = m_freeIndices.back();
         m_freeIndices.pop_back();
         outHandle->cpuHandle.ptr = m_descriptorHandle.cpuHandle.ptr + (index * m_descriptorSize);
-        outHandle->gpuHandle.ptr = m_descriptorHandle.gpuHandle.ptr + (index * m_descriptorSize);
+        if (m_desc.shaderVisible)
+            outHandle->gpuHandle.ptr = m_descriptorHandle.gpuHandle.ptr + (index * m_descriptorSize);
+        else
+            outHandle->gpuHandle.ptr = 0;
     }
 
     void DescriptorHeapDx12::FreeHeap(const DescriptorHandle& handle)
     {
         UINT cpuIndex = static_cast<UINT>((handle.cpuHandle.ptr - m_descriptorHandle.cpuHandle.ptr) / m_descriptorSize);
-        UINT gpuIndex = static_cast<UINT>((handle.gpuHandle.ptr - m_descriptorHandle.gpuHandle.ptr) / m_descriptorSize);
-        assert(cpuIndex == gpuIndex && "CPU and GPU descriptor indices do not match!");
+        if (m_desc.shaderVisible)
+        {
+            UINT gpuIndex = static_cast<UINT>((handle.gpuHandle.ptr - m_descriptorHandle.gpuHandle.ptr) / m_descriptorSize);
+            assert(cpuIndex == gpuIndex && "CPU and GPU descriptor indices do not match!");
+        }
         m_freeIndices.push_back(cpuIndex);
     }
 }

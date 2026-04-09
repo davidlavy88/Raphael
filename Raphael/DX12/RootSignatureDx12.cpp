@@ -9,10 +9,8 @@ namespace raphael
         // Convert RootSignatureTableLayoutDescs to CD3DX12_ROOT_PARAMETERs and store them in m_rootParameters
         for (const auto& tableLayoutDesc : desc.tableLayoutDescs)
         {
-            // std::vector<CD3DX12_DESCRIPTOR_RANGE> descriptorRanges;
             size_t numRanges = tableLayoutDesc.rangeDescs.size();
             size_t rangeIndex = 0;
-            // std::vector<CD3DX12_ROOT_PARAMETER> slotRootParameter(numRanges);
             m_rootParameters.reserve(m_rootParameters.size() + numRanges);
             for (const auto& rangeDesc : tableLayoutDesc.rangeDescs)
             {
@@ -43,17 +41,7 @@ namespace raphael
                     default:
                         throw std::runtime_error("Unknown root signature range type");
                 }
-                /*descriptorRange.NumDescriptors = static_cast<UINT>(rangeDesc.numParameters);
-                descriptorRange.BaseShaderRegister = rangeDesc.shaderRegister;
-                descriptorRange.RegisterSpace = rangeDesc.registerSpace;
-                descriptorRanges.push_back(descriptorRange);*/
             }
-            /*m_rootParameters.emplace_back();
-            CD3DX12_ROOT_PARAMETER& rootParam = m_rootParameters.back();
-            rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            rootParam.ShaderVisibility = static_cast<D3D12_SHADER_VISIBILITY>(tableLayoutDesc.visibility);
-            rootParam.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(descriptorRanges.size());
-            rootParam.DescriptorTable.pDescriptorRanges = descriptorRanges.data();*/
         }
     }
 

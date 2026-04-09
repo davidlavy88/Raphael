@@ -18,51 +18,61 @@ static XMFLOAT4X4 XM4x4Identity()
 
 struct VertexShaderInput
 {
-	VertexShaderInput() {}
-	VertexShaderInput(const XMFLOAT3& pos, const XMFLOAT3& normal, const XMFLOAT2& texC)
-		: Pos(pos)
-		, Normal(normal)
-		, TexC(texC)
-	{}
+    VertexShaderInput() {}
+    VertexShaderInput(const XMFLOAT3& pos, const XMFLOAT3& normal, const XMFLOAT2& texC)
+        : Pos(pos)
+        , Normal(normal)
+        , TexC(texC)
+    {}
 
-	XMFLOAT3 Pos;
-	XMFLOAT3 Normal;
-	XMFLOAT2 TexC;
+    XMFLOAT3 Pos;
+    XMFLOAT3 Normal;
+    XMFLOAT2 TexC;
 };
 
 struct LightConstants
 {
-	XMFLOAT3 Color = { 1.0f, 1.0f, 1.0f };		// Light color
-	float FalloffStart = 1.0f;                  // point/spot light only
-	XMFLOAT3 Direction = { 0.0f, -1.0f, 0.0f};	// directional/spot light only
-	float FalloffEnd = 10.0f;                   // point/spot light only
-	XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f};	// point/spot light only
-	float SpotLightIntensity = 64.0f;           // spot light only
+    XMFLOAT3 Color = { 1.0f, 1.0f, 1.0f };		// Light color
+    float FalloffStart = 1.0f;                  // point/spot light only
+    XMFLOAT3 Direction = { 0.0f, -1.0f, 0.0f};	// directional/spot light only
+    float FalloffEnd = 10.0f;                   // point/spot light only
+    XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f};	// point/spot light only
+    float SpotLightIntensity = 64.0f;           // spot light only
 };
 
 struct ObjectConstants
 {
-	XMFLOAT4X4 World = XM4x4Identity();
-	XMFLOAT4X4 TexTransform = XM4x4Identity();
+    XMFLOAT4X4 World = XM4x4Identity();
+    XMFLOAT4X4 TexTransform = XM4x4Identity();
 };
 
 struct PassConstants
 {
-	XMFLOAT4X4 View = XM4x4Identity();
-	XMFLOAT4X4 Proj = XM4x4Identity();
-	XMFLOAT4X4 ViewProj = XM4x4Identity();
+    XMFLOAT4X4 View = XM4x4Identity();
+    XMFLOAT4X4 Proj = XM4x4Identity();
+    XMFLOAT4X4 ViewProj = XM4x4Identity();
 
-	XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
-	float PassPad1 = 0.0f;
+    XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
+    float PassPad1 = 0.0f;
 
-	XMFLOAT4 AmbientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
+    XMFLOAT4 AmbientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-	LightConstants Lights[MAX_LIGHTS];
+    LightConstants Lights[MAX_LIGHTS];
 };
 
 struct MaterialConstants
 {
-	XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
-	XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f};
-	float Roughness = 0.25f;
+    XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+    XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f};
+    float Roughness = 0.25f;
 };
+
+namespace raphael
+{
+    // Simple struct for test rendering
+    struct SimpleVertex
+    {
+        XMFLOAT3 Pos;
+        XMFLOAT4 Color;
+    };
+}

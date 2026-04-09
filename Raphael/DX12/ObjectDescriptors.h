@@ -26,8 +26,50 @@ namespace raphael
         Usage usage = Usage::Default;
         UINT64 width = 0; // For buffers, this is the byte size. For textures, this is the width in pixels.
         UINT height = 0; // Only used for textures, ignored for buffers
-        DXGI_FORMAT format = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN; // TODO: make this generic not tied to DXGI
-        UINT bindFlags = 0; // SRV, RTV, DSV, etc
+        ResourceFormat format = ResourceFormat::Unknown; // TODO: make this generic not tied to DXGI
+        ResourceBindFlags bindFlags = ResourceBindFlags::None;
+    };
+
+    struct InputElementDesc {
+        InputElementSemantic semanticName = InputElementSemantic::Position;
+        UINT semanticIndex = 0;
+        ResourceFormat format = ResourceFormat::R32G32B32_FLOAT;
+        UINT inputSlot = 0;
+        UINT alignedByteOffset = 0;
+
+        // Builders
+        static InputElementDesc setAsPosition(UINT semanticIndex, ResourceFormat format, UINT inputSlot, UINT alignedByteOffset)
+        {
+            return { InputElementSemantic::Position, semanticIndex, format, inputSlot, alignedByteOffset };
+        }
+
+        static InputElementDesc setAsColor(UINT semanticIndex, ResourceFormat format, UINT inputSlot, UINT alignedByteOffset)
+        {
+            return { InputElementSemantic::Color, semanticIndex, format, inputSlot, alignedByteOffset };
+        }
+
+        static InputElementDesc setAsNormal(UINT semanticIndex, ResourceFormat format, UINT inputSlot, UINT alignedByteOffset)
+        {
+            return { InputElementSemantic::Normal, semanticIndex, format, inputSlot, alignedByteOffset };
+        }
+
+        static InputElementDesc setAsTexCoord(UINT semanticIndex, ResourceFormat format, UINT inputSlot, UINT alignedByteOffset)
+        {
+            return { InputElementSemantic::TexCoord, semanticIndex, format, inputSlot, alignedByteOffset };
+        }
+    };
+
+    struct InputLayoutDesc {
+        std::vector<InputElementDesc> elements;
+
+        // Build from a C-style array without specifying the size (deduced from the array)
+        template<size_t N>
+        static InputLayoutDesc build(const InputElementDesc(&elems)[N])
+        {
+            InputLayoutDesc desc;
+            desc.elements.assign(elems, elems + N);
+            return desc;
+        }
     };
 
     struct CommandListDesc {
@@ -54,9 +96,10 @@ namespace raphael
         size_t vertexShaderSize = 0;
         const void* pixelShaderBytecode = nullptr;
         size_t pixelShaderSize = 0;
-        DXGI_FORMAT rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM; // Array of render target formats
+        ResourceFormat rtvFormat = ResourceFormat::R8G8B8A8_UNORM; // Array of render target formats
         UINT numRenderTargets = 1;
-        DXGI_FORMAT dsvFormat = DXGI_FORMAT_D24_UNORM_S8_UINT; // Depth stencil format
+        ResourceFormat dsvFormat = ResourceFormat::D24_UNORM_S8_UINT; // Depth stencil format
+        InputLayoutDesc inputLayout;
         // ... more shader stages, input layout, etc.
     };
 
@@ -85,15 +128,6 @@ namespace raphael
         //UINT num32BitValues = 0;
         UINT shaderRegister = 0;
         UINT registerSpace = 0;
-
-        /*RootSignatureRangeDesc(RangeType type, size_t numParameters, UINT shaderRegister, UINT registerSpace = 0) :
-            type(type), 
-            numParameters(numParameters), 
-            shaderRegister(shaderRegister), 
-            registerSpace(registerSpace) 
-        {
-
-        }*/
     };
 
     struct RootSignatureTableLayoutDesc {
@@ -113,6 +147,16 @@ namespace raphael
         // For simplicity, we will just define a vector of root parameters. In a real implementation, you would want to allow for more customization (e.g., static samplers, flags, etc.)
         std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
         std::vector<RootSignatureTableLayoutDesc> tableLayoutDescs;
+        const char* debugName = nullptr;
+    };
+
+    struct SwapChainDesc {
+        UINT width = 0;
+        UINT height = 0;
+        ResourceFormat format = ResourceFormat::R8G8B8A8_UNORM; // TODO: make this generic not tied to DXGI
+        UINT bufferCount = 2;
+        HWND windowHandle = nullptr;
+        float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
         const char* debugName = nullptr;
     };
 } // namespace raphael

@@ -1,35 +1,43 @@
 #include "InputLayoutDx12.h"
+#include "UtilDx12.h"
 
 namespace raphael
 {
-    InputLayoutDx12::InputLayoutDx12()
+    std::vector<D3D12_INPUT_ELEMENT_DESC> InputLayoutDx12::convertToD3D12InputLayout(const InputLayoutDesc& desc)
     {
-        // Example input layout for a vertex with position and color attributes
-        // TODO: This should be moved into a render class
-        std::vector<D3D12_INPUT_ELEMENT_DESC> defaultLayout =
+        std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
+
+        for (const auto& element : desc.elements)
         {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-            { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-        };
+            D3D12_INPUT_ELEMENT_DESC d12dDesc = {};
+            d12dDesc.SemanticName = semanticNameToString(element.semanticName);
+            d12dDesc.SemanticIndex = element.semanticIndex;
+            d12dDesc.Format = convertFormatToDXGI(element.format);
+            d12dDesc.InputSlot = element.inputSlot;
+            d12dDesc.AlignedByteOffset = element.alignedByteOffset;
+            d12dDesc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA; // Assuming per-vertex data for now. You can extend InputElementDesc to specify this if needed.
+            d12dDesc.InstanceDataStepRate = 0; // Not used for per-vertex data
 
-        addInputLayout("DefaultLayout", defaultLayout);
-    }
-
-    void InputLayoutDx12::addInputLayout(const std::string& name, const std::vector<D3D12_INPUT_ELEMENT_DESC>& elementDesc)
-    {
-        m_inputLayouts.insert({ name, elementDesc });
-    }
-
-    const std::vector<D3D12_INPUT_ELEMENT_DESC>& InputLayoutDx12::getInputLayout(const std::string name) const
-    {
-        auto it = m_inputLayouts.find(name);
-        if (it == m_inputLayouts.end())
-        {
-            throw std::runtime_error("Input layout not found: " + name);
+            inputLayout.push_back(d12dDesc);
         }
-        else
+
+        return inputLayout;
+    }
+
+    const char* InputLayoutDx12::semanticNameToString(InputElementSemantic semantic)
+    {
+        switch (semantic)
         {
-            return it->second;
+        case raphael::InputElementSemantic::Position:
+            return "POSITION";
+        case raphael::InputElementSemantic::Normal:
+            return "NORMAL";
+        case raphael::InputElementSemantic::TexCoord:
+            return "TEXCOORD";
+        case raphael::InputElementSemantic::Color:
+            return "COLOR";
+        default:
+            return "UNKNOWN_SEMANTIC";
         }
     }
 }

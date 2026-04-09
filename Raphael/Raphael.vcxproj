@@ -98,6 +98,7 @@
     <ClCompile Include="source\D3D12Util.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="source\TestApp.cpp" />
+    <ClCompile Include="DX12\SwapChainDx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="Utilities\imgui\imgui.cpp" />
@@ -117,6 +118,9 @@
     <ClInclude Include="DX12\DeviceDx12.h" />
     <ClInclude Include="DX12\ObjectDescriptors.h" />
     <ClInclude Include="DX12\Interfaces.h" />
+    <ClInclude Include="DX12\FrameContext.h" />
+    <ClInclude Include="DX12\UploadBuffer.h" />
+    <ClInclude Include="DX12\UtilDx12.h" />
     <ClInclude Include="header\Camera.h" />
     <ClInclude Include="header\Device.h" />
     <ClInclude Include="header\DescriptorHeapAllocator.h" />
@@ -141,6 +145,7 @@
     <ClInclude Include="DX12\ShaderDx12.h" />
     <ClInclude Include="DX12\RootSignatureDx12.h" />
     <ClInclude Include="DX12\InputLayoutDx12.h" />
+    <ClInclude Include="DX12\SwapChainDx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />

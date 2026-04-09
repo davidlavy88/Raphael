@@ -107,6 +107,11 @@ namespace raphael
         return std::make_unique<DescriptorHeapDx12>(this, desc);
     }
 
+    std::unique_ptr<SwapChainDx12> DeviceDx12::createSwapChain(DescriptorHeapDx12* rtvHeap, const SwapChainDesc& desc)
+    {
+        return std::make_unique<SwapChainDx12>(this, rtvHeap, desc);
+    }
+
     void DeviceDx12::executeCommandList(CommandList* commandList)
     {
         ID3D12CommandList* cmdLists[] = { commandList->getNativeCommandList() };
@@ -119,6 +124,30 @@ namespace raphael
         if (m_fence->GetCompletedValue() < m_fenceLastSignaled)
         {
             m_fence->SetEventOnCompletion(m_fenceLastSignaled, m_fenceEvent);
+            ::WaitForSingleObject(m_fenceEvent, INFINITE);
+        }
+    }
+
+    ComPtr<ID3D12CommandAllocator> DeviceDx12::createCommandAllocator()
+    {
+        ComPtr<ID3D12CommandAllocator> commandAllocator;
+        if (FAILED(m_nativeDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator))))
+        {
+            throw std::runtime_error("Failed to create command allocator");
+        }
+        return commandAllocator;
+    }
+
+    void DeviceDx12::signalFence(UINT64 value)
+    {
+        m_commandQueue->Signal(m_fence.Get(), value);
+    }
+
+    void DeviceDx12::waitForFence(UINT64 value)
+    {
+        if (m_fence->GetCompletedValue() < value)
+        {
+            m_fence->SetEventOnCompletion(value, m_fenceEvent);
             ::WaitForSingleObject(m_fenceEvent, INFINITE);
         }
     }
