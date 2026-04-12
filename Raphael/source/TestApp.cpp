@@ -196,36 +196,20 @@ void TestApp::Run()
         DescriptorHandle dsvHandle = {};
         m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
 
+        // Build render pass descriptor for current frame
+        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
+            rtvHandle,
+            currentBackBuffer->getNativeResource(),
+            dsvHandle.cpuHandle,
+            WINDOW_WIDTH, WINDOW_HEIGHT,
+            clearColor);
+        renderPassDesc.debugName= "Main Render Pass";
+
         // Test command list recording
         m_commandList->begin(currentFrameContext.commandAllocator.Get());
 
-        // Transition back buffer: present state to render target state
-        D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            currentBackBuffer->getNativeResource(),
-            D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET
-        );
-        m_commandList->resourceBarrier(&barrier, 1);
-
-        // Set viewport and scissor rect
-        D3D12_VIEWPORT viewport = {};
-        viewport.Height = static_cast<float>(WINDOW_HEIGHT);
-        viewport.Width = static_cast<float>(WINDOW_WIDTH);
-        viewport.MinDepth = 0.0f; // TODO: This should be defined in DeviceDesc
-        viewport.MaxDepth = 1.0f; // TODO: This should be defined in DeviceDesc
-        m_commandList->setViewports(&viewport, 1);
-
-        D3D12_RECT scissorRect = {};
-        scissorRect.right = WINDOW_WIDTH;
-        scissorRect.bottom = WINDOW_HEIGHT;
-        m_commandList->setScissorRects(&scissorRect, 1);
-
-        // Clear render target and depth buffer
-        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        m_commandList->clearRenderTargetView(rtvHandle, clearColor);
-        m_commandList->clearDepthStencilView(dsvHandle.cpuHandle, 1.0f, 0);
-
-        // Set render target + depth buffer in the output merger stage
-        m_commandList->setRenderTargets(1, &rtvHandle, dsvHandle.cpuHandle);
+        m_commandList->beginRenderPass(renderPassDesc);
 
         // Draw
         m_commandList->setGraphicsRootSignature(m_rootSignature.get());
@@ -233,12 +217,7 @@ void TestApp::Run()
         m_commandList->setVertexBuffer(0, &m_vertexBufferView);
         m_commandList->drawInstanced(3, 1, 0, 0);
 
-        // Transition back buffer: render target state to present state
-        barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            currentBackBuffer->getNativeResource(),
-            D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT
-        );
-        m_commandList->resourceBarrier(&barrier, 1);
+        m_commandList->endRenderPass();
 
         m_commandList->end();
 
@@ -287,6 +266,10 @@ LRESULT TestApp::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
             // TODO: Move this to a separate method since we will need to call it from other places (e.g., when changing display modes)
             UINT newWidth = LOWORD(lParam);
             UINT newHeight = HIWORD(lParam);
+
+            // Update global window size variables (used for viewport/scissor rect setup in command list recording, etc.)
+            WINDOW_WIDTH = newWidth;
+            WINDOW_HEIGHT = newHeight;
 
             m_swapChain->resize(newWidth, newHeight);
 

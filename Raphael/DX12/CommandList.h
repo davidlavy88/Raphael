@@ -40,13 +40,18 @@ namespace raphael
         void setVertexBuffer(UINT slot, const D3D12_VERTEX_BUFFER_VIEW* vertexBufferView);
         void drawInstanced(UINT vertexCountPerInstance, UINT instanceCount, UINT startVertexLocation, UINT startInstanceLocation);
 
+        void beginRenderPass(const RenderPassDesc& renderPassDesc);
+        void endRenderPass();
+
 
     private:
         CommandListDesc m_desc = {};
         DeviceDx12* m_device = nullptr;
         ComPtr<ID3D12GraphicsCommandList> m_commandList;
-        // ComPtr<ID3D12CommandAllocator> m_commandAllocator;
         bool m_isRecording = false; // Track recording state
+
+        RenderPassDesc m_currentRenderPassDesc = {};
+        bool m_isInRenderPass = false; // Track if we are currently inside a render pass
 
     };
 } // namespace raphael

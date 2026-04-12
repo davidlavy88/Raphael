@@ -159,4 +159,54 @@ namespace raphael
         float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
         const char* debugName = nullptr;
     };
+
+    struct RenderPassDesc {
+        // Render targets
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[8] = {}; // Support up to 8 render targets
+        UINT numRenderTargets = 0;
+        ID3D12Resource* renderTargetResources[8] = {}; // Corresponding resources for the render targets
+
+        // Depth stencil
+        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = {};
+        bool hasDepthStencil = false;
+
+        // Clear values
+        float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        float clearDepth = 1.0f;
+        UINT8 clearStencil = 0;
+        // Other render state (e.g., viewport, scissor rect) can be added here as needed
+
+        // Viewport and scissor rect
+        UINT viewportWidth = 0;
+        UINT viewportHeight = 0;
+
+        const char* debugName = nullptr;
+
+        // Builder for a single render target with depth stencil
+        static RenderPassDesc buildAsSingleRenderTarget(
+            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle,
+            ID3D12Resource* rtvResource,
+            D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle,
+            UINT width, UINT height,
+            const float clearColor[4] = nullptr,
+            float clearDepth = 1.0f)
+        {
+            RenderPassDesc desc;
+            desc.rtvHandles[0] = rtvHandle;
+            desc.renderTargetResources[0] = rtvResource;
+            desc.numRenderTargets = 1;
+            desc.dsvHandle = dsvHandle;
+            desc.hasDepthStencil = true;
+            desc.viewportWidth = width;
+            desc.viewportHeight = height;
+            desc.clearDepth = clearDepth;
+            if (clearColor)
+            {
+                std::copy(clearColor, clearColor + 4, desc.clearColor);
+            }
+
+            return desc;
+        }
+
+    };
 } // namespace raphael
