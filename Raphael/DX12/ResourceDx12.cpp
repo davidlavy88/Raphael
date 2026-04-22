@@ -1,7 +1,6 @@
 #include "ResourceDx12.h"
 #include "DeviceDx12.h"
 #include "UtilDx12.h"
-#include "UtilDx12.h"
 
 namespace raphael
 {
@@ -49,6 +48,56 @@ namespace raphael
         {
             m_resource->Unmap(0, nullptr);
         }
+    }
+
+    ResourceView ResourceDx12::getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle, UINT strideInBytes)
+    {
+        ResourceView view = {};
+
+        switch (viewType)
+        {
+        case ResourceBindFlags::ConstantBuffer:
+            view.type = ResourceViewType::ConstantBuffer;
+            view.cpuHandle = descriptorHandle.cpuHandle;
+            view.gpuHandle = descriptorHandle.gpuHandle;
+            initAsCbv(descriptorHandle.cpuHandle);
+            break;
+        case ResourceBindFlags::ShaderResource:
+            view.type = ResourceViewType::ShaderResource;
+            view.cpuHandle = descriptorHandle.cpuHandle;
+            view.gpuHandle = descriptorHandle.gpuHandle;
+            initAsSrv(descriptorHandle.cpuHandle);
+            break;
+        case ResourceBindFlags::RenderTarget:
+            view.type = ResourceViewType::RenderTarget;
+            view.cpuHandle = descriptorHandle.cpuHandle;
+            view.gpuHandle = descriptorHandle.gpuHandle;
+            initAsRtv(descriptorHandle.cpuHandle);
+            break;
+        case ResourceBindFlags::DepthStencil:
+            view.type = ResourceViewType::DepthStencil;
+            view.cpuHandle = descriptorHandle.cpuHandle;
+            view.gpuHandle = descriptorHandle.gpuHandle;
+            initAsDsv(descriptorHandle.cpuHandle);
+            break;
+        case ResourceBindFlags::VertexBuffer:
+            view.type = ResourceViewType::VertexBuffer;
+            view.bufferLocation = m_resource->GetGPUVirtualAddress();
+            view.sizeInBytes = static_cast<UINT>(m_desc.width);
+            view.strideInBytes = strideInBytes;
+            break;
+        case ResourceBindFlags::IndexBuffer:
+            view.type = ResourceViewType::IndexBuffer;
+            view.bufferLocation = m_resource->GetGPUVirtualAddress();
+            view.sizeInBytes = static_cast<UINT>(m_desc.width);
+            view.strideInBytes = strideInBytes;
+            break;
+        default:
+            throw std::runtime_error("Unsupported view type");
+        }
+
+        view.format = m_desc.format; // Set the format in the view for later use if needed
+        return view;
     }
 
     void ResourceDx12::createBuffer(const ResourceDesc& desc)

@@ -1,6 +1,7 @@
 #pragma once
 #include "ObjectDescriptors.h"
 #include "Interfaces.h"
+#include "DescriptorHeapDx12.h"
 
 namespace raphael
 {
@@ -20,6 +21,8 @@ namespace raphael
         ID3D12Resource* getNativeResource() const { return m_resource.Get(); }
         bool map(void** data);
         void unmap();
+
+        ResourceView getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle = {}, UINT strideInBytes = 0);
 
         void initAsCbv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
         void initAsSrv(D3D12_CPU_DESCRIPTOR_HANDLE handle);

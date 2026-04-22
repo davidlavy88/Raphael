@@ -4,6 +4,7 @@
 #include "ResourceDx12.h"
 #include "PipelineDx12.h"
 #include "SwapChainDx12.h"
+#include "RootSignatureTableDx12.h"
 
 namespace raphael
 {
@@ -21,6 +22,7 @@ namespace raphael
         std::unique_ptr<PipelineDx12> createPipeline(const PipelineDesc& desc);
         std::unique_ptr<DescriptorHeapDx12> createDescriptorHeap(const DescriptorHeapDesc& desc);
         std::unique_ptr<SwapChainDx12> createSwapChain(DescriptorHeapDx12* rtvHeap, const SwapChainDesc& desc);
+        std::unique_ptr<RootSignatureTableDx12> createRootSignatureTable(DescriptorHeapDx12* srvHeap, const RootSignatureTableDesc& desc);
         void executeCommandList(CommandList* commandList);
         void waitForGpu(); // TODO: Probably don't need this method
         ComPtr<ID3D12CommandAllocator> createCommandAllocator();

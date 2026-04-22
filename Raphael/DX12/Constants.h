@@ -74,4 +74,31 @@ namespace raphael
     {
         return (static_cast<uint32_t>(flags) & static_cast<uint32_t>(test)) != 0;
     }
+
+    enum class ResourceViewType
+    {
+        Unknown,
+        VertexBuffer,
+        IndexBuffer,
+        ConstantBuffer,
+        ShaderResource,
+        RenderTarget,
+        DepthStencil,
+        UnorderedAccess
+    };
+
+    enum class SamplerFilter
+    {
+        Point,
+        Linear,
+        Anisotropic
+    };
+
+    enum class SamplerAddressMode
+    {
+        Wrap,
+        Mirror,
+        Clamp,
+        Border
+    };
 } // namespace raphael

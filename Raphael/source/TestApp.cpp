@@ -67,7 +67,7 @@ bool TestApp::Initialize()
     // Create the DSV for the depth buffer
     DescriptorHandle dsvHandle = {};
     m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
-    m_depthBuffer->initAsDsv(dsvHandle.cpuHandle);
+    m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
 
     // Define triangle vertex data
     SimpleVertex triangleVertices[] =
@@ -100,9 +100,7 @@ bool TestApp::Initialize()
     }
 
     // Create vertex buffer view
-    m_vertexBufferView.BufferLocation = m_vertexBuffer->getNativeResource()->GetGPUVirtualAddress();
-    m_vertexBufferView.SizeInBytes = vertexBufferSize;
-    m_vertexBufferView.StrideInBytes = sizeof(SimpleVertex);
+    m_vertexBufferView = m_vertexBuffer->getResourceView(ResourceBindFlags::VertexBuffer, {}, sizeof(SimpleVertex));
 
     // Create per frame command allocators
     for (UINT i = 0; i < g_frameCount; i++)
@@ -140,7 +138,7 @@ bool TestApp::Initialize()
 
     RootSignatureTableLayoutDesc tableLayoutDesc = {};
     tableLayoutDesc.rangeDescs.push_back(rangeDesc);
-    tableLayoutDesc.visibility = RootSignatureTableLayoutDesc::ShaderStage::All;
+    tableLayoutDesc.visibility = RootSignatureTableLayoutDesc::ShaderVisibility::All;
 
     RootSignatureDesc rootSigDesc = {};
     rootSigDesc.tableLayoutDescs.push_back(tableLayoutDesc);
@@ -190,18 +188,14 @@ void TestApp::Run()
         m_device->waitForFence(currentFrameContext.fenceValue);
 
         ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_swapChain->getCurrentRTVHandle();
-
-        // Get the depth buffer DSV handle
-        DescriptorHandle dsvHandle = {};
-        m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
+        ResourceView currentRtView = m_swapChain->getCurrentRTView();
 
         // Build render pass descriptor for current frame
         const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
         RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
-            rtvHandle,
+            currentRtView,
             currentBackBuffer->getNativeResource(),
-            dsvHandle.cpuHandle,
+            m_depthStencilView,
             WINDOW_WIDTH, WINDOW_HEIGHT,
             clearColor);
         renderPassDesc.debugName= "Main Render Pass";
@@ -214,7 +208,7 @@ void TestApp::Run()
         // Draw
         m_commandList->setGraphicsRootSignature(m_rootSignature.get());
         m_commandList->setPipeline(m_pipeline.get());
-        m_commandList->setVertexBuffer(0, &m_vertexBufferView);
+        m_commandList->setVertexBuffer(0, m_vertexBufferView);
         m_commandList->drawInstanced(3, 1, 0, 0);
 
         m_commandList->endRenderPass();
@@ -285,7 +279,7 @@ LRESULT TestApp::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 
             DescriptorHandle dsvHandle = {};
             m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
-            m_depthBuffer->initAsDsv(dsvHandle.cpuHandle);
+            m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
         }
         return 0;
 

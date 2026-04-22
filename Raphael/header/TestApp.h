@@ -44,7 +44,8 @@ private:
     std::array<FrameContext, g_frameCount> m_frameContexts;
     UINT m_frameIndex = 0; // Current frame index for double buffering
 
-    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView = {};
+    ResourceView m_vertexBufferView = {};
+    ResourceView m_depthStencilView = {};
 
     HWND m_hwnd = nullptr;
 };

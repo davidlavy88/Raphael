@@ -32,14 +32,14 @@ namespace raphael
 
     D3D12_SHADER_BYTECODE ShaderDx12::getVertexShaderBytecode() const
     {
-		auto it = m_shaderObjs.find(ShaderDesc::ShaderType::Vertex);
+        auto it = m_shaderObjs.find(ShaderDesc::ShaderType::Vertex);
         if (it != m_shaderObjs.end())
         {
             const ComPtr<ID3DBlob>& bytecodeBlob = it->second;
             return { reinterpret_cast<BYTE*>(bytecodeBlob->GetBufferPointer()), bytecodeBlob->GetBufferSize() };
         }
 
-		return { nullptr, 0 } ;
+        return { nullptr, 0 } ;
     }
 
     D3D12_SHADER_BYTECODE ShaderDx12::getPixelShaderBytecode() const

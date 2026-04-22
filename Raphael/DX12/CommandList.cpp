@@ -3,6 +3,7 @@
 #include "PipelineDx12.h"
 #include "DescriptorHeapDx12.h"
 #include "RootSignatureDx12.h"
+#include "RootSignatureTableDx12.h"
 
 namespace raphael
 {
@@ -81,6 +82,16 @@ namespace raphael
         m_commandList->SetGraphicsRootSignature(rootSignature->getNativeDevice());
     }
 
+    void CommandList::setGraphicsRootDescriptorTable(UINT rootParameterIndex, const RootSignatureTableDx12* rootSignatureTable)
+    {
+        m_commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, rootSignatureTable->getGpuHandle());
+    }
+
+    void CommandList::setConstantBufferView(UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS gpuAddress)
+    {
+        m_commandList->SetGraphicsRootConstantBufferView(rootParameterIndex, gpuAddress);
+    }
+
     void CommandList::setViewports(const D3D12_VIEWPORT* viewports, uint32_t numViewports)
     {
         m_commandList->RSSetViewports(numViewports, viewports);
@@ -111,15 +122,28 @@ namespace raphael
         m_commandList->OMSetRenderTargets(numRenderTargets, rtvHandles, true, &dsvHandle);
     }
 
-    void CommandList::setVertexBuffer(UINT slot, const D3D12_VERTEX_BUFFER_VIEW* vertexBufferView)
+    void CommandList::setVertexBuffer(UINT slot, const ResourceView& vertexBufferView)
     {
-        m_commandList->IASetVertexBuffers(slot, 1, vertexBufferView);
+        D3D12_VERTEX_BUFFER_VIEW vbv = vertexBufferView.toVertexBufferView();
+        m_commandList->IASetVertexBuffers(slot, 1, &vbv);
+    }
+
+    void CommandList::setIndexBuffer(const ResourceView& indexBufferView)
+    {
+        D3D12_INDEX_BUFFER_VIEW ibv = indexBufferView.toIndexBufferView();
+        m_commandList->IASetIndexBuffer(&ibv);
     }
 
     void CommandList::drawInstanced(UINT vertexCountPerInstance, UINT instanceCount, UINT startVertexLocation, UINT startInstanceLocation)
     {
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         m_commandList->DrawInstanced(vertexCountPerInstance, instanceCount, startVertexLocation, startInstanceLocation);
+    }
+
+    void CommandList::drawIndexedInstanced(UINT indexCountPerInstance, UINT instanceCount, UINT startIndexLocation, INT baseVertexLocation, UINT startInstanceLocation)
+    {
+        m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        m_commandList->DrawIndexedInstanced(indexCountPerInstance, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
     }
 
     void CommandList::beginRenderPass(const RenderPassDesc& renderPassDesc)
@@ -158,10 +182,12 @@ namespace raphael
         m_commandList->RSSetScissorRects(1, &scissorRect);
 
         // Clear render targets and depth stencil if specified
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[8] = {};
         for (UINT i = 0; i < renderPassDesc.numRenderTargets; ++i)
         {
+            rtvHandles[i] = renderPassDesc.rtvHandles[i].cpuHandle;
             m_commandList->ClearRenderTargetView(
-                renderPassDesc.rtvHandles[i], 
+                rtvHandles[i], 
                 renderPassDesc.clearColor, 
                 0, 
                 nullptr);
@@ -169,7 +195,7 @@ namespace raphael
         if (renderPassDesc.hasDepthStencil)
         {
             m_commandList->ClearDepthStencilView(
-                renderPassDesc.dsvHandle, 
+                renderPassDesc.dsvHandle.cpuHandle, 
                 D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 
                 renderPassDesc.clearDepth, 
                 renderPassDesc.clearStencil, 
@@ -180,9 +206,9 @@ namespace raphael
         // Set render targets for the output merger stage
         m_commandList->OMSetRenderTargets(
             renderPassDesc.numRenderTargets, 
-            renderPassDesc.rtvHandles, 
+            rtvHandles, 
             true, 
-            renderPassDesc.hasDepthStencil ? &renderPassDesc.dsvHandle : nullptr);
+            renderPassDesc.hasDepthStencil ? &renderPassDesc.dsvHandle.cpuHandle : nullptr);
     }
 
     void CommandList::endRenderPass()

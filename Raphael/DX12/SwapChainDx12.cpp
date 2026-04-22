@@ -91,7 +91,7 @@ namespace raphael
         for (UINT i = 0; i < m_desc.bufferCount; i++)
         {
             m_backBuffers[i].reset();
-            m_rtvHandles[i] = {};
+            m_rtvViews[i] = {};
         }
 
         // Resize the swap chain buffers
@@ -123,9 +123,7 @@ namespace raphael
             m_backBuffers[i] = std::make_unique<ResourceDx12>(m_device, backBuffer);
             DescriptorHandle handle = {};
             rtvHeap->getDescriptorHandle(i, &handle);
-            m_rtvHandles[i] = handle.cpuHandle;
-            // Create RTV handle for this back buffer
-            m_backBuffers[i]->initAsRtv(m_rtvHandles[i]);
+            m_rtvViews[i] = m_backBuffers[i]->getResourceView(ResourceBindFlags::RenderTarget, handle);
         }
     }
 }

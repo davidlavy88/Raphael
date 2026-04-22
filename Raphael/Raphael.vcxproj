@@ -84,6 +84,7 @@
     <ClCompile Include="DX12\ShaderDx12.cpp" />
     <ClCompile Include="DX12\RootSignatureDx12.cpp" />
     <ClCompile Include="DX12\InputLayoutDx12.cpp" />
+    <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
     <ClCompile Include="source\Material.cpp" />
@@ -146,6 +147,7 @@
     <ClInclude Include="DX12\RootSignatureDx12.h" />
     <ClInclude Include="DX12\InputLayoutDx12.h" />
     <ClInclude Include="DX12\SwapChainDx12.h" />
+    <ClInclude Include="DX12\RootSignatureTableDx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />

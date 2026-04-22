@@ -10,15 +10,21 @@ namespace raphael
     public:
         RootSignatureDx12(DeviceDx12* device, const RootSignatureDesc& desc);
         ~RootSignatureDx12() = default;
-                    
-        void addRootParameter(const CD3DX12_ROOT_PARAMETER& rootParam);
-        void createRootSignature();
+                   
 
         ID3D12RootSignature* getNativeDevice() const { return m_rootSignature.Get(); }
 
+        void createRootSignature();
+
+    private:
+        static D3D12_DESCRIPTOR_RANGE_TYPE convertRangeType(RootSignatureRangeDesc::RangeType type);
+        static D3D12_SHADER_VISIBILITY convertShaderStageVisibility(RootSignatureTableLayoutDesc::ShaderVisibility visibility);
+        static D3D12_FILTER convertFilter(SamplerFilter filter);
+        static D3D12_TEXTURE_ADDRESS_MODE convertAddressMode(SamplerAddressMode mode);
+
+
     private:
         ComPtr<ID3D12RootSignature> m_rootSignature;
-        std::vector<CD3DX12_ROOT_PARAMETER> m_rootParameters;
         DeviceDx12* m_device = nullptr;
         RootSignatureDesc m_desc = {};
 

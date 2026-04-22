@@ -9,6 +9,7 @@ namespace raphael
     class PipelineDx12;
     class DescriptorHeapDx12;
     class RootSignatureDx12;
+    class RootSignatureTableDx12;
 
     class CommandList
     {
@@ -25,11 +26,12 @@ namespace raphael
         // void copyBufferRegion(IResource* dst, UINT64 dstOffset, IResource* src, UINT64 srcOffset, UINT64 numBytes);
 
         ID3D12GraphicsCommandList* getNativeCommandList() const { return m_commandList.Get(); }
-        // ID3D12CommandAllocator* getCommandAllocator() const { return m_commandAllocator.Get(); }
 
         void setPipeline(PipelineDx12* pipeline);
         void setDescriptorHeaps(DescriptorHeapDx12* heap, uint32_t count);
         void setGraphicsRootSignature(RootSignatureDx12* rootSignature);
+        void setGraphicsRootDescriptorTable(UINT rootParameterIndex, const RootSignatureTableDx12* rootSignatureTable);
+        void setConstantBufferView(UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS gpuAddress);
 
         void setViewports(const D3D12_VIEWPORT* viewports, uint32_t numViewports);
         void setScissorRects(const D3D12_RECT* rects, uint32_t numRects);
@@ -37,8 +39,10 @@ namespace raphael
         void clearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, const FLOAT clearColor[4]);
         void clearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle, float depth, UINT8 stencil);
         void setRenderTargets(uint32_t numRenderTargets, const D3D12_CPU_DESCRIPTOR_HANDLE* rtvHandles, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle);
-        void setVertexBuffer(UINT slot, const D3D12_VERTEX_BUFFER_VIEW* vertexBufferView);
+        void setVertexBuffer(UINT slot, const ResourceView& vertexBufferView);
+        void setIndexBuffer(const ResourceView& indexBufferView);
         void drawInstanced(UINT vertexCountPerInstance, UINT instanceCount, UINT startVertexLocation, UINT startInstanceLocation);
+        void drawIndexedInstanced(UINT indexCountPerInstance, UINT instanceCount, UINT startIndexLocation, INT baseVertexLocation, UINT startInstanceLocation);
 
         void beginRenderPass(const RenderPassDesc& renderPassDesc);
         void endRenderPass();

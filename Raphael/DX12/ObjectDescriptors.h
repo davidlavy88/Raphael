@@ -30,6 +30,49 @@ namespace raphael
         ResourceBindFlags bindFlags = ResourceBindFlags::None;
     };
 
+    struct ResourceView {
+        ResourceViewType type = ResourceViewType::Unknown;
+        ResourceFormat format = ResourceFormat::Unknown;
+
+        // Descriptor handles (used  for RTV/DSV/SRV/UAV)
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
+        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = {};
+
+        // Buffer view data (used for vertex/index buffer views)
+        D3D12_GPU_VIRTUAL_ADDRESS bufferLocation = 0;
+        UINT sizeInBytes = 0;
+        UINT strideInBytes = 0; // VBV stride or Index buffer format size (e.g., 2 for R16_UINT, 4 for R32_UINT)
+
+        // Convert to D3D12_VERTEX_BUFFER_VIEW to use in CommandList
+        D3D12_VERTEX_BUFFER_VIEW toVertexBufferView() const
+        {
+            if (type != ResourceViewType::VertexBuffer)
+            {
+                throw std::runtime_error("ResourceView is not of type VertexBuffer");
+            }
+
+            D3D12_VERTEX_BUFFER_VIEW vbv = {};
+            vbv.BufferLocation = bufferLocation;
+            vbv.SizeInBytes = sizeInBytes;
+            vbv.StrideInBytes = strideInBytes;
+            return vbv;
+        }
+
+        D3D12_INDEX_BUFFER_VIEW toIndexBufferView() const
+        {
+            if (type != ResourceViewType::IndexBuffer)
+            {
+                throw std::runtime_error("ResourceView is not of type IndexBuffer");
+            }
+            D3D12_INDEX_BUFFER_VIEW ibv = {};
+            ibv.BufferLocation = bufferLocation;
+            ibv.SizeInBytes = sizeInBytes;
+            // strideInBytes: 2 = R16_UINT, 4 = R32_UINT
+            ibv.Format = (strideInBytes == 2) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT; // Determine index format based on stride
+            return ibv;
+        }
+    };
+
     struct InputElementDesc {
         InputElementSemantic semanticName = InputElementSemantic::Position;
         UINT semanticIndex = 0;
@@ -115,6 +158,17 @@ namespace raphael
         std::vector<ShaderType> types;
     };
 
+    struct StaticSamplerDesc {
+        UINT shaderRegister = 0;
+        SamplerFilter filter = SamplerFilter::Point;
+        SamplerAddressMode addressU = SamplerAddressMode::Wrap;
+        SamplerAddressMode addressV = SamplerAddressMode::Wrap;
+        SamplerAddressMode addressW = SamplerAddressMode::Wrap;
+        float mipLODBias = 0.0f;
+        UINT maxAnisotropy = 0;
+        UINT registerSpace = 0;
+    };
+
     struct RootSignatureRangeDesc {
         enum class RangeType {
             ShaderResourceView,
@@ -123,31 +177,33 @@ namespace raphael
             Sampler
         };
         RangeType type = RangeType::ConstantBufferView;
-        size_t numParameters = 0;
-        // For constants
-        //UINT num32BitValues = 0;
+        size_t numParameters = 0; // Number of descriptors in the range 
         UINT shaderRegister = 0;
         UINT registerSpace = 0;
     };
 
     struct RootSignatureTableLayoutDesc {
-        enum class ShaderStage {
+        enum class ShaderVisibility {
             Vertex,
             Pixel,
             Compute,
             All
         };
 
-        ShaderStage visibility = ShaderStage::Vertex;
+        ShaderVisibility visibility = ShaderVisibility::Vertex;
         std::vector<RootSignatureRangeDesc> rangeDescs;
-        std::vector<CD3DX12_DESCRIPTOR_RANGE> descriptorRanges;
     };
 
     struct RootSignatureDesc {
-        // For simplicity, we will just define a vector of root parameters. In a real implementation, you would want to allow for more customization (e.g., static samplers, flags, etc.)
-        std::vector<CD3DX12_ROOT_PARAMETER> rootParameters;
         std::vector<RootSignatureTableLayoutDesc> tableLayoutDescs;
+        std::vector<StaticSamplerDesc> staticSamplers;
         const char* debugName = nullptr;
+    };
+
+    struct RootSignatureTableDesc {
+        const ResourceView* resourceViews = nullptr; // Array of resource views to bind in the table
+        UINT viewCount = 0; // Number of resource views in the table
+        UINT tableIndex = 0; // Root parameter index for this table
     };
 
     struct SwapChainDesc {
@@ -162,12 +218,12 @@ namespace raphael
 
     struct RenderPassDesc {
         // Render targets
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[8] = {}; // Support up to 8 render targets
+        ResourceView rtvHandles[8] = {}; // Support up to 8 render targets
         UINT numRenderTargets = 0;
         ID3D12Resource* renderTargetResources[8] = {}; // Corresponding resources for the render targets
 
         // Depth stencil
-        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = {};
+        ResourceView dsvHandle = {};
         bool hasDepthStencil = false;
 
         // Clear values
@@ -184,9 +240,9 @@ namespace raphael
 
         // Builder for a single render target with depth stencil
         static RenderPassDesc buildAsSingleRenderTarget(
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle,
+            ResourceView& rtvHandle,
             ID3D12Resource* rtvResource,
-            D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle,
+            ResourceView& dsvHandle,
             UINT width, UINT height,
             const float clearColor[4] = nullptr,
             float clearDepth = 1.0f)

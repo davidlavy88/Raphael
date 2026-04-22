@@ -20,7 +20,7 @@ namespace raphael
         void createRenderTargetViews(DescriptorHeapDx12* rtvHeap);
 
         ResourceDx12* getCurrentBackBuffer() const { return m_backBuffers[m_currentBackBufferIndex].get(); }
-        D3D12_CPU_DESCRIPTOR_HANDLE getCurrentRTVHandle() const { return m_rtvHandles[m_currentBackBufferIndex]; }
+        const ResourceView& getCurrentRTView() const { return m_rtvViews[m_currentBackBufferIndex]; }
         UINT getCurrentBackBufferIndex() const { return m_currentBackBufferIndex; }
         ResourceFormat getFormat() const { return m_desc.format; }
 
@@ -32,7 +32,7 @@ namespace raphael
         ComPtr<IDXGIFactory4> m_factory;
         // TODO: Check if this approach is not the best: Using unique_ptr and ResourceDx12 instead of raw ID3D12Resource* to manage the lifetime of back buffer resources
         std::array<std::unique_ptr<ResourceDx12>, NUM_BACK_BUFFERS> m_backBuffers;
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, NUM_BACK_BUFFERS> m_rtvHandles;
+        std::array<ResourceView, NUM_BACK_BUFFERS> m_rtvViews;
         UINT m_currentBackBufferIndex = 0;
         HANDLE m_waitableObject = nullptr;
     };

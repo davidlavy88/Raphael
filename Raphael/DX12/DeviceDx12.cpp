@@ -112,6 +112,11 @@ namespace raphael
         return std::make_unique<SwapChainDx12>(this, rtvHeap, desc);
     }
 
+    std::unique_ptr<RootSignatureTableDx12> DeviceDx12::createRootSignatureTable(DescriptorHeapDx12* srvHeap, const RootSignatureTableDesc& desc)
+    {
+        return std::make_unique<RootSignatureTableDx12>(this, srvHeap, desc);
+    }
+
     void DeviceDx12::executeCommandList(CommandList* commandList)
     {
         ID3D12CommandList* cmdLists[] = { commandList->getNativeCommandList() };
