@@ -75,4 +75,16 @@ namespace raphael
         XMFLOAT3 Pos;
         XMFLOAT4 Color;
     };
+
+    struct BasicObjectConstants
+    {
+        XMFLOAT4X4 World = XM4x4Identity();
+	};
+
+    struct FrameConstants
+    {
+        XMFLOAT4X4 ViewProj = XM4x4Identity();
+        XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
+		float Pad0 = 0.0f; // Padding to ensure 16-byte alignment
+	};
 }

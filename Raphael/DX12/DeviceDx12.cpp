@@ -107,6 +107,11 @@ namespace raphael
         return std::make_unique<DescriptorHeapDx12>(this, desc);
     }
 
+    std::unique_ptr<RootSignatureDx12> DeviceDx12::createRootSignature(const RootSignatureDesc& desc)
+    {
+        return std::make_unique<RootSignatureDx12>(this, desc);
+    }
+
     std::unique_ptr<SwapChainDx12> DeviceDx12::createSwapChain(DescriptorHeapDx12* rtvHeap, const SwapChainDesc& desc)
     {
         return std::make_unique<SwapChainDx12>(this, rtvHeap, desc);

@@ -1,6 +1,6 @@
 #pragma once
 #include "D3D12CommonHeaders.h"
-#include "UploadBuffer.h"
+#include "UploadBufferDx12.h"
 #include "GPUStructs.h"
 
 namespace raphael

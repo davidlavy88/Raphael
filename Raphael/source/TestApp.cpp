@@ -13,20 +13,62 @@ int WINDOW_HEIGHT = 720;
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+// Initialization process
+// 1. Create application window
+// 2. Create device
+// 3. Create descriptor heaps (DSV, RTV, CBV/SRV/UAV if needed)
+// 4. Create swap chain + depth buffer
+// 5. Create geometry resources (vertex/index buffers, views)
+// 6. Constant buffers (per-frame upload buffers)
+// 7. Create root signature (define shader resource bindings)
+// 8. Create pipeline state (compile shaders, create PSO)
+// 9. Create command objects (command allocators, command lists)
 bool TestApp::Initialize()
 {
-    // Create application window
-    // TODO: Make Window its own class
+    // -- 1. Create application window --
     if (!CreateAppWindow())
         return false;
     
-    // Create device
+    // -- 2. Create device --
     DeviceDesc deviceDesc = {};
     deviceDesc.enableDebugLayer = true;
-
-    // TODO: CreateDevice should be called from m_device 
     m_device = std::make_unique<DeviceDx12>(deviceDesc);
 
+	// -- 3. Create descriptor heaps --
+	CreateDescriptorHeaps();
+
+	// -- 4. Create swap chain and depth buffer --
+	CreateSwapChainAndDepthBuffer();
+
+	// -- 5. Create geometry resources --
+	CreateGeometry();
+
+	// -- 6. Create constant buffers --
+	CreateConstantBuffers();
+
+	// -- 7. Create root signature --
+	CreateRootSignature();
+
+	// -- 8. Create pipeline state + shaders --
+	CreatePipeline();
+
+	// -- 9. Create command objects --
+	CreateCommandObjects();
+
+    // Show window
+    ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);
+    ::UpdateWindow(m_hwnd);
+
+    return true;
+}
+
+// 3. Create descriptor heaps 
+// For this simple app, we only need 2 non-shader visible heaps:
+// - RTV  heap: g_frameCount descriptors for the back buffer RTVs (one per frame in the swap chain)
+// - DSV heaps: 1 descriptor for the depth buffer DSV
+// We don't need a CBV/SRV/UAV heap since we won't be using any shader resources in this demo.
+void TestApp::CreateDescriptorHeaps()
+{
     // Create DSV descriptor heap
     DescriptorHeapDesc dsvHeapDesc = {};
     dsvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::DSV;
@@ -44,7 +86,13 @@ bool TestApp::Initialize()
 
     m_rtvHeap = m_device->createDescriptorHeap(rtvHeapDesc);
     m_rtvHeap->createDescriptorHeap();
+}
 
+void TestApp::CreateSwapChainAndDepthBuffer()
+{
+	// We couple swap chain and depth buffer creation together since they both depend 
+	// on the window size and need to be recreated together when the window is resized.
+    
     // Create swap chain
     SwapChainDesc swapChainDesc = {};
     swapChainDesc.width = WINDOW_WIDTH;
@@ -54,7 +102,7 @@ bool TestApp::Initialize()
 
     m_swapChain = m_device->createSwapChain(m_rtvHeap.get(), swapChainDesc);
 
-    // Create depth buffer resource
+    // Create depth buffer
     ResourceDesc depthDesc = {};
     depthDesc.type = ResourceDesc::ResourceType::Texture2D;
     depthDesc.width = WINDOW_WIDTH;
@@ -68,15 +116,28 @@ bool TestApp::Initialize()
     DescriptorHandle dsvHandle = {};
     m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
     m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
+}
 
-    // Define triangle vertex data
-    SimpleVertex triangleVertices[] =
+void TestApp::CreateGeometry()
+{
+    SimpleVertex quadVertices[] =
     {
-        { XMFLOAT3(0.0f, 0.5f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
-        { XMFLOAT3(0.5f, -0.5f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-        { XMFLOAT3(-0.5f, -0.5f, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }
+        { XMFLOAT3(-1.0f, +1.0f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) }, // 0: top-left-front
+        { XMFLOAT3(+1.0f, +1.0f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) }, // 1: top-right-front
+        { XMFLOAT3(+1.0f, -1.0f, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }, // 2: bottom-right-front
+        { XMFLOAT3(-1.0f, -1.0f, 0.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) }, // 3: bottom-left-front
+
     };
-    const UINT vertexBufferSize = sizeof(triangleVertices);
+
+    uint16_t quadIndices[] =
+    {
+        0, 1, 2,
+        0, 2, 3
+    };
+
+    const UINT vertexBufferSize = sizeof(quadVertices);
+    const UINT indexBufferSize = sizeof(quadIndices);
+	m_indexCount = _countof(quadIndices);
 
     // Create vertex buffer resource
     ResourceDesc vertexBufferDesc = {};
@@ -90,18 +151,132 @@ bool TestApp::Initialize()
     void* vertexData = nullptr;
     if (m_vertexBuffer->map(&vertexData))
     {
-        memcpy(vertexData, triangleVertices, vertexBufferSize);
+        memcpy(vertexData, quadVertices, vertexBufferSize);
         m_vertexBuffer->unmap();
     }
-     else
+    else
     {
-        OutputDebugStringA("Failed to map vertex buffer resource.\n");
-        return false;
+        throw std::runtime_error("Failed to map vertex buffer resource.\n");
     }
 
     // Create vertex buffer view
-    m_vertexBufferView = m_vertexBuffer->getResourceView(ResourceBindFlags::VertexBuffer, {}, sizeof(SimpleVertex));
+    m_vertexBufferView = m_vertexBuffer->getResourceView(
+        ResourceBindFlags::VertexBuffer, {}, sizeof(SimpleVertex));
 
+    // Create index buffer resource
+    ResourceDesc indexBufferDesc = {};
+    indexBufferDesc.type = ResourceDesc::ResourceType::Buffer;
+    indexBufferDesc.usage = ResourceDesc::Usage::Upload;
+    indexBufferDesc.width = indexBufferSize;
+
+    m_indexBuffer = m_device->createResource(indexBufferDesc);
+
+    // Copy index data to index buffer
+    void* indexData = nullptr;
+    if (m_indexBuffer->map(&indexData))
+    {
+        memcpy(indexData, quadIndices, indexBufferSize);
+        m_indexBuffer->unmap();
+    }
+    else
+    {
+        throw std::runtime_error("Failed to map index buffer resource.\n");
+    }
+
+    // Create index buffer view
+    m_indexBufferView = m_indexBuffer->getResourceView(
+        ResourceBindFlags::IndexBuffer, {}, sizeof(uint16_t));
+}
+
+void TestApp::CreateConstantBuffers()
+{
+    for (UINT i = 0; i < g_frameCount; i++)
+    {
+        m_frameCBs[i] = std::make_unique<UploadBuffer<FrameConstants>>(m_device.get(), 1, true);
+        m_objectCBs[i] = std::make_unique<UploadBuffer<BasicObjectConstants>>(m_device.get(), 1, true);
+	}
+}
+
+void TestApp::CreateRootSignature()
+{
+    // Create root signature
+
+    // For this simple test, we have an object constant buffer (per-object data like world matrix) 
+    // and a frame constant buffer (per-frame data like view/projection matrices).
+    RootSignatureRangeDesc objCbv = {};
+    objCbv.type = RootSignatureRangeDesc::RangeType::ConstantBufferView;
+    objCbv.numParameters = 1;
+    objCbv.shaderRegister = 0;
+
+    RootSignatureRangeDesc frameCbv = {};
+    frameCbv.type = RootSignatureRangeDesc::RangeType::ConstantBufferView;
+    frameCbv.numParameters = 1;
+    frameCbv.shaderRegister = 1;
+
+    RootSignatureTableLayoutDesc cbvTable = {};
+    cbvTable.visibility = RootSignatureTableLayoutDesc::ShaderVisibility::All;
+    cbvTable.rangeDescs = { objCbv, frameCbv };
+
+    RootSignatureDesc rootSigDesc = {};
+    rootSigDesc.tableLayoutDescs = { cbvTable };
+
+    // Add static sampler for completeness, even though we don't use yet
+    rootSigDesc.staticSamplers = {
+        StaticSamplerDesc{
+            .shaderRegister = 0, .filter = SamplerFilter::Point,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 1, .filter = SamplerFilter::Point,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 2, .filter = SamplerFilter::Linear,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 3, .filter = SamplerFilter::Linear,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 4, .filter = SamplerFilter::Anisotropic,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap,
+            .mipLODBias = 0.0f, .maxAnisotropy = 8
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 5, .filter = SamplerFilter::Anisotropic,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp,
+            .mipLODBias = 0.0f, .maxAnisotropy = 8
+        }
+    };
+
+    m_rootSignature = m_device->createRootSignature(rootSigDesc);
+    m_rootSignature->createRootSignature();
+}
+
+void TestApp::CreatePipeline()
+{
+    // Compile shader
+    ShaderDesc shaderDesc = {};
+    shaderDesc.shaderFilePath = L"Shaders\\cubeShader.hlsl";
+    shaderDesc.shaderName = "CubeShader";
+    shaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
+
+    m_shader = std::make_unique<ShaderDx12>(shaderDesc);
+
+    // Create pipeline state
+    PipelineDesc pipelineDesc = {};
+    pipelineDesc.inputLayout = InputLayoutDesc::build({
+        InputElementDesc::setAsPosition(0, ResourceFormat::R32G32B32_FLOAT, 0, 0),
+        InputElementDesc::setAsColor(0, ResourceFormat::R32G32B32A32_FLOAT, 0, 12)
+        });
+
+    m_pipeline = m_device->createPipeline(pipelineDesc);
+    m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
+}
+
+void TestApp::CreateCommandObjects()
+{
     // Create per frame command allocators
     for (UINT i = 0; i < g_frameCount; i++)
     {
@@ -113,54 +288,38 @@ bool TestApp::Initialize()
     CommandListDesc cmdListDesc = {};
     m_commandList = m_device->createCommandList(cmdListDesc);
     m_commandList->createCommandList(m_frameContexts[0].commandAllocator.Get());
+}
 
-    // Create buffer resource
-    ResourceDesc bufferDesc = {};
-    bufferDesc.type = ResourceDesc::ResourceType::Buffer;
-    bufferDesc.usage = ResourceDesc::Usage::Upload;
-    bufferDesc.width = 1024;
+void TestApp::UpdateConstantBuffers()
+{
+    // Rotate the cube slowly around Y axis
+    m_rotationAngle += 0.01f;
 
-    m_bufferResource = m_device->createResource(bufferDesc);
+	// Object constant (b0) - World matrix
+	XMMATRIX worldMatrix = XMMatrixRotationY(m_rotationAngle);    
 
-    // Compile shader
-    ShaderDesc shaderDesc = {};
-    shaderDesc.shaderFilePath = L"Shaders\\testShader.hlsl";
-    shaderDesc.shaderName = "TestShader";
-    shaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
+    // Object: world matrix with rotation
+    BasicObjectConstants objConstants = {};
+    XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(worldMatrix));
 
-    m_shader = std::make_unique<ShaderDx12>(shaderDesc);
+	// Frame constant (b1) - ViewProj matrix + eye position
+    XMVECTOR eyePos = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
+    XMVECTOR lookAt = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMMATRIX view = XMMatrixLookAtLH(eyePos, lookAt, up);
 
-    // Create root signature
-    RootSignatureRangeDesc rangeDesc = {};
-    rangeDesc.type = RootSignatureRangeDesc::RangeType::ConstantBufferView;
-    rangeDesc.numParameters = 1;
-    rangeDesc.shaderRegister = 0;
+    float aspectRatio = static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT);
+    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.1f, 100.0f);
+    XMMATRIX viewProj = view * proj;
 
-    RootSignatureTableLayoutDesc tableLayoutDesc = {};
-    tableLayoutDesc.rangeDescs.push_back(rangeDesc);
-    tableLayoutDesc.visibility = RootSignatureTableLayoutDesc::ShaderVisibility::All;
+    // Frame: identity viewproj (renders in NDC space directly)
+    FrameConstants frameConstants = {};
+    XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
 
-    RootSignatureDesc rootSigDesc = {};
-    rootSigDesc.tableLayoutDescs.push_back(tableLayoutDesc);
-
-    m_rootSignature = std::make_unique<RootSignatureDx12>(m_device.get(), rootSigDesc);
-    m_rootSignature->createRootSignature();
-
-    // Create pipeline state
-    PipelineDesc pipelineDesc = {};
-    pipelineDesc.inputLayout = InputLayoutDesc::build({
-        InputElementDesc::setAsPosition(0, ResourceFormat::R32G32B32_FLOAT, 0, 0),
-        InputElementDesc::setAsColor(0, ResourceFormat::R32G32B32A32_FLOAT, 0, 12)
-        });
-
-    m_pipeline = m_device->createPipeline(pipelineDesc);
-    m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
-
-    // Show window
-    ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);
-    ::UpdateWindow(m_hwnd);
-
-    return true;
+	// Copy data to the current back buffer's constant buffers
+    UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
+    m_objectCBs[backBufferIndex]->CopyData(0, objConstants);
+    m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
 }
 
 void TestApp::Run()
@@ -187,29 +346,48 @@ void TestApp::Run()
         FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
         m_device->waitForFence(currentFrameContext.fenceValue);
 
+		// Update constant buffers with current frame's data
+		UpdateConstantBuffers();
+
+        // Record commands
+		// Retrieve current back buffer resource and RTV for render pass setup
         ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
         ResourceView currentRtView = m_swapChain->getCurrentRTView();
 
         // Build render pass descriptor for current frame
-        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        const float clearColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
         RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
             currentRtView,
             currentBackBuffer->getNativeResource(),
             m_depthStencilView,
             WINDOW_WIDTH, WINDOW_HEIGHT,
             clearColor);
-        renderPassDesc.debugName= "Main Render Pass";
+        renderPassDesc.debugName= "Cube Render Pass";
 
         // Test command list recording
         m_commandList->begin(currentFrameContext.commandAllocator.Get());
-
         m_commandList->beginRenderPass(renderPassDesc);
 
-        // Draw
-        m_commandList->setGraphicsRootSignature(m_rootSignature.get());
-        m_commandList->setPipeline(m_pipeline.get());
-        m_commandList->setVertexBuffer(0, m_vertexBufferView);
-        m_commandList->drawInstanced(3, 1, 0, 0);
+        {
+			// Bind root signature and pipeline state
+            m_commandList->setGraphicsRootSignature(m_rootSignature.get());
+            m_commandList->setPipeline(m_pipeline.get());
+
+			// Bind constant buffers to root parameters (descriptor tables or root descriptors 
+            // depending on how we set up the root signature)
+			m_commandList->setConstantBufferView(
+                0, 
+                m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+			m_commandList->setConstantBufferView(
+                1, 
+				m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+
+			// Bind geometry
+            m_commandList->setVertexBuffer(0, m_vertexBufferView);
+			m_commandList->setIndexBuffer(m_indexBufferView);
+
+            m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0,0);
+        }
 
         m_commandList->endRenderPass();
 
@@ -223,9 +401,6 @@ void TestApp::Run()
         // Signal and increment the fence value for the current frame
         currentFrameContext.fenceValue = m_device->getNextFenceValue();
         m_device->signalFence(currentFrameContext.fenceValue);
-
-        //// Move to the next frame index
-        //m_frameIndex = (m_frameIndex + 1) % g_frameCount;
     }
 }
 
@@ -308,7 +483,7 @@ bool TestApp::CreateAppWindow()
     ::RegisterClassExW(&wc);
 
     m_hwnd = ::CreateWindowW(
-        wc.lpszClassName, L"Dear ImGui DirectX12 Example", WS_OVERLAPPEDWINDOW,
+        wc.lpszClassName, L"Raphael Engine - Quad Demo", WS_OVERLAPPEDWINDOW,
         100, 100, WINDOW_WIDTH, WINDOW_HEIGHT,
         nullptr, nullptr, wc.hInstance, this
     );
