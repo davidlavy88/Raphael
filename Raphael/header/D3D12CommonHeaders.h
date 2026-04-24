@@ -52,3 +52,6 @@ using namespace DirectX;
 #endif
 
 static constexpr int NUM_BACK_BUFFERS = 2;
+
+static int WINDOW_WIDTH = 1280;
+static int WINDOW_HEIGHT = 720;

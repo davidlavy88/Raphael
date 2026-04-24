@@ -1,4 +1,4 @@
-#include "TestApp.h"
+#include "BoxDemo.h"
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_win32.h"
 #include "imgui/backends/imgui_impl_dx12.h"
@@ -6,9 +6,6 @@
 
 
 using namespace raphael;
-
-int WINDOW_WIDTH = 1280;
-int WINDOW_HEIGHT = 720;
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -23,37 +20,37 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 // 7. Create root signature (define shader resource bindings)
 // 8. Create pipeline state (compile shaders, create PSO)
 // 9. Create command objects (command allocators, command lists)
-bool TestApp::Initialize()
+bool BoxDemo::Initialize()
 {
     // -- 1. Create application window --
     if (!CreateAppWindow())
         return false;
-    
+
     // -- 2. Create device --
     DeviceDesc deviceDesc = {};
     deviceDesc.enableDebugLayer = true;
     m_device = std::make_unique<DeviceDx12>(deviceDesc);
 
-	// -- 3. Create descriptor heaps --
-	CreateDescriptorHeaps();
+    // -- 3. Create descriptor heaps --
+    CreateDescriptorHeaps();
 
-	// -- 4. Create swap chain and depth buffer --
-	CreateSwapChainAndDepthBuffer();
+    // -- 4. Create swap chain and depth buffer --
+    CreateSwapChainAndDepthBuffer();
 
-	// -- 5. Create geometry resources --
-	CreateGeometry();
+    // -- 5. Create geometry resources --
+    CreateGeometry();
 
-	// -- 6. Create constant buffers --
-	CreateConstantBuffers();
+    // -- 6. Create constant buffers --
+    CreateConstantBuffers();
 
-	// -- 7. Create root signature --
-	CreateRootSignature();
+    // -- 7. Create root signature --
+    CreateRootSignature();
 
-	// -- 8. Create pipeline state + shaders --
-	CreatePipeline();
+    // -- 8. Create pipeline state + shaders --
+    CreatePipeline();
 
-	// -- 9. Create command objects --
-	CreateCommandObjects();
+    // -- 9. Create command objects --
+    CreateCommandObjects();
 
     // Show window
     ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);
@@ -67,7 +64,7 @@ bool TestApp::Initialize()
 // - RTV  heap: g_frameCount descriptors for the back buffer RTVs (one per frame in the swap chain)
 // - DSV heaps: 1 descriptor for the depth buffer DSV
 // We don't need a CBV/SRV/UAV heap since we won't be using any shader resources in this demo.
-void TestApp::CreateDescriptorHeaps()
+void BoxDemo::CreateDescriptorHeaps()
 {
     // Create DSV descriptor heap
     DescriptorHeapDesc dsvHeapDesc = {};
@@ -88,11 +85,11 @@ void TestApp::CreateDescriptorHeaps()
     m_rtvHeap->createDescriptorHeap();
 }
 
-void TestApp::CreateSwapChainAndDepthBuffer()
+void BoxDemo::CreateSwapChainAndDepthBuffer()
 {
-	// We couple swap chain and depth buffer creation together since they both depend 
-	// on the window size and need to be recreated together when the window is resized.
-    
+    // We couple swap chain and depth buffer creation together since they both depend 
+    // on the window size and need to be recreated together when the window is resized.
+
     // Create swap chain
     SwapChainDesc swapChainDesc = {};
     swapChainDesc.width = WINDOW_WIDTH;
@@ -118,26 +115,45 @@ void TestApp::CreateSwapChainAndDepthBuffer()
     m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
 }
 
-void TestApp::CreateGeometry()
+void BoxDemo::CreateGeometry()
 {
     SimpleVertex quadVertices[] =
     {
-        { XMFLOAT3(-1.0f, +1.0f, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) }, // 0: top-left-front
-        { XMFLOAT3(+1.0f, +1.0f, 0.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) }, // 1: top-right-front
-        { XMFLOAT3(+1.0f, -1.0f, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }, // 2: bottom-right-front
-        { XMFLOAT3(-1.0f, -1.0f, 0.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) }, // 3: bottom-left-front
-
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) },
+        { XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) },
+        { XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) },
+        { XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) },
+        { XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) },
+        { XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) },
+        { XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) },
+        { XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta)}
     };
 
     uint16_t quadIndices[] =
     {
+        // front face
         0, 1, 2,
-        0, 2, 3
+        0, 2, 3,
+        // back face
+        4, 6, 5,
+        4, 7, 6,
+        // left face
+        4, 5, 1,
+        4, 1, 0,
+        // right face
+        3, 2, 6,
+        3, 6, 7,
+        // top face
+        1, 5, 6,
+        1, 6, 2,
+        // bottom face
+        4, 0, 3,
+        4, 3, 7
     };
 
     const UINT vertexBufferSize = sizeof(quadVertices);
     const UINT indexBufferSize = sizeof(quadIndices);
-	m_indexCount = _countof(quadIndices);
+    m_indexCount = _countof(quadIndices);
 
     // Create vertex buffer resource
     ResourceDesc vertexBufferDesc = {};
@@ -188,16 +204,16 @@ void TestApp::CreateGeometry()
         ResourceBindFlags::IndexBuffer, {}, sizeof(uint16_t));
 }
 
-void TestApp::CreateConstantBuffers()
+void BoxDemo::CreateConstantBuffers()
 {
     for (UINT i = 0; i < g_frameCount; i++)
     {
         m_frameCBs[i] = std::make_unique<UploadBuffer<FrameConstants>>(m_device.get(), 1, true);
         m_objectCBs[i] = std::make_unique<UploadBuffer<BasicObjectConstants>>(m_device.get(), 1, true);
-	}
+    }
 }
 
-void TestApp::CreateRootSignature()
+void BoxDemo::CreateRootSignature()
 {
     // Create root signature
 
@@ -254,7 +270,7 @@ void TestApp::CreateRootSignature()
     m_rootSignature->createRootSignature();
 }
 
-void TestApp::CreatePipeline()
+void BoxDemo::CreatePipeline()
 {
     // Compile shader
     ShaderDesc shaderDesc = {};
@@ -275,7 +291,7 @@ void TestApp::CreatePipeline()
     m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
 }
 
-void TestApp::CreateCommandObjects()
+void BoxDemo::CreateCommandObjects()
 {
     // Create per frame command allocators
     for (UINT i = 0; i < g_frameCount; i++)
@@ -290,19 +306,19 @@ void TestApp::CreateCommandObjects()
     m_commandList->createCommandList(m_frameContexts[0].commandAllocator.Get());
 }
 
-void TestApp::UpdateConstantBuffers()
+void BoxDemo::UpdateConstantBuffers()
 {
     // Rotate the cube slowly around Y axis
     m_rotationAngle += 0.01f;
 
-	// Object constant (b0) - World matrix
-	XMMATRIX worldMatrix = XMMatrixRotationY(m_rotationAngle);    
+    // Object constant (b0) - World matrix
+    XMMATRIX worldMatrix = XMMatrixRotationY(m_rotationAngle);
 
     // Object: world matrix with rotation
     BasicObjectConstants objConstants = {};
     XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(worldMatrix));
 
-	// Frame constant (b1) - ViewProj matrix + eye position
+    // Frame constant (b1) - ViewProj matrix + eye position
     XMVECTOR eyePos = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
     XMVECTOR lookAt = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -316,13 +332,13 @@ void TestApp::UpdateConstantBuffers()
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
 
-	// Copy data to the current back buffer's constant buffers
+    // Copy data to the current back buffer's constant buffers
     UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
     m_objectCBs[backBufferIndex]->CopyData(0, objConstants);
     m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
 }
 
-void TestApp::Run()
+void BoxDemo::Run()
 {
     MSG msg = {};
     bool running = true;
@@ -346,47 +362,47 @@ void TestApp::Run()
         FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
         m_device->waitForFence(currentFrameContext.fenceValue);
 
-		// Update constant buffers with current frame's data
-		UpdateConstantBuffers();
+        // Update constant buffers with current frame's data
+        UpdateConstantBuffers();
 
         // Record commands
-		// Retrieve current back buffer resource and RTV for render pass setup
+        // Retrieve current back buffer resource and RTV for render pass setup
         ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
         ResourceView currentRtView = m_swapChain->getCurrentRTView();
 
         // Build render pass descriptor for current frame
-        const float clearColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
         RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
             currentRtView,
             currentBackBuffer->getNativeResource(),
             m_depthStencilView,
             WINDOW_WIDTH, WINDOW_HEIGHT,
             clearColor);
-        renderPassDesc.debugName= "Cube Render Pass";
+        renderPassDesc.debugName = "Cube Render Pass";
 
         // Test command list recording
         m_commandList->begin(currentFrameContext.commandAllocator.Get());
         m_commandList->beginRenderPass(renderPassDesc);
 
         {
-			// Bind root signature and pipeline state
+            // Bind root signature and pipeline state
             m_commandList->setGraphicsRootSignature(m_rootSignature.get());
             m_commandList->setPipeline(m_pipeline.get());
 
-			// Bind constant buffers to root parameters (descriptor tables or root descriptors 
+            // Bind constant buffers to root parameters (descriptor tables or root descriptors 
             // depending on how we set up the root signature)
-			m_commandList->setConstantBufferView(
-                0, 
+            m_commandList->setConstantBufferView(
+                0,
                 m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
-			m_commandList->setConstantBufferView(
-                1, 
-				m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+            m_commandList->setConstantBufferView(
+                1,
+                m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
 
-			// Bind geometry
+            // Bind geometry
             m_commandList->setVertexBuffer(0, m_vertexBufferView);
-			m_commandList->setIndexBuffer(m_indexBufferView);
+            m_commandList->setIndexBuffer(m_indexBufferView);
 
-            m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0,0);
+            m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
         }
 
         m_commandList->endRenderPass();
@@ -404,7 +420,7 @@ void TestApp::Run()
     }
 }
 
-void TestApp::Shutdown()
+void BoxDemo::Shutdown()
 {
     // Ensure GPU is finished with all resources before shutting down
     for (UINT i = 0; i < g_frameCount; i++)
@@ -413,10 +429,10 @@ void TestApp::Shutdown()
     }
 
     // Cleanup resources if needed
-    OutputDebugStringA("Shutting down TestApp and releasing resources.\n");
+    OutputDebugStringA("Shutting down BoxDemo and releasing resources.\n");
 }
 
-LRESULT TestApp::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT BoxDemo::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
         return true;
@@ -471,7 +487,7 @@ LRESULT TestApp::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
     return ::DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-bool TestApp::CreateAppWindow()
+bool BoxDemo::CreateAppWindow()
 {
     // Implementation for creating application window
     WNDCLASSEXW wc = {
@@ -491,7 +507,7 @@ bool TestApp::CreateAppWindow()
     return m_hwnd != nullptr;
 }
 
-void TestApp::DestroyAppWindow()
+void BoxDemo::DestroyAppWindow()
 {
     // Implementation for destroying application window
     if (m_hwnd)
@@ -502,20 +518,20 @@ void TestApp::DestroyAppWindow()
     }
 }
 
-LRESULT WINAPI TestApp::StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT WINAPI BoxDemo::StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    // Retrieve the TestApp instance from window user data
-    TestApp* app = nullptr;
-    
+    // Retrieve the BoxDemo instance from window user data
+    BoxDemo* app = nullptr;
+
     if (msg == WM_NCCREATE)
     {
         CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
-        app = static_cast<TestApp*>(cs->lpCreateParams);
+        app = static_cast<BoxDemo*>(cs->lpCreateParams);
         ::SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(app));
     }
     else
     {
-        app = reinterpret_cast<TestApp*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
+        app = reinterpret_cast<BoxDemo*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
     }
 
     if (app)

@@ -50,7 +50,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -67,7 +67,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -76,6 +76,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Demos\BoxDemo.cpp" />
     <ClCompile Include="DX12\DescriptorHeapDx12.cpp" />
     <ClCompile Include="DX12\CommandList.cpp" />
     <ClCompile Include="DX12\DeviceDx12.cpp" />
@@ -98,7 +99,7 @@
     <ClCompile Include="source\BoxRenderer.cpp" />
     <ClCompile Include="source\D3D12Util.cpp" />
     <ClCompile Include="source\Renderer.cpp" />
-    <ClCompile Include="source\TestApp.cpp" />
+    <ClCompile Include="Demos\QuadDemo.cpp" />
     <ClCompile Include="DX12\SwapChainDx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_win32.cpp" />
@@ -113,6 +114,7 @@
     <ClCompile Include="Utilities\TextureLoader\WICTextureLoader12.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Demos\BoxDemo.h" />
     <ClInclude Include="DX12\DescriptorHeapDx12.h" />
     <ClInclude Include="DX12\CommandList.h" />
     <ClInclude Include="DX12\Constants.h" />
@@ -141,7 +143,7 @@
     <ClInclude Include="header\GPUStructs.h" />
     <ClInclude Include="header\UploadBuffer.h" />
     <ClInclude Include="DX12\ResourceDx12.h" />
-    <ClInclude Include="header\TestApp.h" />
+    <ClInclude Include="Demos\QuadDemo.h" />
     <ClInclude Include="DX12\PipelineDx12.h" />
     <ClInclude Include="DX12\ShaderDx12.h" />
     <ClInclude Include="DX12\RootSignatureDx12.h" />
