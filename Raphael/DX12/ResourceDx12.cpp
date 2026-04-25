@@ -33,6 +33,16 @@ namespace raphael
         m_desc.type = ResourceDesc::ResourceType::Texture2D;
     }
 
+    ResourceDx12::ResourceDx12(DeviceDx12* device, ComPtr<ID3D12Resource> resource)
+        : m_device(device), m_resource(std::move(resource))
+    {
+        // Retrieve resource description to fill m_desc
+        D3D12_RESOURCE_DESC resDesc = m_resource->GetDesc();
+        m_desc.width = static_cast<uint32_t>(resDesc.Width);
+        m_desc.height = resDesc.Height;
+        m_desc.type = ResourceDesc::ResourceType::Texture2D; // TODO: Assuming only swapchain use for now. Determine resource type based on dimension in the future (switch case)
+    }
+
     bool ResourceDx12::map(void** data)
     {
         if (FAILED(m_resource->Map(0, nullptr, data)))

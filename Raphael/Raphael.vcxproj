@@ -101,6 +101,7 @@
     <ClCompile Include="source\Renderer.cpp" />
     <ClCompile Include="Demos\QuadDemo.cpp" />
     <ClCompile Include="DX12\SwapChainDx12.cpp" />
+    <ClCompile Include="Demos\TexturedBoxDemo.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="Utilities\imgui\imgui.cpp" />
@@ -150,6 +151,7 @@
     <ClInclude Include="DX12\InputLayoutDx12.h" />
     <ClInclude Include="DX12\SwapChainDx12.h" />
     <ClInclude Include="DX12\RootSignatureTableDx12.h" />
+    <ClInclude Include="Demos\TexturedBoxDemo.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />

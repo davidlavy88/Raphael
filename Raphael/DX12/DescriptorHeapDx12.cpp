@@ -25,7 +25,7 @@ namespace raphael
         m_freeIndices.reserve(m_desc.numDescriptors);
         for (UINT i = m_desc.numDescriptors; i > 0; i--)
         {
-            m_freeIndices.push_back(i);
+            m_freeIndices.push_back(i - 1);
         }
 
     }
@@ -60,6 +60,10 @@ namespace raphael
             throw std::out_of_range("Descriptor index out of range");
         }
         outHandle->cpuHandle.ptr = m_descriptorHandle.cpuHandle.ptr + (index * m_descriptorSize);
+        if (m_desc.shaderVisible)
+            outHandle->gpuHandle.ptr = m_descriptorHandle.gpuHandle.ptr + (index * m_descriptorSize);
+        else
+            outHandle->gpuHandle.ptr = 0;
     }
 
     void DescriptorHeapDx12::AllocateHeap(DescriptorHandle* outHandle)

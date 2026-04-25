@@ -4,8 +4,8 @@
 
 namespace raphael
 {
-	// Utility function to convert ResourceBindFlags to D3D12_RESOURCE_FLAGS
-	inline DXGI_FORMAT convertFormatToDXGI(ResourceFormat format)
+    // Utility function to convert ResourceBindFlags to D3D12_RESOURCE_FLAGS
+    inline DXGI_FORMAT convertFormatToDXGI(ResourceFormat format)
     {
         switch (format)
         {
@@ -13,6 +13,8 @@ namespace raphael
             return DXGI_FORMAT_UNKNOWN;
         case raphael::ResourceFormat::R8G8B8A8_UNORM:
             return DXGI_FORMAT_R8G8B8A8_UNORM;
+        case raphael::ResourceFormat::R32G32_FLOAT:
+            return DXGI_FORMAT_R32G32_FLOAT;
         case raphael::ResourceFormat::R32G32B32_FLOAT:
             return DXGI_FORMAT_R32G32B32_FLOAT;
         case raphael::ResourceFormat::R32G32B32A32_FLOAT:
@@ -36,6 +38,8 @@ namespace raphael
             return ResourceFormat::Unknown;
         case DXGI_FORMAT_R8G8B8A8_UNORM:
             return ResourceFormat::R8G8B8A8_UNORM;
+        case DXGI_FORMAT_R32G32_FLOAT:
+            return ResourceFormat::R32G32_FLOAT;
         case DXGI_FORMAT_R32G32B32_FLOAT:
             return ResourceFormat::R32G32B32_FLOAT;
         case DXGI_FORMAT_R32G32B32A32_FLOAT:

@@ -87,6 +87,11 @@ namespace raphael
         m_commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, rootSignatureTable->getGpuHandle());
     }
 
+    void CommandList::setGraphicsRootDescriptorTable(UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle)
+    {
+        m_commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuHandle);
+    }
+
     void CommandList::setConstantBufferView(UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS gpuAddress)
     {
         m_commandList->SetGraphicsRootConstantBufferView(rootParameterIndex, gpuAddress);

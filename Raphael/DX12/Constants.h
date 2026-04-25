@@ -40,6 +40,7 @@ namespace raphael
     {
         Unknown ,
         R8G8B8A8_UNORM ,
+        R32G32_FLOAT,
         R32G32B32_FLOAT ,
         R32G32B32A32_FLOAT ,
         D24_UNORM_S8_UINT ,

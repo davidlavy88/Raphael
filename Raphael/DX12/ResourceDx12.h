@@ -12,6 +12,7 @@ namespace raphael
     public:
         ResourceDx12(DeviceDx12* device, const ResourceDesc& desc);
         ResourceDx12(DeviceDx12* device, ID3D12Resource* resource);
+        ResourceDx12(DeviceDx12* device, ComPtr<ID3D12Resource> resource);
         ~ResourceDx12() = default;
 
         // IResource interface

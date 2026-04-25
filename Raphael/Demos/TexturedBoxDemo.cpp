@@ -1,0 +1,659 @@
+#include "TexturedBoxDemo.h"
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_win32.h"
+#include "imgui/backends/imgui_impl_dx12.h"
+#include "TextureLoader/DDSTextureLoader.h"
+#include "GPUStructs.h"
+
+
+using namespace raphael;
+
+// Forward declare message handler from imgui_impl_win32.cpp
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+// Initialization process
+// 1. Create application window
+// 2. Create device
+// 3. Create descriptor heaps (DSV, RTV, CBV/SRV/UAV if needed)
+// 4. Create swap chain + depth buffer
+// 5. Create command objects (command allocators, command lists)
+// 6. Create geometry resources (vertex/index buffers, views)
+// 7. Constant buffers (per-frame upload buffers)
+// 8. Create root signature (define shader resource bindings)
+// 9. Create pipeline state (compile shaders, create PSO)
+// 10. Create texture resources (load texture, create SRV)
+bool TexturedBoxDemo::Initialize()
+{
+    // -- 1. Create application window --
+    if (!CreateAppWindow())
+        return false;
+
+    // -- 2. Create device --
+    DeviceDesc deviceDesc = {};
+    deviceDesc.enableDebugLayer = true;
+    m_device = std::make_unique<DeviceDx12>(deviceDesc);
+
+    // -- 3. Create descriptor heaps --
+    CreateDescriptorHeaps();
+
+    // -- 4. Create swap chain and depth buffer --
+    CreateSwapChainAndDepthBuffer();
+
+    // -- 5. Create command objects --
+    CreateCommandObjects();
+
+    // -- 6. Create geometry resources --
+    CreateGeometry();
+
+    // -- 7. Create constant buffers --
+    CreateConstantBuffers();
+
+    // -- 8. Create root signature --
+    CreateRootSignature();
+
+    // -- 9. Create pipeline state + shaders --
+    CreatePipeline();
+
+    // -- 10. Create texture resources --
+    CreateTexture();
+
+    // Show window
+    ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);
+    ::UpdateWindow(m_hwnd);
+
+    return true;
+}
+
+// 3. Create descriptor heaps 
+// For this simple app, we only need 2 non-shader visible heaps and 1 shader visible heap:
+// - RTV  heap: g_frameCount descriptors for the back buffer RTVs (one per frame in the swap chain)
+// - DSV heaps: 1 descriptor for the depth buffer DSV
+// - CBV/SRV/UAV heap: 1 descriptor for the texture SRV
+void TexturedBoxDemo::CreateDescriptorHeaps()
+{
+    // Create DSV descriptor heap
+    DescriptorHeapDesc dsvHeapDesc = {};
+    dsvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::DSV;
+    dsvHeapDesc.numDescriptors = 1;
+    dsvHeapDesc.shaderVisible = false; // DSV heap does not need to be shader visible
+
+    m_dsvHeap = m_device->createDescriptorHeap(dsvHeapDesc);
+    m_dsvHeap->createDescriptorHeap();
+
+    // Create RTV descriptor heap
+    DescriptorHeapDesc rtvHeapDesc = {};
+    rtvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::RTV;
+    rtvHeapDesc.numDescriptors = g_frameCount; // One RTV for each back buffer
+    rtvHeapDesc.shaderVisible = false; // RTV heap does not need to be shader visible
+
+    m_rtvHeap = m_device->createDescriptorHeap(rtvHeapDesc);
+    m_rtvHeap->createDescriptorHeap();
+
+    DescriptorHeapDesc textureSrvHeapDesc = {};
+    textureSrvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
+    textureSrvHeapDesc.numDescriptors = 1; // One SRV for the texture
+    textureSrvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
+
+    m_textureSrvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
+    m_textureSrvHeap->createDescriptorHeap();
+}
+
+// 4. Create swap chain and depth buffer
+void TexturedBoxDemo::CreateSwapChainAndDepthBuffer()
+{
+    // We couple swap chain and depth buffer creation together since they both depend 
+    // on the window size and need to be recreated together when the window is resized.
+
+    // Create swap chain
+    SwapChainDesc swapChainDesc = {};
+    swapChainDesc.width = WINDOW_WIDTH;
+    swapChainDesc.height = WINDOW_HEIGHT;
+    swapChainDesc.bufferCount = g_frameCount;
+    swapChainDesc.windowHandle = m_hwnd;
+
+    m_swapChain = m_device->createSwapChain(m_rtvHeap.get(), swapChainDesc);
+
+    // Create depth buffer
+    ResourceDesc depthDesc = {};
+    depthDesc.type = ResourceDesc::ResourceType::Texture2D;
+    depthDesc.width = WINDOW_WIDTH;
+    depthDesc.height = WINDOW_HEIGHT;
+    depthDesc.format = ResourceFormat::D24_UNORM_S8_UINT;
+    depthDesc.bindFlags = ResourceBindFlags::DepthStencil;
+
+    m_depthBuffer = m_device->createResource(depthDesc);
+
+    // Create the DSV for the depth buffer
+    DescriptorHandle dsvHandle = {};
+	m_dsvHeap->AllocateHeap(&dsvHandle);
+    m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
+}
+
+// 5. Create command allocators and command list
+// Each frame in the swap chain gets its own command allocator, 
+// which we will reset at the beginning of each frame when we record commands for that frame. 
+// We only need one command list since we will execute it and wait for it to finish 
+// before recording commands for the next frame.
+void TexturedBoxDemo::CreateCommandObjects()
+{
+    // Create per frame command allocators
+    for (UINT i = 0; i < g_frameCount; i++)
+    {
+        m_frameContexts[i].commandAllocator = m_device->createCommandAllocator();
+        m_frameContexts[i].fenceValue = 0;
+    }
+
+    // Create command list (use the first frame's command allocator for now, we will reset it each frame before recording commands)
+    CommandListDesc cmdListDesc = {};
+    m_commandList = m_device->createCommandList(cmdListDesc);
+    m_commandList->createCommandList(m_frameContexts[0].commandAllocator.Get());
+}
+
+// 6. Create geometry resources (vertex/index buffers, views)
+// For a textured cube, we need to define vertices with position, normal, and texture coordinate attributes.
+// 8 unique vertices are needed for the cube (one for each corner), 
+// and we will use an index buffer to define the 12 triangles (2 per face) that make up the cube's 6 faces.
+// 36 indices in total (3 indices per triangle * 2 triangles per face * 6 faces).
+void TexturedBoxDemo::CreateGeometry()
+{
+    VertexWithTexCoord quadVertices[] =
+    {
+        // Fill in the front face vertex data.
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
+
+        // Fill in the back face vertex data.
+        { XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
+
+        // Fill in the bottom face vertex data.
+        { XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+
+        // Fill in the top face vertex data.
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
+
+        // Fill in the left face vertex data.
+        { XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+
+        // Fill in the right face vertex data.
+        { XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) }
+    };
+
+    uint16_t quadIndices[] =
+    {
+        // front face
+        0, 1, 2,
+        0, 2, 3,
+
+        // back face
+        4, 5, 6,
+        4, 6, 7,
+
+        // left face
+        8, 9, 10,
+        8, 10, 11,
+
+        // right face
+        12, 13, 14,
+        12, 14, 15,
+
+        // top face
+        16, 17, 18,
+        16, 18, 19,
+
+        // bottom face
+        20, 21, 22,
+        20, 22, 23
+    };
+
+    const UINT vertexBufferSize = sizeof(quadVertices);
+    const UINT indexBufferSize = sizeof(quadIndices);
+    m_indexCount = _countof(quadIndices);
+
+    // Create vertex buffer resource
+    ResourceDesc vertexBufferDesc = {};
+    vertexBufferDesc.type = ResourceDesc::ResourceType::Buffer;
+    vertexBufferDesc.usage = ResourceDesc::Usage::Upload;
+    vertexBufferDesc.width = vertexBufferSize;
+
+    m_vertexBuffer = m_device->createResource(vertexBufferDesc);
+
+    // Copy vertex data to vertex buffer
+    void* vertexData = nullptr;
+    if (m_vertexBuffer->map(&vertexData))
+    {
+        memcpy(vertexData, quadVertices, vertexBufferSize);
+        m_vertexBuffer->unmap();
+    }
+    else
+    {
+        throw std::runtime_error("Failed to map vertex buffer resource.\n");
+    }
+
+    // Create vertex buffer view
+    m_vertexBufferView = m_vertexBuffer->getResourceView(
+        ResourceBindFlags::VertexBuffer, {}, sizeof(VertexWithTexCoord));
+
+    // Create index buffer resource
+    ResourceDesc indexBufferDesc = {};
+    indexBufferDesc.type = ResourceDesc::ResourceType::Buffer;
+    indexBufferDesc.usage = ResourceDesc::Usage::Upload;
+    indexBufferDesc.width = indexBufferSize;
+
+    m_indexBuffer = m_device->createResource(indexBufferDesc);
+
+    // Copy index data to index buffer
+    void* indexData = nullptr;
+    if (m_indexBuffer->map(&indexData))
+    {
+        memcpy(indexData, quadIndices, indexBufferSize);
+        m_indexBuffer->unmap();
+    }
+    else
+    {
+        throw std::runtime_error("Failed to map index buffer resource.\n");
+    }
+
+    // Create index buffer view
+    m_indexBufferView = m_indexBuffer->getResourceView(
+        ResourceBindFlags::IndexBuffer, {}, sizeof(uint16_t));
+}
+
+// 7. Create constant buffers (per-frame upload buffers)
+// Each frame gets its own constant buffers to avoid GPU/CPU synchronization issues.
+// We have two constant buffers: one for per-object data (world matrix) 
+// and one for per-frame data (view/projection matrices, eye position).
+// Layout matches cubeTexturedShader.hlsl's FrameConstants and BasicObjectConstants structs.
+void TexturedBoxDemo::CreateConstantBuffers()
+{
+    for (UINT i = 0; i < g_frameCount; i++)
+    {
+        m_frameCBs[i] = std::make_unique<UploadBuffer<FrameConstants>>(m_device.get(), 1, true);
+        m_objectCBs[i] = std::make_unique<UploadBuffer<BasicObjectConstants>>(m_device.get(), 1, true);
+    }
+}
+
+// 8. Create root signature
+// The root signature defines how shader resources are bound to the pipeline.
+// Root parameter  0: inline CBV at b0 for per-object constants (world matrix)  
+// Root parameter  1: inline CBV at b1 for per-frame constants (view/projection matrices, eye position)
+// Root parameter  2: descriptor table with 1 SRV for the texture (t0)
+void TexturedBoxDemo::CreateRootSignature()
+{
+    // Create root signature
+
+    // For this simple test, we have an object constant buffer (per-object data like world matrix) 
+    // and a frame constant buffer (per-frame data like view/projection matrices).
+    RootSignatureRangeDesc objCbv = {};
+    objCbv.type = RootSignatureRangeDesc::RangeType::ConstantBufferView;
+    objCbv.numParameters = 1;
+    objCbv.shaderRegister = 0;
+
+    RootSignatureRangeDesc frameCbv = {};
+    frameCbv.type = RootSignatureRangeDesc::RangeType::ConstantBufferView;
+    frameCbv.numParameters = 1;
+    frameCbv.shaderRegister = 1;
+
+    RootSignatureRangeDesc textureSrv = {};
+    textureSrv.type = RootSignatureRangeDesc::RangeType::ShaderResourceView;
+    textureSrv.numParameters = 1;
+    textureSrv.shaderRegister = 0;
+
+    RootSignatureTableLayoutDesc cbvTable = {};
+    cbvTable.visibility = RootSignatureTableLayoutDesc::ShaderVisibility::All;
+    cbvTable.rangeDescs = { objCbv, frameCbv, textureSrv };
+
+    RootSignatureDesc rootSigDesc = {};
+    rootSigDesc.tableLayoutDescs = { cbvTable };
+
+    // Add static sampler for completeness, even though we don't use yet
+    rootSigDesc.staticSamplers = {
+        StaticSamplerDesc{
+            .shaderRegister = 0, .filter = SamplerFilter::Point,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 1, .filter = SamplerFilter::Point,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 2, .filter = SamplerFilter::Linear,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 3, .filter = SamplerFilter::Linear,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 4, .filter = SamplerFilter::Anisotropic,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap,
+            .mipLODBias = 0.0f, .maxAnisotropy = 8
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 5, .filter = SamplerFilter::Anisotropic,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp,
+            .mipLODBias = 0.0f, .maxAnisotropy = 8
+        }
+    };
+
+    m_rootSignature = m_device->createRootSignature(rootSigDesc);
+    m_rootSignature->createRootSignature();
+}
+
+// 9. Create pipeline state and compile shaders
+void TexturedBoxDemo::CreatePipeline()
+{
+    // Compile shader
+    ShaderDesc shaderDesc = {};
+    shaderDesc.shaderFilePath = L"Shaders\\cubeTexturedShader.hlsl";
+    shaderDesc.shaderName = "CubeTexturedShader";
+    shaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
+
+    m_shader = std::make_unique<ShaderDx12>(shaderDesc);
+
+    // Create pipeline state
+    PipelineDesc pipelineDesc = {};
+    pipelineDesc.inputLayout = InputLayoutDesc::build({
+        InputElementDesc::setAsPosition(0, ResourceFormat::R32G32B32_FLOAT, 0, 0),
+        InputElementDesc::setAsNormal(0, ResourceFormat::R32G32B32_FLOAT, 0, 12),
+        InputElementDesc::setAsTexCoord(0, ResourceFormat::R32G32_FLOAT, 0, 24),
+        });
+
+    m_pipeline = m_device->createPipeline(pipelineDesc);
+    m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
+}
+
+// 10. Create texture resources
+// We will load a texture from a DDS file using the DirectXTK's CreateDDSTextureFromFile12 helper function,
+// which creates both the texture resource and an intermediate upload resource, 
+// and records the necessary copy commands to upload the texture data to the GPU.
+void TexturedBoxDemo::CreateTexture()
+{   
+    ComPtr<ID3D12Resource> textureResource;
+    ComPtr<ID3D12Resource> uploadResource;
+
+    // Reset the command list to record texture upload commands
+    m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
+
+    if (FAILED(DirectX::CreateDDSTextureFromFile12(
+        m_device->getNativeDevice(),
+        m_commandList->getNativeCommandList(),
+        L"Textures/WoodCrate01.dds",
+        textureResource,
+        uploadResource)))
+    {
+        throw std::runtime_error("Failed to load texture " + std::string("Textures/WoodCrate01.dds"));
+    }
+
+    // Close and execute the command list to perform the texture upload
+    m_commandList->end();
+    m_device->executeCommandList(m_commandList.get());
+
+    // Wait for the GPU to finish uploading the texture before proceeding
+    UINT64 fenceValue = m_device->getNextFenceValue();
+    m_device->signalFence(fenceValue);
+    m_device->waitForFence(fenceValue);
+
+    // Wrap the native D3D12 resource in our ResourceDx12 class
+    m_texture = std::make_unique<ResourceDx12>(m_device.get(), textureResource);
+    m_textureUploadBuffer = std::make_unique<ResourceDx12>(m_device.get(), uploadResource);
+
+    DescriptorHandle srvHandle = {};
+    m_textureSrvHeap->AllocateHeap(&srvHandle);
+    m_textureSrv = m_texture->getResourceView(ResourceBindFlags::ShaderResource, srvHandle);
+}
+
+void TexturedBoxDemo::UpdateConstantBuffers()
+{
+    // Rotate the cube slowly around Y axis
+    m_rotationAngle += 0.01f;
+
+    // Object constant (b0) - World matrix
+    XMMATRIX worldMatrix = XMMatrixRotationY(m_rotationAngle);
+
+    // Object: world matrix with rotation
+    BasicObjectConstants objConstants = {};
+    XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(worldMatrix));
+
+    // Frame constant (b1) - ViewProj matrix + eye position
+    XMVECTOR eyePos = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
+    XMVECTOR lookAt = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMMATRIX view = XMMatrixLookAtLH(eyePos, lookAt, up);
+
+    float aspectRatio = static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT);
+    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.1f, 100.0f);
+    XMMATRIX viewProj = view * proj;
+
+    // Frame: identity viewproj (renders in NDC space directly)
+    FrameConstants frameConstants = {};
+    XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
+
+    // Copy data to the current back buffer's constant buffers
+    UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
+    m_objectCBs[backBufferIndex]->CopyData(0, objConstants);
+    m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
+}
+
+void TexturedBoxDemo::Run()
+{
+    MSG msg = {};
+    bool running = true;
+
+    while (running)
+    {
+        // Process all pending Windows messages
+        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+        {
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
+            if (msg.message == WM_QUIT)
+                running = false;
+        }
+        if (!running)
+            break;
+
+        // Get the current back buffer index from the swap chain
+        UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
+        // Wait for GPU to finish with the resources from the previous frame
+        FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
+        m_device->waitForFence(currentFrameContext.fenceValue);
+
+        // Update constant buffers with current frame's data
+        UpdateConstantBuffers();
+
+        // Record commands
+        // Retrieve current back buffer resource and RTV for render pass setup
+        ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
+        ResourceView currentRtView = m_swapChain->getCurrentRTView();
+
+        // Build render pass descriptor for current frame
+        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
+            currentRtView,
+            currentBackBuffer->getNativeResource(),
+            m_depthStencilView,
+            WINDOW_WIDTH, WINDOW_HEIGHT,
+            clearColor);
+        renderPassDesc.debugName = "Textured Box Render Pass";
+
+        // Test command list recording
+        m_commandList->begin(currentFrameContext.commandAllocator.Get());
+        m_commandList->beginRenderPass(renderPassDesc);
+
+        {
+            // Set descriptor heaps (for the texture shader resource descriptor heaps)
+            m_commandList->setDescriptorHeaps(m_textureSrvHeap.get(), 1);
+
+            // Bind root signature and pipeline state
+            m_commandList->setGraphicsRootSignature(m_rootSignature.get());
+            m_commandList->setPipeline(m_pipeline.get());
+
+            // Bind constant buffers to root parameters (descriptor tables or root descriptors 
+            // depending on how we set up the root signature)
+            m_commandList->setConstantBufferView(
+                0,
+                m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+            m_commandList->setConstantBufferView(
+                1,
+                m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+            m_commandList->setGraphicsRootDescriptorTable(
+                2, 
+                m_textureSrv.gpuHandle);
+
+            // Bind geometry
+            m_commandList->setVertexBuffer(0, m_vertexBufferView);
+            m_commandList->setIndexBuffer(m_indexBufferView);
+
+            m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+        }
+
+        m_commandList->endRenderPass();
+
+        m_commandList->end();
+
+        // Execute command list
+        m_device->executeCommandList(m_commandList.get());
+        // Present the frame
+        m_swapChain->present(true);
+
+        // Signal and increment the fence value for the current frame
+        currentFrameContext.fenceValue = m_device->getNextFenceValue();
+        m_device->signalFence(currentFrameContext.fenceValue);
+    }
+}
+
+void TexturedBoxDemo::Shutdown()
+{
+    // Ensure GPU is finished with all resources before shutting down
+    for (UINT i = 0; i < g_frameCount; i++)
+    {
+        m_device->waitForFence(m_frameContexts[i].fenceValue);
+    }
+
+    // Cleanup resources if needed
+    OutputDebugStringA("Shutting down TexturedBoxDemo and releasing resources.\n");
+}
+
+LRESULT TexturedBoxDemo::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
+        return true;
+
+    switch (msg)
+    {
+    case WM_SIZE:
+        if (m_device->getNativeDevice() != nullptr && wParam != SIZE_MINIMIZED)
+        {
+            // Wait for GPU to finish with resources before resizing
+            for (UINT i = 0; i < g_frameCount; i++)
+            {
+                m_device->waitForFence(m_frameContexts[i].fenceValue);
+            }
+
+            // TODO: Move this to a separate method since we will need to call it from other places (e.g., when changing display modes)
+            UINT newWidth = LOWORD(lParam);
+            UINT newHeight = HIWORD(lParam);
+
+            // Update global window size variables (used for viewport/scissor rect setup in command list recording, etc.)
+            WINDOW_WIDTH = newWidth;
+            WINDOW_HEIGHT = newHeight;
+
+            m_swapChain->resize(newWidth, newHeight);
+
+            // Recreate depth buffer at new size
+            ResourceDesc depthDesc = {};
+            depthDesc.type = ResourceDesc::ResourceType::Texture2D;
+            depthDesc.width = newWidth;
+            depthDesc.height = newHeight;
+            depthDesc.format = ResourceFormat::D24_UNORM_S8_UINT;
+            depthDesc.bindFlags = ResourceBindFlags::DepthStencil;
+
+            m_depthBuffer = m_device->createResource(depthDesc);
+
+            DescriptorHandle dsvHandle = { m_depthStencilView.cpuHandle, {} };
+            m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
+        }
+        return 0;
+
+    case WM_SYSCOMMAND:
+        if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
+            return 0;
+        break;
+
+    case WM_DESTROY:
+        ::PostQuitMessage(0);
+        return 0;
+    }
+
+    return ::DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+bool TexturedBoxDemo::CreateAppWindow()
+{
+    // Implementation for creating application window
+    WNDCLASSEXW wc = {
+            sizeof(wc), CS_CLASSDC, StaticWndProc, 0L, 0L,
+            GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr,
+            L"Textured Box Demo", nullptr
+    };
+
+    ::RegisterClassExW(&wc);
+
+    m_hwnd = ::CreateWindowW(
+        wc.lpszClassName, L"Raphael Engine - Textured Box Demo", WS_OVERLAPPEDWINDOW,
+        100, 100, WINDOW_WIDTH, WINDOW_HEIGHT,
+        nullptr, nullptr, wc.hInstance, this
+    );
+
+    return m_hwnd != nullptr;
+}
+
+void TexturedBoxDemo::DestroyAppWindow()
+{
+    // Implementation for destroying application window
+    if (m_hwnd)
+    {
+        ::DestroyWindow(m_hwnd);
+        ::UnregisterClassW(L"Raphael Engine", GetModuleHandle(nullptr));
+        m_hwnd = nullptr;
+    }
+}
+
+LRESULT WINAPI TexturedBoxDemo::StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    // Retrieve the TexturedBoxDemo instance from window user data
+    TexturedBoxDemo* app = nullptr;
+
+    if (msg == WM_NCCREATE)
+    {
+        CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
+        app = static_cast<TexturedBoxDemo*>(cs->lpCreateParams);
+        ::SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(app));
+    }
+    else
+    {
+        app = reinterpret_cast<TexturedBoxDemo*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
+    }
+
+    if (app)
+        return app->HandleMessage(hWnd, msg, wParam, lParam);
+
+    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+}

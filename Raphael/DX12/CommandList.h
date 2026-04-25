@@ -31,6 +31,7 @@ namespace raphael
         void setDescriptorHeaps(DescriptorHeapDx12* heap, uint32_t count);
         void setGraphicsRootSignature(RootSignatureDx12* rootSignature);
         void setGraphicsRootDescriptorTable(UINT rootParameterIndex, const RootSignatureTableDx12* rootSignatureTable);
+        void setGraphicsRootDescriptorTable(UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle);
         void setConstantBufferView(UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS gpuAddress);
 
         void setViewports(const D3D12_VIEWPORT* viewports, uint32_t numViewports);
