@@ -48,7 +48,7 @@ private:
     std::unique_ptr<CommandList> m_commandList;
     std::unique_ptr<DescriptorHeapDx12> m_dsvHeap;
     std::unique_ptr<DescriptorHeapDx12> m_rtvHeap;
-	std::unique_ptr<DescriptorHeapDx12> m_textureSrvHeap;
+    std::unique_ptr<DescriptorHeapDx12> m_textureSrvHeap;
     std::unique_ptr<ResourceDx12> m_depthBuffer;
 
     // Geometry resources
@@ -58,9 +58,9 @@ private:
     ResourceView m_indexBufferView = {};
     UINT m_indexCount = 0;
 
-	// Texture resources
-	std::unique_ptr<ResourceDx12> m_texture;
-	std::unique_ptr<ResourceDx12> m_textureUploadBuffer;
+    // Texture resources
+    std::unique_ptr<ResourceDx12> m_texture;
+    std::unique_ptr<ResourceDx12> m_textureUploadBuffer;
 
     // Constant buffers (one per frame for double buffering)
     std::array<std::unique_ptr<UploadBuffer<FrameConstants>>, g_frameCount> m_frameCBs;
@@ -73,7 +73,7 @@ private:
 
     // Render state
     ResourceView m_depthStencilView = {};
-	ResourceView m_textureSrv = {};
+    ResourceView m_textureSrv = {};
     // Per-frame resources for double buffering
     std::array<FrameContext, g_frameCount> m_frameContexts;
     // UINT m_frameIndex = 0; // Current frame index for double buffering

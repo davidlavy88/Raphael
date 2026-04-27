@@ -125,7 +125,7 @@ void TexturedBoxDemo::CreateSwapChainAndDepthBuffer()
 
     // Create the DSV for the depth buffer
     DescriptorHandle dsvHandle = {};
-	m_dsvHeap->AllocateHeap(&dsvHandle);
+    m_dsvHeap->AllocateHeap(&dsvHandle);
     m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
 }
 
@@ -156,7 +156,7 @@ void TexturedBoxDemo::CreateCommandObjects()
 // 36 indices in total (3 indices per triangle * 2 triangles per face * 6 faces).
 void TexturedBoxDemo::CreateGeometry()
 {
-    VertexWithTexCoord quadVertices[] =
+    VertexWithTexCoord boxVertices[] =
     {
         // Fill in the front face vertex data.
         { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
@@ -195,7 +195,7 @@ void TexturedBoxDemo::CreateGeometry()
         { XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) }
     };
 
-    uint16_t quadIndices[] =
+    uint16_t boxIndices[] =
     {
         // front face
         0, 1, 2,
@@ -222,28 +222,28 @@ void TexturedBoxDemo::CreateGeometry()
         20, 22, 23
     };
 
-    const UINT vertexBufferSize = sizeof(quadVertices);
-    const UINT indexBufferSize = sizeof(quadIndices);
-    m_indexCount = _countof(quadIndices);
+    const UINT vertexBufferSize = sizeof(boxVertices);
+    const UINT indexBufferSize = sizeof(boxIndices);
+    m_indexCount = _countof(boxIndices);
 
-	// Create default vertex buffer resource
-	ResourceDesc vertexBufferDesc = {};
-	vertexBufferDesc.type = ResourceDesc::ResourceType::Buffer;
-	vertexBufferDesc.usage = ResourceDesc::Usage::Default;
-	vertexBufferDesc.width = vertexBufferSize;
+    // Create default vertex buffer resource
+    ResourceDesc vertexBufferDesc = {};
+    vertexBufferDesc.type = ResourceDesc::ResourceType::Buffer;
+    vertexBufferDesc.usage = ResourceDesc::Usage::Default;
+    vertexBufferDesc.width = vertexBufferSize;
 
     m_vertexBuffer = m_device->createResource(vertexBufferDesc);
 
     // Create upload vertex buffer resource
     ResourceDesc vertexUploadDesc = vertexBufferDesc;
     vertexUploadDesc.usage = ResourceDesc::Usage::Upload;
-	std::unique_ptr<ResourceDx12> vertexUploadBuffer = m_device->createResource(vertexUploadDesc);
+    std::unique_ptr<ResourceDx12> vertexUploadBuffer = m_device->createResource(vertexUploadDesc);
 
     // Copy vertex data to vertex buffer
     void* vertexData = nullptr;
     if (vertexUploadBuffer->map(&vertexData))
     {
-        memcpy(vertexData, quadVertices, vertexBufferSize);
+        memcpy(vertexData, boxVertices, vertexBufferSize);
         vertexUploadBuffer->unmap();
     }
     else
@@ -262,13 +262,13 @@ void TexturedBoxDemo::CreateGeometry()
     // Create upload index buffer resource
     ResourceDesc indexUploadDesc = indexBufferDesc;
     indexUploadDesc.usage = ResourceDesc::Usage::Upload;
-	std::unique_ptr<ResourceDx12> indexUploadBuffer = m_device->createResource(indexUploadDesc);
+    std::unique_ptr<ResourceDx12> indexUploadBuffer = m_device->createResource(indexUploadDesc);
 
     // Copy index data to index buffer
     void* indexData = nullptr;
     if (indexUploadBuffer->map(&indexData))
     {
-        memcpy(indexData, quadIndices, indexBufferSize);
+        memcpy(indexData, boxIndices, indexBufferSize);
         indexUploadBuffer->unmap();
     }
     else
@@ -276,15 +276,15 @@ void TexturedBoxDemo::CreateGeometry()
         throw std::runtime_error("Failed to map index buffer resource.\n");
     }
 
-	// Copy data from upload buffers to default buffers using command list
+    // Copy data from upload buffers to default buffers using command list
     // (since default buffers are not CPU accessible)
     m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
-    m_commandList->copyResource(vertexUploadBuffer.get(), m_vertexBuffer.get(), quadVertices, vertexBufferSize);
-    m_commandList->copyResource(indexUploadBuffer.get(), m_indexBuffer.get(), quadVertices, indexBufferSize);
+    m_commandList->copyResource(m_vertexBuffer.get(), vertexUploadBuffer.get(), boxVertices, vertexBufferSize);
+    m_commandList->copyResource(m_indexBuffer.get(), indexUploadBuffer.get(), boxIndices, indexBufferSize);
     m_commandList->end();
     m_device->executeCommandList(m_commandList.get());
 
-	// Wait for GPU to finish copying before we release the upload buffers
+    // Wait for GPU to finish copying before we release the upload buffers
     UINT64 fenceValue = m_device->getNextFenceValue();
     m_device->signalFence(fenceValue);
     m_device->waitForFence(fenceValue);
