@@ -22,7 +22,7 @@ namespace raphael
         void begin(ID3D12CommandAllocator* allocator);
         void end();
         void reset();
-        // void copyResource(IResource* dst, IResource* src); // record full resource GPU to GPU copy
+        void copyResource(ResourceDx12* dst, ResourceDx12* src, const void* data, const UINT buffersize); // record full resource GPU to GPU copy
         // void copyBufferRegion(IResource* dst, UINT64 dstOffset, IResource* src, UINT64 srcOffset, UINT64 numBytes);
 
         ID3D12GraphicsCommandList* getNativeCommandList() const { return m_commandList.Get(); }

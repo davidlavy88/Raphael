@@ -226,49 +226,72 @@ void TexturedBoxDemo::CreateGeometry()
     const UINT indexBufferSize = sizeof(quadIndices);
     m_indexCount = _countof(quadIndices);
 
-    // Create vertex buffer resource
-    ResourceDesc vertexBufferDesc = {};
-    vertexBufferDesc.type = ResourceDesc::ResourceType::Buffer;
-    vertexBufferDesc.usage = ResourceDesc::Usage::Upload;
-    vertexBufferDesc.width = vertexBufferSize;
+	// Create default vertex buffer resource
+	ResourceDesc vertexBufferDesc = {};
+	vertexBufferDesc.type = ResourceDesc::ResourceType::Buffer;
+	vertexBufferDesc.usage = ResourceDesc::Usage::Default;
+	vertexBufferDesc.width = vertexBufferSize;
 
     m_vertexBuffer = m_device->createResource(vertexBufferDesc);
 
+    // Create upload vertex buffer resource
+    ResourceDesc vertexUploadDesc = vertexBufferDesc;
+    vertexUploadDesc.usage = ResourceDesc::Usage::Upload;
+	std::unique_ptr<ResourceDx12> vertexUploadBuffer = m_device->createResource(vertexUploadDesc);
+
     // Copy vertex data to vertex buffer
     void* vertexData = nullptr;
-    if (m_vertexBuffer->map(&vertexData))
+    if (vertexUploadBuffer->map(&vertexData))
     {
         memcpy(vertexData, quadVertices, vertexBufferSize);
-        m_vertexBuffer->unmap();
+        vertexUploadBuffer->unmap();
     }
     else
     {
         throw std::runtime_error("Failed to map vertex buffer resource.\n");
     }
 
-    // Create vertex buffer view
-    m_vertexBufferView = m_vertexBuffer->getResourceView(
-        ResourceBindFlags::VertexBuffer, {}, sizeof(VertexWithTexCoord));
-
     // Create index buffer resource
     ResourceDesc indexBufferDesc = {};
     indexBufferDesc.type = ResourceDesc::ResourceType::Buffer;
-    indexBufferDesc.usage = ResourceDesc::Usage::Upload;
+    indexBufferDesc.usage = ResourceDesc::Usage::Default;
     indexBufferDesc.width = indexBufferSize;
 
     m_indexBuffer = m_device->createResource(indexBufferDesc);
 
+    // Create upload index buffer resource
+    ResourceDesc indexUploadDesc = indexBufferDesc;
+    indexUploadDesc.usage = ResourceDesc::Usage::Upload;
+	std::unique_ptr<ResourceDx12> indexUploadBuffer = m_device->createResource(indexUploadDesc);
+
     // Copy index data to index buffer
     void* indexData = nullptr;
-    if (m_indexBuffer->map(&indexData))
+    if (indexUploadBuffer->map(&indexData))
     {
         memcpy(indexData, quadIndices, indexBufferSize);
-        m_indexBuffer->unmap();
+        indexUploadBuffer->unmap();
     }
     else
     {
         throw std::runtime_error("Failed to map index buffer resource.\n");
     }
+
+	// Copy data from upload buffers to default buffers using command list
+    // (since default buffers are not CPU accessible)
+    m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
+    m_commandList->copyResource(vertexUploadBuffer.get(), m_vertexBuffer.get(), quadVertices, vertexBufferSize);
+    m_commandList->copyResource(indexUploadBuffer.get(), m_indexBuffer.get(), quadVertices, indexBufferSize);
+    m_commandList->end();
+    m_device->executeCommandList(m_commandList.get());
+
+	// Wait for GPU to finish copying before we release the upload buffers
+    UINT64 fenceValue = m_device->getNextFenceValue();
+    m_device->signalFence(fenceValue);
+    m_device->waitForFence(fenceValue);
+
+    // Create vertex buffer view
+    m_vertexBufferView = m_vertexBuffer->getResourceView(
+        ResourceBindFlags::VertexBuffer, {}, sizeof(VertexWithTexCoord));
 
     // Create index buffer view
     m_indexBufferView = m_indexBuffer->getResourceView(

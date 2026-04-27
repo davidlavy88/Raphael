@@ -64,6 +64,26 @@ namespace raphael
 
         m_isRecording = false;
     }
+    
+    void CommandList::copyResource(ResourceDx12* dst, ResourceDx12* src, const void* data, const UINT buffersize)
+    {
+        // Describe the data we want to copy into the default buffer.
+        D3D12_SUBRESOURCE_DATA subResourceData = {};
+        subResourceData.pData = data;
+        subResourceData.RowPitch = buffersize;
+        subResourceData.SlicePitch = subResourceData.RowPitch;
+
+        // Schedule to copy the data to the default buffer resource.  At a high level, the helper function UpdateSubresources
+        // will copy the CPU memory into the intermediate upload heap.  Then, using ID3D12CommandList::CopySubresourceRegion,
+        // the intermediate upload heap data will be copied to mBuffer.
+        CD3DX12_RESOURCE_BARRIER rbDescDest = CD3DX12_RESOURCE_BARRIER::Transition(dst->getNativeResource(),
+            D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+        CD3DX12_RESOURCE_BARRIER rbDescRead = CD3DX12_RESOURCE_BARRIER::Transition(dst->getNativeResource(),
+            D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+        m_commandList->ResourceBarrier(1, &rbDescDest);
+        UpdateSubresources<1>(m_commandList.Get(), dst->getNativeResource(), src->getNativeResource(), 0, 0, 1, &subResourceData);
+        m_commandList->ResourceBarrier(1, &rbDescRead);
+    }
 
     void CommandList::setPipeline(PipelineDx12* pipeline)
     {
