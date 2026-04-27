@@ -86,7 +86,6 @@
     <ClCompile Include="DX12\CommandList.cpp" />
     <ClCompile Include="DX12\DeviceDx12.cpp" />
     <ClCompile Include="DX12\ResourceDx12.cpp" />
-    <ClCompile Include="source\TestApp.cpp" />
     <ClCompile Include="DX12\PipelineDx12.cpp" />
     <ClCompile Include="DX12\DescriptorHeapDx12.cpp" />
     <ClCompile Include="DX12\ShaderDx12.cpp" />
@@ -94,6 +93,10 @@
     <ClCompile Include="DX12\InputLayoutDx12.cpp" />
     <ClCompile Include="DX12\SwapChainDx12.cpp" />
     <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
+    <ClCompile Include="Demos\BoxDemo.cpp" />
+    <ClCompile Include="Demos\QuadDemo.cpp" />
+    <ClCompile Include="Demos\TexturedBoxDemo.cpp" />
+    <ClCompile Include="Demos\GltfDemo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -189,7 +192,6 @@
     <ClInclude Include="DX12\ObjectDescriptors.h" />
     <ClInclude Include="DX12\Interfaces.h" />
     <ClInclude Include="DX12\ResourceDx12.h" />
-    <ClInclude Include="header\TestApp.h" />
     <ClInclude Include="DX12\PipelineDx12.h" />
     <ClInclude Include="DX12\DescriptorHeapDx12.h" />
     <ClInclude Include="DX12\ShaderDx12.h" />
@@ -197,9 +199,13 @@
     <ClInclude Include="DX12\InputLayoutDx12.h" />
     <ClInclude Include="DX12\SwapChainDx12.h" />
     <ClInclude Include="DX12\FrameContext.h" />
-    <ClInclude Include="DX12\UploadBuffer.h" />
     <ClInclude Include="DX12\UtilDx12.h" />
     <ClInclude Include="DX12\RootSignatureTableDx12.h" />
+    <ClInclude Include="Demos\BoxDemo.h" />
+    <ClInclude Include="DX12\UploadBufferDx12.h" />
+    <ClInclude Include="Demos\QuadDemo.h" />
+    <ClInclude Include="Demos\TexturedBoxDemo.h" />
+    <ClInclude Include="Demos\GltfDemo.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

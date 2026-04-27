@@ -77,6 +77,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Demos\BoxDemo.cpp" />
+    <ClCompile Include="Demos\GltfDemo.cpp" />
     <ClCompile Include="DX12\DescriptorHeapDx12.cpp" />
     <ClCompile Include="DX12\CommandList.cpp" />
     <ClCompile Include="DX12\DeviceDx12.cpp" />
@@ -116,6 +117,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Demos\BoxDemo.h" />
+    <ClInclude Include="Demos\GltfDemo.h" />
     <ClInclude Include="DX12\DescriptorHeapDx12.h" />
     <ClInclude Include="DX12\CommandList.h" />
     <ClInclude Include="DX12\Constants.h" />

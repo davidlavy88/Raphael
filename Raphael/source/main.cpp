@@ -10,7 +10,7 @@
 
 #include <tchar.h>
 #if TEST_RENDERER_INTERFACE
-#include "TexturedBoxDemo.h"
+#include "GltfDemo.h"
 #else
 #include "Application.h"
 #endif
@@ -20,7 +20,7 @@
 int main(int, char**)
 {
 #if TEST_RENDERER_INTERFACE
-    TexturedBoxDemo testApp;
+    GltfDemo testApp;
 
     if (!testApp.Initialize())
         return 1;
