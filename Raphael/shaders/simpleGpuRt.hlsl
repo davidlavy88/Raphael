@@ -41,7 +41,7 @@ struct VSOut
 
 // Vertex Shader
 //   Simply passes through clip-space position and computes NDC coords
-VSOut VS_Main(VSIn input)
+VSOut VS(VSIn input)
 {
     VSOut output;
     output.pos = float4(input.pos, 1.0f);
@@ -287,7 +287,7 @@ float lerpEmulation(float a, float b, float alpha)
 
 // Pixel Shader
 // Generates ray from camera through pixel, intersects with scene, shades the hit point
-float4 PS_Main(VSOut IN) : SV_TARGET
+float4 PS(VSOut IN) : SV_TARGET
 {
     
     ContextGather ui;

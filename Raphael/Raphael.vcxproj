@@ -88,6 +88,7 @@
     <ClCompile Include="DX12\InputLayoutDx12.cpp" />
     <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
     <ClCompile Include="Demos\GBufferDemo.cpp" />
+    <ClCompile Include="Demos\RayTracerDemo.cpp" />
     <ClCompile Include="source\GBufferRenderer.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
@@ -158,6 +159,7 @@
     <ClInclude Include="DX12\SwapChainDx12.h" />
     <ClInclude Include="DX12\RootSignatureTableDx12.h" />
     <ClInclude Include="Demos\TexturedBoxDemo.h" />
+    <ClInclude Include="Demos\RayTracerDemo.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />

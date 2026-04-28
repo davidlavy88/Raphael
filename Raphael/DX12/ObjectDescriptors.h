@@ -245,14 +245,15 @@ namespace raphael
             ResourceView& dsvHandle,
             UINT width, UINT height,
             const float clearColor[4] = nullptr,
+            bool hasDepthStencil = true,
             float clearDepth = 1.0f)
         {
             RenderPassDesc desc;
             desc.rtvHandles[0] = rtvHandle;
             desc.renderTargetResources[0] = rtvResource;
             desc.numRenderTargets = 1;
+			desc.hasDepthStencil = hasDepthStencil;
             desc.dsvHandle = dsvHandle;
-            desc.hasDepthStencil = true;
             desc.viewportWidth = width;
             desc.viewportHeight = height;
             desc.clearDepth = clearDepth;

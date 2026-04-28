@@ -94,4 +94,18 @@ namespace raphael
         XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
         float Pad0 = 0.0f; // Padding to ensure 16-byte alignment
     };
+
+    struct RayTracingSceneConstants
+    {
+        XMFLOAT4X4 InvViewProj;
+        XMFLOAT4 CameraPos;
+        XMFLOAT4 Sphere; // x, y, z: center, w: radius
+        XMFLOAT4 Plane;  // x, y, z: normal, w: d
+        XMFLOAT4 LightPos; // x, y, z: position, w: unused
+        XMFLOAT4 SphereColor;
+        XMFLOAT4 PlaneColor;
+        XMFLOAT4 CubeMin; // x, y, z: min corner
+        XMFLOAT4 CubeMax; // x, y, z: max corner
+        XMFLOAT4 CubeColor;
+	};
 }

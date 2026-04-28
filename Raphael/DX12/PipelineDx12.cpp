@@ -23,7 +23,14 @@ namespace raphael
         CD3DX12_RASTERIZER_DESC rsDesc(D3D12_DEFAULT);
         psoDesc.RasterizerState = rsDesc;
         psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-        psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        CD3DX12_DEPTH_STENCIL_DESC dsDesc(D3D12_DEFAULT);
+        if (m_desc.dsvFormat == ResourceFormat::Unknown)
+        {
+            // If no depth buffer, disable depth testing
+            dsDesc.DepthEnable = FALSE;
+            dsDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		}
+        psoDesc.DepthStencilState = dsDesc;
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = m_desc.numRenderTargets;

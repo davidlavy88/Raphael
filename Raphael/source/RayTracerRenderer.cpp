@@ -125,8 +125,8 @@ void RayTracerRenderer::BuildRootSignature(D3D12Device& device)
 void RayTracerRenderer::BuildShadersAndInputLayout()
 {
     // Implementation for compiling shaders and defining input layout
-    m_vsByteCode = D3D12Util::CompileShader(L"Shaders\\simpleGpuRt.hlsl", nullptr, "VS_Main", "vs_5_0");
-    m_psByteCode = D3D12Util::CompileShader(L"Shaders\\simpleGpuRt.hlsl", nullptr, "PS_Main", "ps_5_0");
+    m_vsByteCode = D3D12Util::CompileShader(L"Shaders\\simpleGpuRt.hlsl", nullptr, "VS", "vs_5_0");
+    m_psByteCode = D3D12Util::CompileShader(L"Shaders\\simpleGpuRt.hlsl", nullptr, "PS", "ps_5_0");
 
     m_inputLayout =
     {
