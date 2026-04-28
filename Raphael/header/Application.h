@@ -34,5 +34,3 @@ private:
     GBufferRenderer m_renderer;
 #endif
 };
-
-

@@ -5,6 +5,10 @@
 #include "imgui/backends/imgui_impl_dx12.h"
 #include <imgui_internal.h>
 
+#include "../DX12/DeviceDx12.h"
+#include "../DX12/ResourceDx12.h"
+#include "../DX12/CommandList.h"
+
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 

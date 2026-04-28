@@ -6,14 +6,30 @@
 // - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
 // - Introduction, links and more at the top of imgui.cpp
 
+#define TEST_RENDERER_INTERFACE 1
 
 #include <tchar.h>
+#if TEST_RENDERER_INTERFACE
+#include "GltfDemo.h"
+#else
 #include "Application.h"
+#endif
 #include <windowsx.h>
 
 // Entry point
 int main(int, char**)
 {
+#if TEST_RENDERER_INTERFACE
+    GltfDemo testApp;
+
+    if (!testApp.Initialize())
+        return 1;
+
+    testApp.Run();
+    testApp.Shutdown();
+
+    return 0;
+#else
     Application app;
     
     if (!app.Initialize())
@@ -23,4 +39,5 @@ int main(int, char**)
     app.Shutdown();
 
     return 0;
+#endif
 }
