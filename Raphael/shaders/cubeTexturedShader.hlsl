@@ -53,7 +53,7 @@ float4 PS(VertexOut pin) : SV_Target
     pin.Normal = normalize(pin.Normal);
 
     // Indirect light (ambient).
-    float4 ambient = 0.5f * diffuseAlbedo;
+    float4 ambient = 1.0f * diffuseAlbedo;
 
 	return ambient;
 }

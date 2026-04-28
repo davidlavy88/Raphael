@@ -85,6 +85,14 @@ namespace raphael
         m_commandList->ResourceBarrier(1, &rbDescRead);
     }
 
+    void CommandList::copyTextureResource(ResourceDx12* dst, ResourceDx12* src, D3D12_SUBRESOURCE_DATA* subresource)
+    {
+        CD3DX12_RESOURCE_BARRIER rbDescRead = CD3DX12_RESOURCE_BARRIER::Transition(dst->getNativeResource(),
+            D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        UpdateSubresources(m_commandList.Get(), dst->getNativeResource(), src->getNativeResource(), 0, 0, 1, subresource);
+		m_commandList->ResourceBarrier(1, &rbDescRead);
+    }
+
     void CommandList::setPipeline(PipelineDx12* pipeline)
     {
         ID3D12PipelineState* pipelineState = pipeline->getNativePipelineState();
