@@ -8,6 +8,8 @@ namespace raphael
     PipelineDx12::PipelineDx12(DeviceDx12* device, const PipelineDesc& desc)
         : m_device(device), m_desc(desc)
     {
+        // Ensure the number of render targets matches the number of RTV formats specified
+		assert(desc.numRenderTargets == desc.rtvFormats.size());
         m_inputLayout = InputLayoutDx12::convertToD3D12InputLayout(desc.inputLayout);
     }
 
@@ -25,7 +27,10 @@ namespace raphael
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = m_desc.numRenderTargets;
-        psoDesc.RTVFormats[0] = convertFormatToDXGI(m_desc.rtvFormat);
+		for (size_t i = 0; i < m_desc.numRenderTargets; ++i)
+        {
+            psoDesc.RTVFormats[i] = convertFormatToDXGI(m_desc.rtvFormats[i]);
+        }
         psoDesc.SampleDesc.Count = 1;
         psoDesc.SampleDesc.Quality = 0;
         psoDesc.DSVFormat = convertFormatToDXGI(m_desc.dsvFormat);

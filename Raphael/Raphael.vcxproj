@@ -87,6 +87,7 @@
     <ClCompile Include="DX12\RootSignatureDx12.cpp" />
     <ClCompile Include="DX12\InputLayoutDx12.cpp" />
     <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
+    <ClCompile Include="Demos\GBufferDemo.cpp" />
     <ClCompile Include="source\GBufferRenderer.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
@@ -129,6 +130,7 @@
     <ClInclude Include="DX12\UploadBufferDx12.h" />
     <ClInclude Include="DX12\UtilDx12.h" />
     <ClInclude Include="header\Camera.h" />
+    <ClInclude Include="Demos\GBufferDemo.h" />
     <ClInclude Include="header\Device.h" />
     <ClInclude Include="header\DescriptorHeapAllocator.h" />
     <ClInclude Include="header\GameTimer.h" />

@@ -139,7 +139,7 @@ namespace raphael
         size_t vertexShaderSize = 0;
         const void* pixelShaderBytecode = nullptr;
         size_t pixelShaderSize = 0;
-        ResourceFormat rtvFormat = ResourceFormat::R8G8B8A8_UNORM; // Array of render target formats
+        std::vector<ResourceFormat> rtvFormats; // Array of render target formats
         UINT numRenderTargets = 1;
         ResourceFormat dsvFormat = ResourceFormat::D24_UNORM_S8_UINT; // Depth stencil format
         InputLayoutDesc inputLayout;
