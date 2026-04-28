@@ -392,6 +392,7 @@ void TexturedBoxDemo::CreatePipeline()
 
     // Create pipeline state
     PipelineDesc pipelineDesc = {};
+    pipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM };
     pipelineDesc.inputLayout = InputLayoutDesc::build({
         InputElementDesc::setAsPosition(0, ResourceFormat::R32G32B32_FLOAT, 0, 0),
         InputElementDesc::setAsNormal(0, ResourceFormat::R32G32B32_FLOAT, 0, 12),
