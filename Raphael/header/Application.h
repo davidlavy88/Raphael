@@ -6,7 +6,7 @@
 #if USE_RAYTRACING
 #include "RayTracerRenderer.h"
 #else
-#include "BoxRenderer.h"
+#include "GBufferRenderer.h"
 #endif
 
 // Application class that manages the overall application
@@ -31,6 +31,6 @@ private:
 #if USE_RAYTRACING
     RayTracerRenderer m_renderer;
 #else
-    BoxRenderer m_renderer;
+    GBufferRenderer m_renderer;
 #endif
 };

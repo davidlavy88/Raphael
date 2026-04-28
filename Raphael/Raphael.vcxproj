@@ -87,6 +87,7 @@
     <ClCompile Include="DX12\RootSignatureDx12.cpp" />
     <ClCompile Include="DX12\InputLayoutDx12.cpp" />
     <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
+    <ClCompile Include="source\GBufferRenderer.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
     <ClCompile Include="source\Material.cpp" />
@@ -133,6 +134,7 @@
     <ClInclude Include="header\GameTimer.h" />
     <ClInclude Include="header\Application.h" />
     <ClInclude Include="header\D3D12CommonHeaders.h" />
+    <ClInclude Include="header\GBufferRenderer.h" />
     <ClInclude Include="header\RayTracerRenderer.h" />
     <ClInclude Include="header\SwapChain.h" />
     <ClInclude Include="header\Light.h" />
