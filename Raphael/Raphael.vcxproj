@@ -50,7 +50,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos;$(SolutionDir)Raphael\ImGui</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -67,7 +67,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos;$(SolutionDir)Raphael\ImGui</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -89,6 +89,7 @@
     <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
     <ClCompile Include="Demos\GBufferDemo.cpp" />
     <ClCompile Include="Demos\RayTracerDemo.cpp" />
+    <ClCompile Include="ImGui\ImGuiLoader.cpp" />
     <ClCompile Include="source\GBufferRenderer.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
@@ -160,6 +161,7 @@
     <ClInclude Include="DX12\RootSignatureTableDx12.h" />
     <ClInclude Include="Demos\TexturedBoxDemo.h" />
     <ClInclude Include="Demos\RayTracerDemo.h" />
+    <ClInclude Include="ImGui\ImGuiLoader.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />

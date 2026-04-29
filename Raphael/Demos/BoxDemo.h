@@ -10,6 +10,7 @@
 #include "FrameContext.h"
 #include "UploadBufferDx12.h"
 #include "GPUStructs.h"
+#include "ImGuiLoader.h"
 
 using namespace raphael;
 
@@ -47,6 +48,7 @@ private:
     std::unique_ptr<CommandList> m_commandList;
     std::unique_ptr<DescriptorHeapDx12> m_dsvHeap;
     std::unique_ptr<DescriptorHeapDx12> m_rtvHeap;
+    std::unique_ptr<DescriptorHeapDx12> m_srvHeap;
     std::unique_ptr<ResourceDx12> m_depthBuffer;
 
     // Geometry resources
@@ -76,4 +78,7 @@ private:
 
     // Window handle
     HWND m_hwnd = nullptr;
+
+    // ImGui support
+    ImGuiLoader m_imguiLoader;
 };

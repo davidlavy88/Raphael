@@ -1,14 +1,7 @@
 #include "BoxDemo.h"
-#include "imgui/imgui.h"
-#include "imgui/backends/imgui_impl_win32.h"
-#include "imgui/backends/imgui_impl_dx12.h"
 #include "GPUStructs.h"
 
-
 using namespace raphael;
-
-// Forward declare message handler from imgui_impl_win32.cpp
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Initialization process
 // 1. Create application window
@@ -33,6 +26,10 @@ bool BoxDemo::Initialize()
 
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
+
+    // -- Initialize ImGui --
+    if (!m_imguiLoader.Initialize(m_hwnd, m_device.get(), m_srvHeap.get(), g_frameCount))
+        return false;
 
     // -- 4. Create swap chain and depth buffer --
     CreateSwapChainAndDepthBuffer();
@@ -83,6 +80,15 @@ void BoxDemo::CreateDescriptorHeaps()
 
     m_rtvHeap = m_device->createDescriptorHeap(rtvHeapDesc);
     m_rtvHeap->createDescriptorHeap();
+
+	// Create SRV descriptor heap
+    DescriptorHeapDesc srvHeapDesc = {};
+    srvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
+    srvHeapDesc.numDescriptors = 1; // We will only have one texture SRV in this demo
+    srvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
+
+    m_srvHeap = m_device->createDescriptorHeap(srvHeapDesc);
+	m_srvHeap->createDescriptorHeap();
 }
 
 void BoxDemo::CreateSwapChainAndDepthBuffer()
@@ -366,6 +372,10 @@ void BoxDemo::Run()
         // Update constant buffers with current frame's data
         UpdateConstantBuffers();
 
+        // Start ImGui frame
+        m_imguiLoader.NewFrame();
+        m_imguiLoader.Display();
+
         // Record commands
         // Retrieve current back buffer resource and RTV for render pass setup
         ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
@@ -404,6 +414,10 @@ void BoxDemo::Run()
             m_commandList->setIndexBuffer(m_indexBufferView);
 
             m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+
+            // Render ImGui (needs SRV descriptor heap bound)
+            m_commandList->setDescriptorHeaps(m_srvHeap.get(), 1);
+            m_imguiLoader.Render(m_commandList.get());
         }
 
         m_commandList->endRenderPass();
@@ -429,13 +443,16 @@ void BoxDemo::Shutdown()
         m_device->waitForFence(m_frameContexts[i].fenceValue);
     }
 
+    // Shutdown ImGui
+    m_imguiLoader.Shutdown();
+
     // Cleanup resources if needed
     OutputDebugStringA("Shutting down BoxDemo and releasing resources.\n");
 }
 
 LRESULT BoxDemo::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
+    if (m_imguiLoader.HandleMessage(hwnd, msg, wParam, lParam))
         return true;
 
     switch (msg)
