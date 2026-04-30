@@ -24,8 +24,10 @@ class BoxImGui : public ImGuiLoader
 public:
     void Display() override;
 
-    float cameraSpeed = 1.0f;
+    float cameraSpeed = 0.05f;
     bool wireframe = false;
+    bool shaderReload = false;
+    bool showShaderError = false;
 };
 
 class BoxDemo : public IDemo
@@ -38,7 +40,7 @@ public:
 
 private:
     // ---- Initialization helpers (one per logical step) ----
-	void CreateDevice();
+    void CreateDevice();
     void CreateDescriptorHeaps();
     void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
@@ -79,8 +81,8 @@ private:
     std::unique_ptr<RootSignatureDx12> m_rootSignature;
     std::unique_ptr<PipelineDx12> m_pipeline;
 
-	PipelineDesc m_pipelineDesc = {};
-	ShaderDesc m_shaderDesc = {};
+    PipelineDesc m_pipelineDesc = {};
+    ShaderDesc m_shaderDesc = {};
 
     // Render state
     ResourceView m_depthStencilView = {};
@@ -93,6 +95,10 @@ private:
     // ImGui support
     BoxImGui m_imguiLoader;
 
-	// Camera
-	Camera m_camera;
+    // Camera
+    Camera m_camera;
+
+    // Unfortunately we need to store the window handle here 
+    // so input queries are contained withing the rendered window. 
+    HWND m_windowHandle = nullptr;
 };

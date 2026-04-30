@@ -8,9 +8,20 @@ void BoxImGui::Display()
     ImGui::Begin("Box Demo Controls");
     ImGui::Text("Use WASD to move, mouse to look around.");
     ImGui::Text("Press R to reset camera.");
-    ImGui::SliderFloat("Camera Speed", &cameraSpeed, 0.0f, 0.4f);
+    ImGui::SliderFloat("Camera Speed", &cameraSpeed, 0.0f, 0.3f);
     ImGui::Checkbox("Wireframe", &wireframe);
+    if (ImGui::Button("Shader Reload")) shaderReload = true;
     ImGui::End();
+
+    if (showShaderError)
+    {
+        ImGui::Begin("Shader Error", &showShaderError);
+        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Shader compilation failed!");
+        ImGui::Text("Check the Output window for details.");
+        ImGui::Text("The previous valid shader is still active.");
+        if (ImGui::Button("OK")) showShaderError = false;
+        ImGui::End();
+    }
 }
 
 // Initialization process
@@ -26,6 +37,9 @@ void BoxImGui::Display()
 // 10. Create command objects (command allocators, command lists)
 bool BoxDemo::Initialize(WindowInfo windowInfo)
 {
+    // Store the window handle for input processing (sad thing)
+    m_windowHandle = windowInfo.hWnd;
+
     // -- 1. Create device --
     CreateDevice();
 
@@ -495,7 +509,11 @@ void BoxDemo::Resize(unsigned int width, unsigned int height)
 
 void BoxDemo::ProcessInput()
 {
-    if (!m_imguiLoader.WantsCaptureKeyboard())
+    // Gate input processing on whether my window is the foreground window.
+    HWND foreground = ::GetForegroundWindow();
+    bool windowFocused = (foreground == m_windowHandle);
+
+    if (windowFocused && !m_imguiLoader.WantsCaptureKeyboard())
     {
         // Process camera movement input only if ImGui is not capturing the input
         if (GetAsyncKeyState('W') & 0x8000)
@@ -514,7 +532,7 @@ void BoxDemo::ProcessInput()
             m_camera.Reset();
     }
 
-    if (!m_imguiLoader.WantsCaptureMouse())
+    if (windowFocused && !m_imguiLoader.WantsCaptureMouse())
     {
         // Process camera rotation input only if ImGui is not capturing the input
         static POINT lastMousePos = {};
@@ -555,6 +573,38 @@ void BoxDemo::ProcessInput()
         // Recreate pipeline with new rasterizer state
         m_pipeline = m_device->createPipeline(m_pipelineDesc);
         m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
+    }
+    
+    // Hot reload shader if the flag is set
+    if (m_imguiLoader.shaderReload)
+    {
+        // Reset the flag immediately to avoid multiple reloads
+        m_imguiLoader.shaderReload = false;
+
+        // Wait for ALL frames to finish before destroying the old PSO and shader
+        for (UINT i = 0; i < g_frameCount; i++)
+        {
+            m_device->waitForFence(m_frameContexts[i].fenceValue);
+        }
+
+        try
+        {
+            // Try to compile the new shader
+            auto newShader = std::make_unique<ShaderDx12>(m_shaderDesc);
+
+            // Attempt to create a new PSO with the new shader
+            auto newPipeline = m_device->createPipeline(m_pipelineDesc);
+            newPipeline->createPipelineState(newShader.get(), m_rootSignature.get());
+            
+            // Success: swap in the new shader and pipeline
+            m_shader = std::move(newShader);
+            m_pipeline = std::move(newPipeline);
+        }
+        catch (...)
+        {
+            // Shader compilation threw - keep old pipeline
+            m_imguiLoader.showShaderError = true;
+        }
     }
 
     m_camera.SetSpeed(m_imguiLoader.cameraSpeed);
