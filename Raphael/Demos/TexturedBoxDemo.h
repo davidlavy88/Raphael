@@ -20,7 +20,7 @@ class TexturedBoxDemo
 public:
     bool Initialize();
     void Shutdown();
-    void Run();
+    void Render();
     LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 private:

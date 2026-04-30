@@ -475,7 +475,7 @@ void TexturedBoxDemo::UpdateConstantBuffers()
     m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
 }
 
-void TexturedBoxDemo::Run()
+void TexturedBoxDemo::Render()
 {
     MSG msg = {};
     bool running = true;

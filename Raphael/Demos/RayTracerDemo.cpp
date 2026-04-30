@@ -271,7 +271,7 @@ void RayTracerDemo::UpdateConstantBuffers()
     m_sceneCBs[backBufferIndex]->CopyData(0, sceneConstants);
 }
 
-void RayTracerDemo::Run()
+void RayTracerDemo::Render()
 {
     MSG msg = {};
     bool running = true;

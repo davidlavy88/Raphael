@@ -32,8 +32,8 @@ bool GBufferDemo::Initialize()
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
-	// -- 4. Create GBuffer render targets --
-	CreateGBufferRenderTargets();
+    // -- 4. Create GBuffer render targets --
+    CreateGBufferRenderTargets();
 
     // -- 5. Create swap chain and depth buffer --
     CreateSwapChainAndDepthBuffer();
@@ -109,23 +109,23 @@ void GBufferDemo::CreateDescriptorHeaps()
     m_textureSrvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
     m_textureSrvHeap->createDescriptorHeap();
 
-	// Create GBuffer render target descriptor heaps
-	DescriptorHeapDesc gbufferRtvHeapDesc = {};
-	gbufferRtvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::RTV;
-	gbufferRtvHeapDesc.numDescriptors = g_numRenderTargets; // One RTV for each GBuffer render target
-	gbufferRtvHeapDesc.shaderVisible = false; // RTV heap does not need to be shader visible
+    // Create GBuffer render target descriptor heaps
+    DescriptorHeapDesc gbufferRtvHeapDesc = {};
+    gbufferRtvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::RTV;
+    gbufferRtvHeapDesc.numDescriptors = g_numRenderTargets; // One RTV for each GBuffer render target
+    gbufferRtvHeapDesc.shaderVisible = false; // RTV heap does not need to be shader visible
 
-	m_gbufferRtvHeap = m_device->createDescriptorHeap(gbufferRtvHeapDesc);
-	m_gbufferRtvHeap->createDescriptorHeap();
+    m_gbufferRtvHeap = m_device->createDescriptorHeap(gbufferRtvHeapDesc);
+    m_gbufferRtvHeap->createDescriptorHeap();
 }
 
 void GBufferDemo::CreateGBufferRenderTargets()
 {
-	std::array<ResourceFormat, g_numRenderTargets> gBufferFormats = {
-		ResourceFormat::R8G8B8A8_UNORM, // Albedo
-		ResourceFormat::R16G16B16A16_FLOAT, // Normal
-		ResourceFormat::R32_FLOAT   // Depth
-	};
+    std::array<ResourceFormat, g_numRenderTargets> gBufferFormats = {
+        ResourceFormat::R8G8B8A8_UNORM, // Albedo
+        ResourceFormat::R16G16B16A16_FLOAT, // Normal
+        ResourceFormat::R32_FLOAT   // Depth
+    };
     // Create GBuffer render target textures and RTVs
     for (int i = 0; i < g_numRenderTargets; i++)
     {
@@ -140,10 +140,10 @@ void GBufferDemo::CreateGBufferRenderTargets()
         DescriptorHandle rtvHandle = {};
         m_gbufferRtvHeap->AllocateHeap(&rtvHandle);
         m_gbufferTextures[i]->getResourceView(ResourceBindFlags::RenderTarget, rtvHandle);
-		// If there is a lighting pass that reads from the GBuffer, we would also need to create SRVs 
+        // If there is a lighting pass that reads from the GBuffer, we would also need to create SRVs 
         // for these textures and store them in m_textureSrvs so they can be bound to the pipeline. 
         // For now, we will skip that since we are only doing a geometry pass that writes
-	}
+    }
 }
 
 // 4. Create swap chain and depth buffer
@@ -547,8 +547,8 @@ void GBufferDemo::CreatePipeline()
 
     // Create pipeline state
     PipelineDesc pipelineDesc = {};
-	pipelineDesc.numRenderTargets = g_numRenderTargets;
-	pipelineDesc.rtvFormats = { 
+    pipelineDesc.numRenderTargets = g_numRenderTargets;
+    pipelineDesc.rtvFormats = { 
         ResourceFormat::R8G8B8A8_UNORM, 
         ResourceFormat::R16G16B16A16_FLOAT, 
         ResourceFormat::R32_FLOAT };
@@ -672,7 +672,7 @@ void GBufferDemo::UpdateConstantBuffers()
     m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
 }
 
-void GBufferDemo::Run()
+void GBufferDemo::Render()
 {
     MSG msg = {};
     bool running = true;

@@ -320,7 +320,7 @@ void QuadDemo::UpdateConstantBuffers()
     m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
 }
 
-void QuadDemo::Run()
+void QuadDemo::Render()
 {
     MSG msg = {};
     bool running = true;

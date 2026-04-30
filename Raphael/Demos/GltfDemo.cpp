@@ -640,7 +640,7 @@ void GltfDemo::UpdateConstantBuffers()
     m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
 }
 
-void GltfDemo::Run()
+void GltfDemo::Render()
 {
     MSG msg = {};
     bool running = true;

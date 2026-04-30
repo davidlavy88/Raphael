@@ -50,7 +50,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos;$(SolutionDir)Raphael\ImGui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos;$(SolutionDir)Raphael\ImGui;$(SolutionDir)Raphael\Components;$(SolutionDir)Raphael\EngineTest</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -67,7 +67,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos;$(SolutionDir)Raphael\ImGui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos;$(SolutionDir)Raphael\ImGui;$(SolutionDir)Raphael\Components;$(SolutionDir)Raphael\EngineTest</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -89,12 +89,14 @@
     <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
     <ClCompile Include="Demos\GBufferDemo.cpp" />
     <ClCompile Include="Demos\RayTracerDemo.cpp" />
+    <ClCompile Include="EngineTest\TestRenderer.cpp" />
     <ClCompile Include="ImGui\ImGuiLoader.cpp" />
+    <ClCompile Include="Render\SceneRenderer.cpp" />
     <ClCompile Include="source\GBufferRenderer.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
     <ClCompile Include="source\Light.cpp" />
     <ClCompile Include="source\Material.cpp" />
-    <ClCompile Include="source\Camera.cpp" />
+    <ClCompile Include="Components\Camera.cpp" />
     <ClCompile Include="source\Device.cpp" />
     <ClCompile Include="source\DescriptorHeapAllocator.cpp" />
     <ClCompile Include="source\GameTimer.cpp" />
@@ -118,6 +120,7 @@
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="Utilities\TextureLoader\DDSTextureLoader.cpp" />
     <ClCompile Include="Utilities\TextureLoader\WICTextureLoader12.cpp" />
+    <ClCompile Include="Components\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Demos\BoxDemo.h" />
@@ -131,8 +134,9 @@
     <ClInclude Include="DX12\FrameContext.h" />
     <ClInclude Include="DX12\UploadBufferDx12.h" />
     <ClInclude Include="DX12\UtilDx12.h" />
-    <ClInclude Include="header\Camera.h" />
+    <ClInclude Include="Components\Camera.h" />
     <ClInclude Include="Demos\GBufferDemo.h" />
+    <ClInclude Include="EngineTest\TestRenderer.h" />
     <ClInclude Include="header\Device.h" />
     <ClInclude Include="header\DescriptorHeapAllocator.h" />
     <ClInclude Include="header\GameTimer.h" />
@@ -161,7 +165,9 @@
     <ClInclude Include="DX12\RootSignatureTableDx12.h" />
     <ClInclude Include="Demos\TexturedBoxDemo.h" />
     <ClInclude Include="Demos\RayTracerDemo.h" />
+    <ClInclude Include="Demos\IDemo.h" />
     <ClInclude Include="ImGui\ImGuiLoader.h" />
+    <ClInclude Include="Render\SceneRenderer.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />
@@ -177,6 +183,7 @@
     <ClInclude Include="Utilities\tinygltf\stb_image.h" />
     <ClInclude Include="Utilities\tinygltf\stb_image_write.h" />
     <ClInclude Include="Utilities\tinygltf\tiny_gltf.h" />
+    <ClInclude Include="Components\Window.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
