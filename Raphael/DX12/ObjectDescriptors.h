@@ -143,6 +143,8 @@ namespace raphael
         UINT numRenderTargets = 1;
         ResourceFormat dsvFormat = ResourceFormat::D24_UNORM_S8_UINT; // Depth stencil format
         InputLayoutDesc inputLayout;
+		RasterizerFillMode rasterizerFillMode = RasterizerFillMode::Solid;
+		RasterizerCullMode rasterizerCullMode = RasterizerCullMode::Back;
         // ... more shader stages, input layout, etc.
     };
 

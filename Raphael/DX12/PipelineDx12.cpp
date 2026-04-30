@@ -21,6 +21,8 @@ namespace raphael
         psoDesc.VS = shader->getVertexShaderBytecode();
         psoDesc.PS = shader->getPixelShaderBytecode();
         CD3DX12_RASTERIZER_DESC rsDesc(D3D12_DEFAULT);
+        rsDesc.FillMode = convertFillModeToD3D12(m_desc.rasterizerFillMode);
+        rsDesc.CullMode = convertCullModeToD3D12(m_desc.rasterizerCullMode);
         psoDesc.RasterizerState = rsDesc;
         psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
         CD3DX12_DEPTH_STENCIL_DESC dsDesc(D3D12_DEFAULT);

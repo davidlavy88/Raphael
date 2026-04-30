@@ -13,10 +13,20 @@
 #include "GPUStructs.h"
 #include "ImGuiLoader.h"
 #include "Window.h"
+#include "Camera.h"
 
 using namespace raphael;
 
 static constexpr uint32_t g_frameCount = 2;
+
+class BoxImGui : public ImGuiLoader
+{
+public:
+    void Display() override;
+
+    float cameraSpeed = 1.0f;
+    bool wireframe = false;
+};
 
 class BoxDemo : public IDemo
 {
@@ -25,10 +35,10 @@ public:
     void Shutdown() override;
     void Render() override;
     void Resize(unsigned int width, unsigned int height) override;
-    LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 private:
     // ---- Initialization helpers (one per logical step) ----
+	void CreateDevice();
     void CreateDescriptorHeaps();
     void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
@@ -39,6 +49,9 @@ private:
 
     // ---- Per-frame helpers ----
     void UpdateConstantBuffers();
+
+    // ---- Process input ----
+    void ProcessInput();
 
 private:
     // Core DX12 components
@@ -66,6 +79,9 @@ private:
     std::unique_ptr<RootSignatureDx12> m_rootSignature;
     std::unique_ptr<PipelineDx12> m_pipeline;
 
+	PipelineDesc m_pipelineDesc = {};
+	ShaderDesc m_shaderDesc = {};
+
     // Render state
     ResourceView m_depthStencilView = {};
     // Per-frame resources for double buffering
@@ -75,5 +91,8 @@ private:
     float m_rotationAngle = 0.0f;
 
     // ImGui support
-    ImGuiLoader m_imguiLoader;
+    BoxImGui m_imguiLoader;
+
+	// Camera
+	Camera m_camera;
 };

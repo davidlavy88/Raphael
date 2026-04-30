@@ -3,49 +3,77 @@
 
 using namespace raphael;
 
+void BoxImGui::Display()
+{
+    ImGui::Begin("Box Demo Controls");
+    ImGui::Text("Use WASD to move, mouse to look around.");
+    ImGui::Text("Press R to reset camera.");
+    ImGui::SliderFloat("Camera Speed", &cameraSpeed, 0.0f, 0.4f);
+    ImGui::Checkbox("Wireframe", &wireframe);
+    ImGui::End();
+}
+
 // Initialization process
-// 1. Create application window
-// 2. Create device
+// 1. Create device
+// 2. Initialize camera and matrices
 // 3. Create descriptor heaps (DSV, RTV, CBV/SRV/UAV if needed)
-// 4. Create swap chain + depth buffer
-// 5. Create geometry resources (vertex/index buffers, views)
-// 6. Constant buffers (per-frame upload buffers)
-// 7. Create root signature (define shader resource bindings)
-// 8. Create pipeline state (compile shaders, create PSO)
-// 9. Create command objects (command allocators, command lists)
+// 4. Initialize ImGui (create font textures, descriptor heaps, etc.)
+// 5. Create swap chain + depth buffer
+// 6. Create geometry resources (vertex/index buffers, views)
+// 7. Constant buffers (per-frame upload buffers)
+// 8. Create root signature (define shader resource bindings)
+// 9. Create pipeline state (compile shaders, create PSO)
+// 10. Create command objects (command allocators, command lists)
 bool BoxDemo::Initialize(WindowInfo windowInfo)
 {
-    // -- 2. Create device --
-    DeviceDesc deviceDesc = {};
-    deviceDesc.enableDebugLayer = true;
-    m_device = std::make_unique<DeviceDx12>(deviceDesc);
+    // -- 1. Create device --
+    CreateDevice();
+
+    // -- 2. Initialize camera
+    m_camera.Initialize(
+        XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f),
+        XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f),
+        0.0f,
+        0.0f,
+        0.05f
+    );
+
+    float aspect = static_cast<float>(windowInfo.width) / windowInfo.height;
+    m_camera.SetProjectionMatrix(0.25f * XM_PI, aspect, 1.0f, 1000.0f);
 
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
-    // -- Initialize ImGui --
+    // -- 4. Initialize ImGui --
     if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
         return false;
 
-    // -- 4. Create swap chain and depth buffer --
+    // -- 5. Create swap chain and depth buffer --
     CreateSwapChainAndDepthBuffer(windowInfo);
 
-    // -- 5. Create geometry resources --
+    // -- 6. Create geometry resources --
     CreateGeometry();
 
-    // -- 6. Create constant buffers --
+    // -- 7. Create constant buffers --
     CreateConstantBuffers();
 
-    // -- 7. Create root signature --
+    // -- 8. Create root signature --
     CreateRootSignature();
 
-    // -- 8. Create pipeline state + shaders --
+    // -- 9. Create pipeline state + shaders --
     CreatePipeline();
 
-    // -- 9. Create command objects --
+    // -- 10. Create command objects --
     CreateCommandObjects();
 
     return true;
+}
+
+void BoxDemo::CreateDevice()
+{
+    DeviceDesc deviceDesc = {};
+    deviceDesc.enableDebugLayer = true;
+    m_device = std::make_unique<DeviceDx12>(deviceDesc);
 }
 
 // 3. Create descriptor heaps 
@@ -271,22 +299,20 @@ void BoxDemo::CreateRootSignature()
 void BoxDemo::CreatePipeline()
 {
     // Compile shader
-    ShaderDesc shaderDesc = {};
-    shaderDesc.shaderFilePath = L"Shaders\\cubeShader.hlsl";
-    shaderDesc.shaderName = "CubeShader";
-    shaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
+    m_shaderDesc.shaderFilePath = L"Shaders\\cubeShader.hlsl";
+    m_shaderDesc.shaderName = "CubeShader";
+    m_shaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
 
-    m_shader = std::make_unique<ShaderDx12>(shaderDesc);
+    m_shader = std::make_unique<ShaderDx12>(m_shaderDesc);
 
     // Create pipeline state
-    PipelineDesc pipelineDesc = {};
-    pipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM };
-    pipelineDesc.inputLayout = InputLayoutDesc::build({
+    m_pipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM };
+    m_pipelineDesc.inputLayout = InputLayoutDesc::build({
         InputElementDesc::setAsPosition(0, ResourceFormat::R32G32B32_FLOAT, 0, 0),
         InputElementDesc::setAsColor(0, ResourceFormat::R32G32B32A32_FLOAT, 0, 12)
         });
 
-    m_pipeline = m_device->createPipeline(pipelineDesc);
+    m_pipeline = m_device->createPipeline(m_pipelineDesc);
     m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
 }
 
@@ -313,6 +339,9 @@ void BoxDemo::UpdateConstantBuffers()
     // Object constant (b0) - World matrix
     XMMATRIX worldMatrix = XMMatrixRotationY(m_rotationAngle);
 
+    // Update pass constants
+    m_camera.UpdateViewMatrix();
+
     // Object: world matrix with rotation
     BasicObjectConstants objConstants = {};
     XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(worldMatrix));
@@ -329,7 +358,7 @@ void BoxDemo::UpdateConstantBuffers()
 
     // Frame: identity viewproj (renders in NDC space directly)
     FrameConstants frameConstants = {};
-    XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
+    XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(m_camera.GetViewProjectionMatrix()));
 
     // Copy data to the current back buffer's constant buffers
     UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
@@ -351,6 +380,9 @@ void BoxDemo::Render()
     // Start ImGui frame
     m_imguiLoader.NewFrame();
     m_imguiLoader.Display();
+
+    // Process input (after starting ImGui frame so that we can query ImGui input capture state)
+    ProcessInput();
 
     // Record commands
     // Retrieve current back buffer resource and RTV for render pass setup
@@ -459,4 +491,72 @@ void BoxDemo::Resize(unsigned int width, unsigned int height)
         m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
         m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
     }
+}
+
+void BoxDemo::ProcessInput()
+{
+    if (!m_imguiLoader.WantsCaptureKeyboard())
+    {
+        // Process camera movement input only if ImGui is not capturing the input
+        if (GetAsyncKeyState('W') & 0x8000)
+            m_camera.MoveForward();
+        if (GetAsyncKeyState('S') & 0x8000)
+            m_camera.MoveBackward();
+        if (GetAsyncKeyState('A') & 0x8000)
+            m_camera.MoveLeft();
+        if (GetAsyncKeyState('D') & 0x8000)
+            m_camera.MoveRight();
+        if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+            m_camera.MoveUpDown(1.0f);
+        if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+            m_camera.MoveUpDown(-1.0f);
+        if (GetAsyncKeyState('R') & 0x8000)
+            m_camera.Reset();
+    }
+
+    if (!m_imguiLoader.WantsCaptureMouse())
+    {
+        // Process camera rotation input only if ImGui is not capturing the input
+        static POINT lastMousePos = {};
+        POINT currentMousePos;
+        GetCursorPos(&currentMousePos);
+        if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
+        {
+            if (currentMousePos.x != lastMousePos.x || currentMousePos.y != lastMousePos.y)
+            {
+                m_camera.SetYaw(m_camera.GetYaw() + (currentMousePos.x - lastMousePos.x) * 0.005f);
+                m_camera.SetPitch(m_camera.GetPitch() + (currentMousePos.y - lastMousePos.y) * 0.005f);
+            }
+        }
+        else if (GetAsyncKeyState(VK_RBUTTON) & 0x8000)
+        {
+            if (currentMousePos.y != lastMousePos.y)
+            {
+                m_camera.MoveUpDown(static_cast<float>(currentMousePos.y - lastMousePos.y));
+            }
+        }
+        lastMousePos = currentMousePos;
+    }
+
+    RasterizerFillMode newFillMode = m_imguiLoader.wireframe
+        ? RasterizerFillMode::Wireframe
+        : RasterizerFillMode::Solid;
+
+    if (m_pipelineDesc.rasterizerFillMode != newFillMode)
+    {
+        m_pipelineDesc.rasterizerFillMode = newFillMode;
+
+        // Wait for ALL frames to finish before destroying the old PSO
+        for (UINT i = 0; i < g_frameCount; i++)
+        {
+            m_device->waitForFence(m_frameContexts[i].fenceValue);
+        }
+
+        // Recreate pipeline with new rasterizer state
+        m_pipeline = m_device->createPipeline(m_pipelineDesc);
+        m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
+    }
+
+    m_camera.SetSpeed(m_imguiLoader.cameraSpeed);
+    m_camera.UpdateLook();
 }

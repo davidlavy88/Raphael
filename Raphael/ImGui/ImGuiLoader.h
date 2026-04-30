@@ -15,12 +15,23 @@ namespace raphael
     public:
         bool Initialize(HWND hwnd, DeviceDx12* device, DescriptorHeapDx12* srvHeap, int numBackBuffers);
         void NewFrame();
-        void Display();
+        virtual void Display();
         void Render(CommandList* cmdList);
         void Shutdown();
 
         // Returns true if ImGui handled the message (caller should return early)
         bool HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+        // Input queries
+        bool IsKeyDown(ImGuiKey key) const;
+        bool IsKeyPressed(ImGuiKey key, bool repeat = false) const;
+        bool IsMouseDown(ImGuiMouseButton button) const;
+        bool IsMouseClicked(ImGuiMouseButton button) const;
+        ImVec2 GetMousePos() const;
+        ImVec2 GetMouseDelta() const;
+        float GetMouseWheel() const;
+        bool WantsCaptureMouse() const;
+        bool WantsCaptureKeyboard() const;
 
     private:
         static void SrvDescriptorAllocFn(ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_handle);

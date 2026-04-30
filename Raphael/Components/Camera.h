@@ -6,58 +6,68 @@ using namespace DirectX;
 class Camera
 {
 public:
-	Camera();
+    Camera() = default;
 
-	XMVECTOR GetPosition() { return m_position; }
+    void Initialize(const XMVECTOR& position, const XMVECTOR& up, float pitch, float yaw, float speed);
+    void Reset();
 
-	XMMATRIX GetViewMatrix() const { return m_viewMatrix; }
-	XMMATRIX GetProjectionMatrix() const { return m_projectionMatrix; }
-	XMMATRIX GetViewProjectionMatrix() const { return m_viewProjectionMatrix; }
+    XMVECTOR GetPosition() { return m_position; }
 
-	XMVECTOR GetUp() const { return m_up; }
-	XMVECTOR GetLook() const { return m_look; }
+    XMMATRIX GetViewMatrix() const { return m_viewMatrix; }
+    XMMATRIX GetProjectionMatrix() const { return m_projectionMatrix; }
+    XMMATRIX GetViewProjectionMatrix() const { return m_viewProjectionMatrix; }
 
-	float GetPitch() const { return m_pitch; }
-	float GetYaw() const { return m_yaw; }
+    XMVECTOR GetUp() const { return m_up; }
+    XMVECTOR GetLook() const { return m_look; }
 
-	float GetSpeed() const { return m_speed; }
+    float GetPitch() const { return m_pitch; }
+    float GetYaw() const { return m_yaw; }
 
-	void SetPosition(const XMVECTOR& position) { m_position = position; }
+    float GetSpeed() const { return m_speed; }
 
-	void SetUp(const XMVECTOR& up) { m_up = up; }
-	void SetLook(const XMVECTOR& look) { m_look = look; }
-	void UpdateLook();
+    void SetPosition(const XMVECTOR& position) { m_position = position; }
 
-	void UpdateViewMatrix();
-	void SetProjectionMatrix(float fovY, float aspectRatio, float nearZ, float farZ);
-	void SetProjectionMatrix(const XMMATRIX& projectionMatrix) { m_projectionMatrix = projectionMatrix; }
+    void SetUp(const XMVECTOR& up) { m_up = up; }
+    void SetLook(const XMVECTOR& look) { m_look = look; }
+    void UpdateLook();
 
-	void SetPitch(float pitch);
-	void SetYaw(float yaw) { m_yaw = yaw; }
+    void UpdateViewMatrix();
+    void SetProjectionMatrix(float fovY, float aspectRatio, float nearZ, float farZ);
+    void SetProjectionMatrix(const XMMATRIX& projectionMatrix) { m_projectionMatrix = projectionMatrix; }
 
-	// Set camera speed	
-	void SetSpeed(float speed) { m_speed = speed; }
+    void SetPitch(float pitch);
+    void SetYaw(float yaw) { m_yaw = yaw; }
 
-	// Camera movement methods
-	void MoveForward();
-	void MoveBackward();
-	void MoveLeft();
-	void MoveRight();
-	void MoveUpDown(float delta);
+    // Set camera speed	
+    void SetSpeed(float speed) { m_speed = speed; }
+
+    // Camera movement methods
+    void MoveForward();
+    void MoveBackward();
+    void MoveLeft();
+    void MoveRight();
+    void MoveUpDown(float delta);
 
 
 private:
-	XMMATRIX m_viewMatrix;
-	XMMATRIX m_projectionMatrix;
-	XMMATRIX m_viewProjectionMatrix;
-	
-	XMVECTOR m_position;
-	XMVECTOR m_up;
-	XMVECTOR m_look;
+    XMMATRIX m_viewMatrix;
+    XMMATRIX m_projectionMatrix;
+    XMMATRIX m_viewProjectionMatrix;
+    
+    XMVECTOR m_position;
+    XMVECTOR m_up;
+    XMVECTOR m_look;
 
-	float m_pitch;
-	float m_yaw;
+    float m_pitch;
+    float m_yaw;
 
-	float m_speed;
+    float m_speed;
+
+    // Initial values for Reset
+    XMVECTOR m_initialPosition;
+    XMVECTOR m_initialUp;
+    float m_initialPitch;
+    float m_initialYaw;
+    float m_initialSpeed;
 };
 

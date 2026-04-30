@@ -58,4 +58,31 @@ namespace raphael
             return ResourceFormat::Unknown;
         }
     }
+
+    inline D3D12_FILL_MODE convertFillModeToD3D12(RasterizerFillMode fillMode)
+    {
+        switch (fillMode)
+        {
+        case RasterizerFillMode::Solid:
+            return D3D12_FILL_MODE_SOLID;
+        case RasterizerFillMode::Wireframe:
+            return D3D12_FILL_MODE_WIREFRAME;
+        default:
+            return D3D12_FILL_MODE_SOLID;
+        }
+    }
+     inline D3D12_CULL_MODE convertCullModeToD3D12(RasterizerCullMode cullMode)
+    {
+        switch (cullMode)
+        {
+        case RasterizerCullMode::None:
+            return D3D12_CULL_MODE_NONE;
+        case RasterizerCullMode::Front:
+            return D3D12_CULL_MODE_FRONT;
+        case RasterizerCullMode::Back:
+            return D3D12_CULL_MODE_BACK;
+        default:
+            return D3D12_CULL_MODE_BACK;
+        }
+	 }
 }

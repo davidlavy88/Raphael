@@ -34,9 +34,13 @@ namespace raphael
 
         ::RegisterClassExW(&wc);
 
+        // Adjust window size so the client area matches the desired dimensions
+        RECT rect = { 0, 0, static_cast<LONG>(m_windowInfo.width), static_cast<LONG>(m_windowInfo.height) };
+        ::AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
+
         auto hwnd = ::CreateWindowW(
             wc.lpszClassName, L"Raphael Engine", WS_OVERLAPPEDWINDOW,
-            100, 100, m_windowInfo.width, m_windowInfo.height,
+            100, 100, rect.right - rect.left, rect.bottom - rect.top,
             nullptr, nullptr, wc.hInstance, this
         );
 

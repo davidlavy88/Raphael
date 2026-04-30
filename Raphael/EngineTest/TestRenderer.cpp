@@ -8,7 +8,8 @@ bool resized = false;
 
 LRESULT TestRenderer::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam);
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
+        return true;
 
     switch (msg)
     {
