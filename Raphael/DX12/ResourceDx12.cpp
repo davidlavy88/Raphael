@@ -165,7 +165,8 @@ namespace raphael
             convertFormatToDXGI(desc.format),
             desc.width,
             desc.height,
-            1, 0, 1, 0,
+            1,
+            desc.mipLevels, 1, 0,
             resourceFlags
         ); // Default values for other fields like MipLevels, SampleDesc, etc. can be set as needed. For now, no mipmaps
 
@@ -230,7 +231,7 @@ namespace raphael
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Texture2D.MipLevels = 1; // Assuming no mipmaps for simplicity
+            srvDesc.Texture2D.MipLevels = m_desc.mipLevels; // Assuming no mipmaps for simplicity
             srvDesc.Format = convertFormatToDXGI(m_desc.format);
             m_device->getNativeDevice()->CreateShaderResourceView(m_resource.Get(), &srvDesc, handle);
         }

@@ -1,4 +1,5 @@
 #pragma once
+#include "IDemo.h"
 #include "DeviceDx12.h"
 #include "ResourceDx12.h"
 #include "CommandList.h"
@@ -10,27 +11,31 @@
 #include "FrameContext.h"
 #include "UploadBufferDx12.h"
 #include "GPUStructs.h"
+#include "ImGuiLoader.h"
+#include "Window.h"
 
 using namespace raphael;
 
 static constexpr uint32_t g_frameCount = 2;
 
-class TexturedBoxDemo
+class TexturedBoxImGui : public ImGuiLoader
 {
 public:
-    bool Initialize();
-    void Shutdown();
-    void Render();
-    LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    void Display() override;
+};
+
+class TexturedBoxDemo : public IDemo
+{
+public:
+    bool Initialize(WindowInfo windowInfo) override;
+    void Shutdown() override;
+    void Render() override;
+    void Resize(unsigned int width, unsigned int height) override;
 
 private:
-    bool CreateAppWindow();
-    void DestroyAppWindow();
-    static LRESULT WINAPI StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
     // ---- Initialization helpers (one per logical step) ----
     void CreateDescriptorHeaps();
-    void CreateSwapChainAndDepthBuffer();
+    void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
     void CreateTexture();
     void CreateConstantBuffers();
@@ -76,11 +81,13 @@ private:
     ResourceView m_textureSrv = {};
     // Per-frame resources for double buffering
     std::array<FrameContext, g_frameCount> m_frameContexts;
-    // UINT m_frameIndex = 0; // Current frame index for double buffering
 
     // Camera and transform state
     float m_rotationAngle = 0.0f;
 
+    // ImGui support
+    TexturedBoxImGui m_imguiLoader;
+
     // Window handle
-    HWND m_hwnd = nullptr;
+    HWND m_windowHandle = nullptr;
 };

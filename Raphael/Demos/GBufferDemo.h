@@ -1,4 +1,5 @@
 #pragma once
+#include "IDemo.h"
 #include "DeviceDx12.h"
 #include "ResourceDx12.h"
 #include "CommandList.h"
@@ -10,6 +11,8 @@
 #include "FrameContext.h"
 #include "UploadBufferDx12.h"
 #include "GPUStructs.h"
+#include "ImGuiLoader.h"
+#include "Window.h"
 
 #include "tinygltf/tiny_gltf.h"
 
@@ -18,7 +21,13 @@ using namespace raphael;
 static constexpr uint32_t g_frameCount = 2;
 static constexpr int g_numRenderTargets = 3;
 
-class GBufferDemo
+class GBufferImGui : public ImGuiLoader
+{
+public:
+    void Display() override;
+};
+
+class GBufferDemo : public IDemo
 {
     enum GBufferRenderTarget
     {
@@ -28,21 +37,17 @@ class GBufferDemo
 	};
 
 public:
-    bool Initialize();
-    void Shutdown();
-    void Render();
-    LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    bool Initialize(WindowInfo windowInfo) override;
+    void Shutdown() override;
+    void Render() override;
+    void Resize(unsigned int width, unsigned int height) override;
 
 private:
-    bool CreateAppWindow();
-    void DestroyAppWindow();
-    static LRESULT WINAPI StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
     // ---- Initialization helpers (one per logical step) ----
     void CreateGltfModel();
     void CreateDescriptorHeaps();
 	void CreateGBufferRenderTargets();
-    void CreateSwapChainAndDepthBuffer();
+    void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
     void CreateTexture();
     void CreateConstantBuffers();
@@ -52,6 +57,9 @@ private:
 
     // ---- Per-frame helpers ----
     void UpdateConstantBuffers();
+
+    // ---- Process input ----
+    void ProcessInput();
 
 private:
     // Core DX12 components
@@ -86,6 +94,9 @@ private:
     std::unique_ptr<RootSignatureDx12> m_rootSignature;
     std::unique_ptr<PipelineDx12> m_pipeline;
 
+    PipelineDesc m_pipelineDesc = {};
+    ShaderDesc m_shaderDesc = {};
+
     // Render state
     ResourceView m_depthStencilView = {};
     std::vector<ResourceView> m_textureSrvs;
@@ -109,6 +120,9 @@ private:
     // Camera and transform state
     float m_rotationAngle = 0.0f;
 
+    // ImGui support
+    GBufferImGui m_imguiLoader;
+
     // Window handle
-    HWND m_hwnd = nullptr;
+    HWND m_windowHandle = nullptr;
 };

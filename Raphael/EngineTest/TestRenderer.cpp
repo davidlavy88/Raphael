@@ -1,5 +1,5 @@
 #include "TestRenderer.h"
-#include "BoxDemo.h"
+#include "GBufferDemo.h"
 #include "imgui/backends/imgui_impl_win32.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -39,7 +39,7 @@ LRESULT TestRenderer::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 
 bool TestRenderer::Initialize()
 {
-    m_demo = new BoxDemo();
+    m_demo = new GBufferDemo();
     m_window.setMessageCallback([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         return HandleMessage(hwnd, msg, wParam, lParam);
     });

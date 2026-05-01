@@ -9,18 +9,24 @@
 
 using namespace raphael;
 
+void GBufferImGui::Display()
+{
+    ImGui::Begin("GBuffer Demo");
+    ImGui::Text("GBuffer render");
+    ImGui::End();
+}
+
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Initialization process
-bool GBufferDemo::Initialize()
+bool GBufferDemo::Initialize(WindowInfo windowInfo)
 {
     // Init COM
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-    // -- 1. Create application window --
-    if (!CreateAppWindow())
-        return false;
+    // Store the window handle for input processing (sad thing)
+    m_windowHandle = windowInfo.hWnd;
 
     // -- 2. Create device --
     DeviceDesc deviceDesc = {};
@@ -32,11 +38,15 @@ bool GBufferDemo::Initialize()
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
+    // -- 4. Initialize ImGui --
+    if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_textureSrvHeap.get(), g_frameCount))
+        return false;
+
     // -- 4. Create GBuffer render targets --
     CreateGBufferRenderTargets();
 
     // -- 5. Create swap chain and depth buffer --
-    CreateSwapChainAndDepthBuffer();
+    CreateSwapChainAndDepthBuffer(windowInfo);
 
     // -- 6. Create command objects --
     CreateCommandObjects();
@@ -55,10 +65,6 @@ bool GBufferDemo::Initialize()
 
     // -- 11. Create texture resources --
     CreateTexture();
-
-    // Show window
-    ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);
-    ::UpdateWindow(m_hwnd);
 
     return true;
 }
@@ -103,7 +109,8 @@ void GBufferDemo::CreateDescriptorHeaps()
 
     DescriptorHeapDesc textureSrvHeapDesc = {};
     textureSrvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
-    textureSrvHeapDesc.numDescriptors = static_cast<UINT>(m_gltfModel->textures.size()); // One SRV for the texture
+	// One SRV for each texture in the model + 1 for ImGui font texture
+    textureSrvHeapDesc.numDescriptors = static_cast<UINT>(m_gltfModel->textures.size() + 1); 
     textureSrvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
 
     m_textureSrvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
@@ -147,25 +154,25 @@ void GBufferDemo::CreateGBufferRenderTargets()
 }
 
 // 4. Create swap chain and depth buffer
-void GBufferDemo::CreateSwapChainAndDepthBuffer()
+void GBufferDemo::CreateSwapChainAndDepthBuffer(WindowInfo windowInfo)
 {
     // We couple swap chain and depth buffer creation together since they both depend 
     // on the window size and need to be recreated together when the window is resized.
 
     // Create swap chain
     SwapChainDesc swapChainDesc = {};
-    swapChainDesc.width = WINDOW_WIDTH;
-    swapChainDesc.height = WINDOW_HEIGHT;
+    swapChainDesc.width = windowInfo.width;
+    swapChainDesc.height = windowInfo.height;
     swapChainDesc.bufferCount = g_frameCount;
-    swapChainDesc.windowHandle = m_hwnd;
+    swapChainDesc.windowHandle = windowInfo.hWnd;
 
     m_swapChain = m_device->createSwapChain(m_rtvHeap.get(), swapChainDesc);
 
     // Create depth buffer
     ResourceDesc depthDesc = {};
     depthDesc.type = ResourceDesc::ResourceType::Texture2D;
-    depthDesc.width = WINDOW_WIDTH;
-    depthDesc.height = WINDOW_HEIGHT;
+    depthDesc.width = windowInfo.width;
+    depthDesc.height = windowInfo.height;
     depthDesc.format = ResourceFormat::D24_UNORM_S8_UINT;
     depthDesc.bindFlags = ResourceBindFlags::DepthStencil;
 
@@ -538,27 +545,25 @@ void GBufferDemo::CreateRootSignature()
 void GBufferDemo::CreatePipeline()
 {
     // Compile shader
-    ShaderDesc shaderDesc = {};
-    shaderDesc.shaderFilePath = L"Shaders\\gBufferDemo.hlsl";
-    shaderDesc.shaderName = "GBufferDemoShader";
-    shaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
+    m_shaderDesc.shaderFilePath = L"Shaders\\gBufferDemo.hlsl";
+    m_shaderDesc.shaderName = "GBufferDemoShader";
+    m_shaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
 
-    m_shader = std::make_unique<ShaderDx12>(shaderDesc);
+    m_shader = std::make_unique<ShaderDx12>(m_shaderDesc);
 
     // Create pipeline state
-    PipelineDesc pipelineDesc = {};
-    pipelineDesc.numRenderTargets = g_numRenderTargets;
-    pipelineDesc.rtvFormats = { 
+    m_pipelineDesc.numRenderTargets = g_numRenderTargets;
+    m_pipelineDesc.rtvFormats = { 
         ResourceFormat::R8G8B8A8_UNORM, 
         ResourceFormat::R16G16B16A16_FLOAT, 
         ResourceFormat::R32_FLOAT };
-    pipelineDesc.inputLayout = InputLayoutDesc::build({
+    m_pipelineDesc.inputLayout = InputLayoutDesc::build({
         InputElementDesc::setAsPosition(0, ResourceFormat::R32G32B32_FLOAT, 0, 0),
         InputElementDesc::setAsNormal(0, ResourceFormat::R32G32B32_FLOAT, 0, 12),
         InputElementDesc::setAsTexCoord(0, ResourceFormat::R32G32_FLOAT, 0, 24),
         });
 
-    m_pipeline = m_device->createPipeline(pipelineDesc);
+    m_pipeline = m_device->createPipeline(m_pipelineDesc);
     m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
 }
 
@@ -674,95 +679,87 @@ void GBufferDemo::UpdateConstantBuffers()
 
 void GBufferDemo::Render()
 {
-    MSG msg = {};
-    bool running = true;
+    // Get the current back buffer index from the swap chain
+    UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
+    // Wait for GPU to finish with the resources from the previous frame
+    FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
+    m_device->waitForFence(currentFrameContext.fenceValue);
 
-    while (running)
+    // Update constant buffers with current frame's data
+    UpdateConstantBuffers();
+
+    // Start ImGui frame
+    m_imguiLoader.NewFrame();
+    m_imguiLoader.Display();
+
+    // Process input (after starting ImGui frame so that we can query ImGui input capture state)
+    ProcessInput();
+
+    // Record commands
+    // Retrieve current back buffer resource and RTV for render pass setup
+    ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
+    ResourceView currentRtView = m_swapChain->getCurrentRTView();
+
+    // Build render pass descriptor for current frame
+    const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
+        currentRtView,
+        currentBackBuffer->getNativeResource(),
+        m_depthStencilView,
+        WINDOW_WIDTH, WINDOW_HEIGHT,
+        clearColor);
+    renderPassDesc.debugName = "Textured Box Render Pass";
+
+    // Test command list recording
+    m_commandList->begin(currentFrameContext.commandAllocator.Get());
+    m_commandList->beginRenderPass(renderPassDesc);
+
     {
-        // Process all pending Windows messages
-        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+        // Set descriptor heaps (for the texture shader resource descriptor heaps)
+        m_commandList->setDescriptorHeaps(m_textureSrvHeap.get(), 1);
+
+        // Bind root signature and pipeline state
+        m_commandList->setGraphicsRootSignature(m_rootSignature.get());
+        m_commandList->setPipeline(m_pipeline.get());
+
+        // Bind constant buffers to root parameters (descriptor tables or root descriptors 
+        // depending on how we set up the root signature)
+        m_commandList->setConstantBufferView(
+            0,
+            m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+        m_commandList->setConstantBufferView(
+            1,
+            m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+
+        // Bind geometry
+        m_commandList->setVertexBuffer(0, m_vertexBufferView);
+        m_commandList->setIndexBuffer(m_indexBufferView);
+
+        // TODO: Match each primitive to its corresponding texture/material for multiple meshes
+        for (size_t i = 0; i < m_textureSrvs.size(); i++)
         {
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
-                running = false;
-        }
-        if (!running)
-            break;
-
-        // Get the current back buffer index from the swap chain
-        UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
-        // Wait for GPU to finish with the resources from the previous frame
-        FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
-        m_device->waitForFence(currentFrameContext.fenceValue);
-
-        // Update constant buffers with current frame's data
-        UpdateConstantBuffers();
-
-        // Record commands
-        // Retrieve current back buffer resource and RTV for render pass setup
-        ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
-        ResourceView currentRtView = m_swapChain->getCurrentRTView();
-
-        // Build render pass descriptor for current frame
-        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
-            currentRtView,
-            currentBackBuffer->getNativeResource(),
-            m_depthStencilView,
-            WINDOW_WIDTH, WINDOW_HEIGHT,
-            clearColor);
-        renderPassDesc.debugName = "Textured Box Render Pass";
-
-        // Test command list recording
-        m_commandList->begin(currentFrameContext.commandAllocator.Get());
-        m_commandList->beginRenderPass(renderPassDesc);
-
-        {
-            // Set descriptor heaps (for the texture shader resource descriptor heaps)
-            m_commandList->setDescriptorHeaps(m_textureSrvHeap.get(), 1);
-
-            // Bind root signature and pipeline state
-            m_commandList->setGraphicsRootSignature(m_rootSignature.get());
-            m_commandList->setPipeline(m_pipeline.get());
-
-            // Bind constant buffers to root parameters (descriptor tables or root descriptors 
-            // depending on how we set up the root signature)
-            m_commandList->setConstantBufferView(
-                0,
-                m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
-            m_commandList->setConstantBufferView(
-                1,
-                m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
-
-            // Bind geometry
-            m_commandList->setVertexBuffer(0, m_vertexBufferView);
-            m_commandList->setIndexBuffer(m_indexBufferView);
-
-            // TODO: Match each primitive to its corresponding texture/material for multiple meshes
-            for (size_t i = 0; i < m_textureSrvs.size(); i++)
-            {
-                m_commandList->setGraphicsRootDescriptorTable(
-                    2,
-                    m_textureSrvs[i].gpuHandle);
-                m_commandList->drawIndexedInstanced(m_meshes[i].indexCount, 1, m_meshes[i].indexBufferOffset, m_meshes[i].vertexBufferOffset, 0);
-            }
-
+            m_commandList->setGraphicsRootDescriptorTable(
+                2,
+                m_textureSrvs[i].gpuHandle);
+            m_commandList->drawIndexedInstanced(m_meshes[i].indexCount, 1, m_meshes[i].indexBufferOffset, m_meshes[i].vertexBufferOffset, 0);
         }
 
-        m_commandList->endRenderPass();
+        m_imguiLoader.Render(m_commandList.get());
 
-        m_commandList->end();
-
-        // Execute command list
-        m_device->executeCommandList(m_commandList.get());
-        // Present the frame
-        m_swapChain->present(true);
-
-        // Signal and increment the fence value for the current frame
-        currentFrameContext.fenceValue = m_device->getNextFenceValue();
-        m_device->signalFence(currentFrameContext.fenceValue);
     }
+
+    m_commandList->endRenderPass();
+
+    m_commandList->end();
+
+    // Execute command list
+    m_device->executeCommandList(m_commandList.get());
+    // Present the frame
+    m_swapChain->present(true);
+
+    // Signal and increment the fence value for the current frame
+    currentFrameContext.fenceValue = m_device->getNextFenceValue();
+    m_device->signalFence(currentFrameContext.fenceValue);
 }
 
 void GBufferDemo::Shutdown()
@@ -773,114 +770,50 @@ void GBufferDemo::Shutdown()
         m_device->waitForFence(m_frameContexts[i].fenceValue);
     }
 
+    // Shutdown ImGui
+    m_imguiLoader.Shutdown();
+
     // Cleanup resources if needed
     OutputDebugStringA("Shutting down GBufferDemo and releasing resources.\n");
 }
 
-LRESULT GBufferDemo::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+void GBufferDemo::Resize(unsigned int width, unsigned int height)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
-        return true;
-
-    switch (msg)
+    if (m_device->getNativeDevice() != nullptr)
     {
-    case WM_SIZE:
-        if (m_device->getNativeDevice() != nullptr && wParam != SIZE_MINIMIZED)
+        // Wait for GPU to finish with resources before resizing
+        for (UINT i = 0; i < g_frameCount; i++)
         {
-            // Wait for GPU to finish with resources before resizing
-            for (UINT i = 0; i < g_frameCount; i++)
-            {
-                m_device->waitForFence(m_frameContexts[i].fenceValue);
-            }
-
-            // TODO: Move this to a separate method since we will need to call it from other places (e.g., when changing display modes)
-            UINT newWidth = LOWORD(lParam);
-            UINT newHeight = HIWORD(lParam);
-
-            // Update global window size variables (used for viewport/scissor rect setup in command list recording, etc.)
-            WINDOW_WIDTH = newWidth;
-            WINDOW_HEIGHT = newHeight;
-
-            m_swapChain->resize(newWidth, newHeight);
-
-            // Recreate depth buffer at new size
-            ResourceDesc depthDesc = {};
-            depthDesc.type = ResourceDesc::ResourceType::Texture2D;
-            depthDesc.width = newWidth;
-            depthDesc.height = newHeight;
-            depthDesc.format = ResourceFormat::D24_UNORM_S8_UINT;
-            depthDesc.bindFlags = ResourceBindFlags::DepthStencil;
-
-            m_depthBuffer = m_device->createResource(depthDesc);
-
-            DescriptorHandle dsvHandle = { m_depthStencilView.cpuHandle, {} };
-            m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
+            m_device->waitForFence(m_frameContexts[i].fenceValue);
         }
-        return 0;
 
-    case WM_SYSCOMMAND:
-        if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
-            return 0;
-        break;
+        // TODO: Move this to a separate method since we will need to call it from other places (e.g., when changing display modes)
+        UINT newWidth = width;
+        UINT newHeight = height;
 
-    case WM_DESTROY:
-        ::PostQuitMessage(0);
-        return 0;
+        // Update global window size variables (used for viewport/scissor rect setup in command list recording, etc.)
+        WINDOW_WIDTH = newWidth;
+        WINDOW_HEIGHT = newHeight;
+
+        m_swapChain->resize(newWidth, newHeight);
+
+        // Recreate depth buffer at new size
+        ResourceDesc depthDesc = {};
+        depthDesc.type = ResourceDesc::ResourceType::Texture2D;
+        depthDesc.width = newWidth;
+        depthDesc.height = newHeight;
+        depthDesc.format = ResourceFormat::D24_UNORM_S8_UINT;
+        depthDesc.bindFlags = ResourceBindFlags::DepthStencil;
+
+        m_depthBuffer = m_device->createResource(depthDesc);
+
+        DescriptorHandle dsvHandle = {};
+        m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
+        m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
     }
-
-    return ::DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-bool GBufferDemo::CreateAppWindow()
+void GBufferDemo::ProcessInput()
 {
-    // Implementation for creating application window
-    WNDCLASSEXW wc = {
-            sizeof(wc), CS_CLASSDC, StaticWndProc, 0L, 0L,
-            GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr,
-            L"Textured Box Demo", nullptr
-    };
-
-    ::RegisterClassExW(&wc);
-
-    m_hwnd = ::CreateWindowW(
-        wc.lpszClassName, L"Raphael Engine - Textured Box Demo", WS_OVERLAPPEDWINDOW,
-        100, 100, WINDOW_WIDTH, WINDOW_HEIGHT,
-        nullptr, nullptr, wc.hInstance, this
-    );
-
-    return m_hwnd != nullptr;
+    
 }
-
-void GBufferDemo::DestroyAppWindow()
-{
-    // Implementation for destroying application window
-    if (m_hwnd)
-    {
-        ::DestroyWindow(m_hwnd);
-        ::UnregisterClassW(L"Raphael Engine", GetModuleHandle(nullptr));
-        m_hwnd = nullptr;
-    }
-}
-
-LRESULT WINAPI GBufferDemo::StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    // Retrieve the GBufferDemo instance from window user data
-    GBufferDemo* app = nullptr;
-
-    if (msg == WM_NCCREATE)
-    {
-        CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
-        app = static_cast<GBufferDemo*>(cs->lpCreateParams);
-        ::SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(app));
-    }
-    else
-    {
-        app = reinterpret_cast<GBufferDemo*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
-    }
-
-    if (app)
-        return app->HandleMessage(hWnd, msg, wParam, lParam);
-
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
-}
-

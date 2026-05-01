@@ -7,6 +7,13 @@
 
 using namespace raphael;
 
+void QuadImGui::Display()
+{
+    ImGui::Begin("Quad Demo");
+    ImGui::Text("Simple Quad render");
+    ImGui::End();
+}
+
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -20,41 +27,40 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 // 7. Create root signature (define shader resource bindings)
 // 8. Create pipeline state (compile shaders, create PSO)
 // 9. Create command objects (command allocators, command lists)
-bool QuadDemo::Initialize()
+bool QuadDemo::Initialize(WindowInfo windowInfo)
 {
-    // -- 1. Create application window --
-    if (!CreateAppWindow())
-        return false;
-    
+    // Store the window handle for input processing (sad thing)
+    m_windowHandle = windowInfo.hWnd;
+
     // -- 2. Create device --
     DeviceDesc deviceDesc = {};
     deviceDesc.enableDebugLayer = true;
     m_device = std::make_unique<DeviceDx12>(deviceDesc);
 
-	// -- 3. Create descriptor heaps --
-	CreateDescriptorHeaps();
+    // -- 3. Create descriptor heaps --
+    CreateDescriptorHeaps();
 
-	// -- 4. Create swap chain and depth buffer --
-	CreateSwapChainAndDepthBuffer();
+    // -- 4. Initialize ImGui --
+    if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
+        return false;
 
-	// -- 5. Create geometry resources --
-	CreateGeometry();
+    // -- 4. Create swap chain and depth buffer --
+    CreateSwapChainAndDepthBuffer(windowInfo);
 
-	// -- 6. Create constant buffers --
-	CreateConstantBuffers();
+    // -- 5. Create geometry resources --
+    CreateGeometry();
 
-	// -- 7. Create root signature --
-	CreateRootSignature();
+    // -- 6. Create constant buffers --
+    CreateConstantBuffers();
 
-	// -- 8. Create pipeline state + shaders --
-	CreatePipeline();
+    // -- 7. Create root signature --
+    CreateRootSignature();
 
-	// -- 9. Create command objects --
-	CreateCommandObjects();
+    // -- 8. Create pipeline state + shaders --
+    CreatePipeline();
 
-    // Show window
-    ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);
-    ::UpdateWindow(m_hwnd);
+    // -- 9. Create command objects --
+    CreateCommandObjects();
 
     return true;
 }
@@ -83,27 +89,36 @@ void QuadDemo::CreateDescriptorHeaps()
 
     m_rtvHeap = m_device->createDescriptorHeap(rtvHeapDesc);
     m_rtvHeap->createDescriptorHeap();
+
+    // Create SRV descriptor heap
+    DescriptorHeapDesc srvHeapDesc = {};
+    srvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
+	srvHeapDesc.numDescriptors = 1; // Used for imgui's font texture SRV
+    srvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
+
+    m_srvHeap = m_device->createDescriptorHeap(srvHeapDesc);
+    m_srvHeap->createDescriptorHeap();
 }
 
-void QuadDemo::CreateSwapChainAndDepthBuffer()
+void QuadDemo::CreateSwapChainAndDepthBuffer(WindowInfo windowInfo)
 {
-	// We couple swap chain and depth buffer creation together since they both depend 
-	// on the window size and need to be recreated together when the window is resized.
+    // We couple swap chain and depth buffer creation together since they both depend 
+    // on the window size and need to be recreated together when the window is resized.
     
     // Create swap chain
     SwapChainDesc swapChainDesc = {};
-    swapChainDesc.width = WINDOW_WIDTH;
-    swapChainDesc.height = WINDOW_HEIGHT;
+    swapChainDesc.width = windowInfo.width;
+    swapChainDesc.height = windowInfo.height;
     swapChainDesc.bufferCount = g_frameCount;
-    swapChainDesc.windowHandle = m_hwnd;
+    swapChainDesc.windowHandle = windowInfo.hWnd;
 
     m_swapChain = m_device->createSwapChain(m_rtvHeap.get(), swapChainDesc);
 
     // Create depth buffer
     ResourceDesc depthDesc = {};
     depthDesc.type = ResourceDesc::ResourceType::Texture2D;
-    depthDesc.width = WINDOW_WIDTH;
-    depthDesc.height = WINDOW_HEIGHT;
+    depthDesc.width = windowInfo.width;
+    depthDesc.height = windowInfo.height;
     depthDesc.format = ResourceFormat::D24_UNORM_S8_UINT;
     depthDesc.bindFlags = ResourceBindFlags::DepthStencil;
 
@@ -134,7 +149,7 @@ void QuadDemo::CreateGeometry()
 
     const UINT vertexBufferSize = sizeof(quadVertices);
     const UINT indexBufferSize = sizeof(quadIndices);
-	m_indexCount = _countof(quadIndices);
+    m_indexCount = _countof(quadIndices);
 
     // Create vertex buffer resource
     ResourceDesc vertexBufferDesc = {};
@@ -191,7 +206,7 @@ void QuadDemo::CreateConstantBuffers()
     {
         m_frameCBs[i] = std::make_unique<UploadBuffer<FrameConstants>>(m_device.get(), 1, true);
         m_objectCBs[i] = std::make_unique<UploadBuffer<BasicObjectConstants>>(m_device.get(), 1, true);
-	}
+    }
 }
 
 void QuadDemo::CreateRootSignature()
@@ -293,14 +308,14 @@ void QuadDemo::UpdateConstantBuffers()
     // Rotate the cube slowly around Y axis
     m_rotationAngle += 0.01f;
 
-	// Object constant (b0) - World matrix
-	XMMATRIX worldMatrix = XMMatrixRotationY(m_rotationAngle);    
+    // Object constant (b0) - World matrix
+    XMMATRIX worldMatrix = XMMatrixRotationY(m_rotationAngle);    
 
     // Object: world matrix with rotation
     BasicObjectConstants objConstants = {};
     XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(worldMatrix));
 
-	// Frame constant (b1) - ViewProj matrix + eye position
+    // Frame constant (b1) - ViewProj matrix + eye position
     XMVECTOR eyePos = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
     XMVECTOR lookAt = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -314,7 +329,7 @@ void QuadDemo::UpdateConstantBuffers()
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
 
-	// Copy data to the current back buffer's constant buffers
+    // Copy data to the current back buffer's constant buffers
     UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
     m_objectCBs[backBufferIndex]->CopyData(0, objConstants);
     m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
@@ -322,84 +337,75 @@ void QuadDemo::UpdateConstantBuffers()
 
 void QuadDemo::Render()
 {
-    MSG msg = {};
-    bool running = true;
+    // Get the current back buffer index from the swap chain
+    UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
+    // Wait for GPU to finish with the resources from the previous frame
+    FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
+    m_device->waitForFence(currentFrameContext.fenceValue);
 
-    while (running)
+    // Update constant buffers with current frame's data
+    UpdateConstantBuffers();
+
+    // Start ImGui frame
+    m_imguiLoader.NewFrame();
+    m_imguiLoader.Display();
+
+    // Record commands
+    // Retrieve current back buffer resource and RTV for render pass setup
+    ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
+    ResourceView currentRtView = m_swapChain->getCurrentRTView();
+
+    // Build render pass descriptor for current frame
+    const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
+        currentRtView,
+        currentBackBuffer->getNativeResource(),
+        m_depthStencilView,
+        WINDOW_WIDTH, WINDOW_HEIGHT,
+        clearColor);
+    renderPassDesc.debugName= "Cube Render Pass";
+
+    // Test command list recording
+    m_commandList->begin(currentFrameContext.commandAllocator.Get());
+    m_commandList->beginRenderPass(renderPassDesc);
+
     {
-        // Process all pending Windows messages
-        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
-        {
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
-                running = false;
-        }
-        if (!running)
-            break;
+        // Bind root signature and pipeline state
+        m_commandList->setGraphicsRootSignature(m_rootSignature.get());
+        m_commandList->setPipeline(m_pipeline.get());
 
-        // Get the current back buffer index from the swap chain
-        UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
-        // Wait for GPU to finish with the resources from the previous frame
-        FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
-        m_device->waitForFence(currentFrameContext.fenceValue);
+        // Bind constant buffers to root parameters (descriptor tables or root descriptors 
+        // depending on how we set up the root signature)
+        m_commandList->setConstantBufferView(
+            0, 
+            m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+        m_commandList->setConstantBufferView(
+            1, 
+            m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
 
-		// Update constant buffers with current frame's data
-		UpdateConstantBuffers();
+        // Bind geometry
+        m_commandList->setVertexBuffer(0, m_vertexBufferView);
+        m_commandList->setIndexBuffer(m_indexBufferView);
 
-        // Record commands
-		// Retrieve current back buffer resource and RTV for render pass setup
-        ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
-        ResourceView currentRtView = m_swapChain->getCurrentRTView();
+        m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0,0);
 
-        // Build render pass descriptor for current frame
-        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
-            currentRtView,
-            currentBackBuffer->getNativeResource(),
-            m_depthStencilView,
-            WINDOW_WIDTH, WINDOW_HEIGHT,
-            clearColor);
-        renderPassDesc.debugName= "Cube Render Pass";
-
-        // Test command list recording
-        m_commandList->begin(currentFrameContext.commandAllocator.Get());
-        m_commandList->beginRenderPass(renderPassDesc);
-
-        {
-			// Bind root signature and pipeline state
-            m_commandList->setGraphicsRootSignature(m_rootSignature.get());
-            m_commandList->setPipeline(m_pipeline.get());
-
-			// Bind constant buffers to root parameters (descriptor tables or root descriptors 
-            // depending on how we set up the root signature)
-			m_commandList->setConstantBufferView(
-                0, 
-                m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
-			m_commandList->setConstantBufferView(
-                1, 
-				m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
-
-			// Bind geometry
-            m_commandList->setVertexBuffer(0, m_vertexBufferView);
-			m_commandList->setIndexBuffer(m_indexBufferView);
-
-            m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0,0);
-        }
-
-        m_commandList->endRenderPass();
-
-        m_commandList->end();
-
-        // Execute command list
-        m_device->executeCommandList(m_commandList.get());
-        // Present the frame
-        m_swapChain->present(true);
-
-        // Signal and increment the fence value for the current frame
-        currentFrameContext.fenceValue = m_device->getNextFenceValue();
-        m_device->signalFence(currentFrameContext.fenceValue);
+        // Render ImGui (needs SRV descriptor heap set since ImGui uses a font texture)
+        m_commandList->setDescriptorHeaps(m_srvHeap.get(), 1);
+        m_imguiLoader.Render(m_commandList.get());
     }
+
+    m_commandList->endRenderPass();
+
+    m_commandList->end();
+
+    // Execute command list
+    m_device->executeCommandList(m_commandList.get());
+    // Present the frame
+    m_swapChain->present(true);
+
+    // Signal and increment the fence value for the current frame
+    currentFrameContext.fenceValue = m_device->getNextFenceValue();
+    m_device->signalFence(currentFrameContext.fenceValue);
 }
 
 void QuadDemo::Shutdown()
@@ -410,114 +416,45 @@ void QuadDemo::Shutdown()
         m_device->waitForFence(m_frameContexts[i].fenceValue);
     }
 
+    // Shutdown ImGui
+    m_imguiLoader.Shutdown();
+
     // Cleanup resources if needed
     OutputDebugStringA("Shutting down QuadDemo and releasing resources.\n");
 }
 
-LRESULT QuadDemo::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+void QuadDemo::Resize(unsigned int width, unsigned int height)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
-        return true;
-
-    switch (msg)
+    if (m_device->getNativeDevice() != nullptr)
     {
-    case WM_SIZE:
-        if (m_device->getNativeDevice() != nullptr && wParam != SIZE_MINIMIZED)
+        // Wait for GPU to finish with resources before resizing
+        for (UINT i = 0; i < g_frameCount; i++)
         {
-            // Wait for GPU to finish with resources before resizing
-            for (UINT i = 0; i < g_frameCount; i++)
-            {
-                m_device->waitForFence(m_frameContexts[i].fenceValue);
-            }
-
-            // TODO: Move this to a separate method since we will need to call it from other places (e.g., when changing display modes)
-            UINT newWidth = LOWORD(lParam);
-            UINT newHeight = HIWORD(lParam);
-
-            // Update global window size variables (used for viewport/scissor rect setup in command list recording, etc.)
-            WINDOW_WIDTH = newWidth;
-            WINDOW_HEIGHT = newHeight;
-
-            m_swapChain->resize(newWidth, newHeight);
-
-            // Recreate depth buffer at new size
-            ResourceDesc depthDesc = {};
-            depthDesc.type = ResourceDesc::ResourceType::Texture2D;
-            depthDesc.width = newWidth;
-            depthDesc.height = newHeight;
-            depthDesc.format = ResourceFormat::D24_UNORM_S8_UINT;
-            depthDesc.bindFlags = ResourceBindFlags::DepthStencil;
-
-            m_depthBuffer = m_device->createResource(depthDesc);
-
-            DescriptorHandle dsvHandle = {};
-            m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
-            m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
+            m_device->waitForFence(m_frameContexts[i].fenceValue);
         }
-        return 0;
 
-    case WM_SYSCOMMAND:
-        if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
-            return 0;
-        break;
+        // TODO: Move this to a separate method since we will need to call it from other places (e.g., when changing display modes)
+        UINT newWidth = width;
+        UINT newHeight = height;
 
-    case WM_DESTROY:
-        ::PostQuitMessage(0);
-        return 0;
+        // Update global window size variables (used for viewport/scissor rect setup in command list recording, etc.)
+        WINDOW_WIDTH = newWidth;
+        WINDOW_HEIGHT = newHeight;
+
+        m_swapChain->resize(newWidth, newHeight);
+
+        // Recreate depth buffer at new size
+        ResourceDesc depthDesc = {};
+        depthDesc.type = ResourceDesc::ResourceType::Texture2D;
+        depthDesc.width = newWidth;
+        depthDesc.height = newHeight;
+        depthDesc.format = ResourceFormat::D24_UNORM_S8_UINT;
+        depthDesc.bindFlags = ResourceBindFlags::DepthStencil;
+
+        m_depthBuffer = m_device->createResource(depthDesc);
+
+        DescriptorHandle dsvHandle = {};
+        m_dsvHeap->getDescriptorHandle(0, &dsvHandle);
+        m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
     }
-
-    return ::DefWindowProcW(hwnd, msg, wParam, lParam);
-}
-
-bool QuadDemo::CreateAppWindow()
-{
-    // Implementation for creating application window
-    WNDCLASSEXW wc = {
-            sizeof(wc), CS_CLASSDC, StaticWndProc, 0L, 0L,
-            GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr,
-            L"ImGui Example", nullptr
-    };
-
-    ::RegisterClassExW(&wc);
-
-    m_hwnd = ::CreateWindowW(
-        wc.lpszClassName, L"Raphael Engine - Quad Demo", WS_OVERLAPPEDWINDOW,
-        100, 100, WINDOW_WIDTH, WINDOW_HEIGHT,
-        nullptr, nullptr, wc.hInstance, this
-    );
-
-    return m_hwnd != nullptr;
-}
-
-void QuadDemo::DestroyAppWindow()
-{
-    // Implementation for destroying application window
-    if (m_hwnd)
-    {
-        ::DestroyWindow(m_hwnd);
-        ::UnregisterClassW(L"Raphael Engine", GetModuleHandle(nullptr));
-        m_hwnd = nullptr;
-    }
-}
-
-LRESULT WINAPI QuadDemo::StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    // Retrieve the QuadDemo instance from window user data
-    QuadDemo* app = nullptr;
-    
-    if (msg == WM_NCCREATE)
-    {
-        CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
-        app = static_cast<QuadDemo*>(cs->lpCreateParams);
-        ::SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(app));
-    }
-    else
-    {
-        app = reinterpret_cast<QuadDemo*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
-    }
-
-    if (app)
-        return app->HandleMessage(hWnd, msg, wParam, lParam);
-
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }

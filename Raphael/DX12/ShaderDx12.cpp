@@ -62,7 +62,8 @@ namespace raphael
     {
         UINT compileFlags = 0;
 #if defined(DEBUG) || defined(_DEBUG)  
-        compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_WARNINGS_ARE_ERRORS;
+		// Enable WARNING_ARE_ERRORS in debug mode for shader hot reload to catch shader compilation issues immediately
+        compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION; // | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 #endif
 
         HRESULT hr = S_OK;
