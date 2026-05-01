@@ -1,4 +1,5 @@
 #pragma once
+#include "IDemo.h"
 #include "DeviceDx12.h"
 #include "ResourceDx12.h"
 #include "CommandList.h"
@@ -10,27 +11,24 @@
 #include "FrameContext.h"
 #include "UploadBufferDx12.h"
 #include "GPUStructs.h"
+#include "Window.h"
 
 using namespace raphael;
 
 static constexpr uint32_t g_frameCount = 2;
 
-class RayTracerDemo
+class RayTracerDemo : public IDemo
 {
 public:
-    bool Initialize();
-    void Shutdown();
-    void Run();
-    LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    bool Initialize(WindowInfo windowInfo) override;
+    void Shutdown() override;
+    void Render() override;
+    void Resize(unsigned int width, unsigned int height) override;
 
 private:
-    bool CreateAppWindow();
-    void DestroyAppWindow();
-    static LRESULT WINAPI StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
     // ---- Initialization helpers (one per logical step) ----
     void CreateDescriptorHeaps();
-    void CreateSwapChainAndDepthBuffer();
+    void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
     void CreateConstantBuffers();
     void CreateRootSignature();
@@ -70,5 +68,5 @@ private:
     float m_time = 0.0f;
 
     // Window handle
-    HWND m_hwnd = nullptr;
+    HWND m_windowHandle = nullptr;
 };

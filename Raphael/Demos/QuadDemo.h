@@ -1,4 +1,5 @@
 #pragma once
+#include "IDemo.h"
 #include "DeviceDx12.h"
 #include "ResourceDx12.h"
 #include "CommandList.h"
@@ -10,27 +11,31 @@
 #include "FrameContext.h"
 #include "UploadBufferDx12.h"
 #include "GPUStructs.h"
+#include "ImGuiLoader.h"
+#include "Window.h"
 
 using namespace raphael;
 
 static constexpr uint32_t g_frameCount = 2;
 
-class QuadDemo
+class QuadImGui : public ImGuiLoader
 {
 public:
-    bool Initialize();
-    void Shutdown();
-    void Run();
-    LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    void Display() override;
+};
+
+class QuadDemo : public IDemo
+{
+public:
+    bool Initialize(WindowInfo windowInfo) override;
+    void Shutdown() override;
+    void Render() override;
+    void Resize(unsigned int width, unsigned int height) override;
 
 private:
-    bool CreateAppWindow();
-    void DestroyAppWindow();
-    static LRESULT WINAPI StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
     // ---- Initialization helpers (one per logical step) ----
     void CreateDescriptorHeaps();
-    void CreateSwapChainAndDepthBuffer();
+    void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
     void CreateConstantBuffers();
     void CreateRootSignature();
@@ -41,39 +46,42 @@ private:
     void UpdateConstantBuffers();
 
 private:
-	// Core DX12 components
+    // Core DX12 components
     std::unique_ptr<DeviceDx12> m_device;
     std::unique_ptr<SwapChainDx12> m_swapChain;
     std::unique_ptr<CommandList> m_commandList;
     std::unique_ptr<DescriptorHeapDx12> m_dsvHeap;
     std::unique_ptr<DescriptorHeapDx12> m_rtvHeap;
+    std::unique_ptr<DescriptorHeapDx12> m_srvHeap;
     std::unique_ptr<ResourceDx12> m_depthBuffer;
 
-	// Geometry resources
+    // Geometry resources
     std::unique_ptr<ResourceDx12> m_vertexBuffer;
     std::unique_ptr<ResourceDx12> m_indexBuffer;
     ResourceView m_vertexBufferView = {};
     ResourceView m_indexBufferView = {};
-	UINT m_indexCount = 0;
+    UINT m_indexCount = 0;
 
-	// Constant buffers (one per frame for double buffering)
-	std::array<std::unique_ptr<UploadBuffer<FrameConstants>>, g_frameCount> m_frameCBs;
-	std::array<std::unique_ptr<UploadBuffer<BasicObjectConstants>>, g_frameCount> m_objectCBs;
+    // Constant buffers (one per frame for double buffering)
+    std::array<std::unique_ptr<UploadBuffer<FrameConstants>>, g_frameCount> m_frameCBs;
+    std::array<std::unique_ptr<UploadBuffer<BasicObjectConstants>>, g_frameCount> m_objectCBs;
     
-	// Pipeline resources
+    // Pipeline resources
     std::unique_ptr<ShaderDx12> m_shader;
     std::unique_ptr<RootSignatureDx12> m_rootSignature;
     std::unique_ptr<PipelineDx12> m_pipeline;
 
     // Render state
-	ResourceView m_depthStencilView = {};
+    ResourceView m_depthStencilView = {};
     // Per-frame resources for double buffering
     std::array<FrameContext, g_frameCount> m_frameContexts;
-    // UINT m_frameIndex = 0; // Current frame index for double buffering
 
     // Camera and transform state
-	float m_rotationAngle = 0.0f;
+    float m_rotationAngle = 0.0f;
 
-	// Window handle
-    HWND m_hwnd = nullptr;
+    // ImGui support
+    QuadImGui m_imguiLoader;
+
+    // Window handle
+    HWND m_windowHandle = nullptr;
 };

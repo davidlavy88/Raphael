@@ -66,9 +66,6 @@
     <ClCompile Include="source\SwapChain.cpp">
       <Filter>source</Filter>
     </ClCompile>
-    <ClCompile Include="source\Camera.cpp">
-      <Filter>source</Filter>
-    </ClCompile>
     <ClCompile Include="source\Material.cpp">
       <Filter>source</Filter>
     </ClCompile>
@@ -97,6 +94,13 @@
     <ClCompile Include="Demos\QuadDemo.cpp" />
     <ClCompile Include="Demos\TexturedBoxDemo.cpp" />
     <ClCompile Include="Demos\GltfDemo.cpp" />
+    <ClCompile Include="Demos\GBufferDemo.cpp" />
+    <ClCompile Include="Demos\RayTracerDemo.cpp" />
+    <ClCompile Include="ImGui\ImGuiLoader.cpp" />
+    <ClCompile Include="Render\SceneRenderer.cpp" />
+    <ClCompile Include="Components\Camera.cpp" />
+    <ClCompile Include="Components\Window.cpp" />
+    <ClCompile Include="EngineTest\TestRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -162,9 +166,6 @@
     <ClInclude Include="header\DescriptorHeapAllocator.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="header\Camera.h">
-      <Filter>headers</Filter>
-    </ClInclude>
     <ClInclude Include="header\Material.h">
       <Filter>headers</Filter>
     </ClInclude>
@@ -206,6 +207,14 @@
     <ClInclude Include="Demos\QuadDemo.h" />
     <ClInclude Include="Demos\TexturedBoxDemo.h" />
     <ClInclude Include="Demos\GltfDemo.h" />
+    <ClInclude Include="Components\Camera.h" />
+    <ClInclude Include="Demos\GBufferDemo.h" />
+    <ClInclude Include="Demos\RayTracerDemo.h" />
+    <ClInclude Include="ImGui\ImGuiLoader.h" />
+    <ClInclude Include="Render\SceneRenderer.h" />
+    <ClInclude Include="Components\Window.h" />
+    <ClInclude Include="EngineTest\TestRenderer.h" />
+    <ClInclude Include="Demos\IDemo.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

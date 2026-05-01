@@ -10,7 +10,7 @@
 
 #include <tchar.h>
 #if TEST_RENDERER_INTERFACE
-#include "RayTracerDemo.h"
+#include "TestRenderer.h"
 #else
 #include "Application.h"
 #endif
@@ -20,12 +20,24 @@
 int main(int, char**)
 {
 #if TEST_RENDERER_INTERFACE
-    RayTracerDemo testApp;
+    TestRenderer testApp;
 
-    if (!testApp.Initialize())
-        return 1;
+    if (testApp.Initialize())
+    {
+        MSG msg{};
+        bool is_running{ true };
+        while (is_running)
+        {
+            while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+                is_running &= (msg.message != WM_QUIT);
+            }
 
-    testApp.Run();
+            testApp.Run();
+        }
+    }
     testApp.Shutdown();
 
     return 0;

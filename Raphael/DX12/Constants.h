@@ -40,7 +40,7 @@ namespace raphael
     {
         Unknown ,
         R8G8B8A8_UNORM ,
-		R16G16B16A16_FLOAT,
+        R16G16B16A16_FLOAT,
         R32G32_FLOAT,
         R32G32B32_FLOAT ,
         R32G32B32A32_FLOAT ,
@@ -102,5 +102,18 @@ namespace raphael
         Mirror,
         Clamp,
         Border
+    };
+
+    enum class RasterizerFillMode
+    {
+        Solid,
+        Wireframe
+    };
+
+    enum class RasterizerCullMode
+    {
+        None,
+        Front,
+        Back
     };
 } // namespace raphael

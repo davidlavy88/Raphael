@@ -20,11 +20,10 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 // 7. Create root signature (define shader resource bindings)
 // 8. Create pipeline state (compile shaders, create PSO)
 // 9. Create command objects (command allocators, command lists)
-bool RayTracerDemo::Initialize()
+bool RayTracerDemo::Initialize(WindowInfo windowInfo)
 {
-    // -- 1. Create application window --
-    if (!CreateAppWindow())
-        return false;
+    // Store the window handle for input processing (sad thing)
+    m_windowHandle = windowInfo.hWnd;
 
     // -- 2. Create device --
     DeviceDesc deviceDesc = {};
@@ -35,7 +34,7 @@ bool RayTracerDemo::Initialize()
     CreateDescriptorHeaps();
 
     // -- 4. Create swap chain and depth buffer --
-    CreateSwapChainAndDepthBuffer();
+    CreateSwapChainAndDepthBuffer(windowInfo);
 
     // -- 5. Create geometry resources --
     CreateGeometry();
@@ -51,10 +50,6 @@ bool RayTracerDemo::Initialize()
 
     // -- 9. Create command objects --
     CreateCommandObjects();
-
-    // Show window
-    ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);
-    ::UpdateWindow(m_hwnd);
 
     return true;
 }
@@ -74,14 +69,14 @@ void RayTracerDemo::CreateDescriptorHeaps()
     m_rtvHeap->createDescriptorHeap();
 }
 
-void RayTracerDemo::CreateSwapChainAndDepthBuffer()
+void RayTracerDemo::CreateSwapChainAndDepthBuffer(WindowInfo windowInfo)
 {
     // Create swap chain
     SwapChainDesc swapChainDesc = {};
-    swapChainDesc.width = WINDOW_WIDTH;
-    swapChainDesc.height = WINDOW_HEIGHT;
+    swapChainDesc.width = windowInfo.width;
+    swapChainDesc.height = windowInfo.height;
     swapChainDesc.bufferCount = g_frameCount;
-    swapChainDesc.windowHandle = m_hwnd;
+    swapChainDesc.windowHandle = windowInfo.hWnd;
 
     m_swapChain = m_device->createSwapChain(m_rtvHeap.get(), swapChainDesc);
 }
@@ -271,85 +266,68 @@ void RayTracerDemo::UpdateConstantBuffers()
     m_sceneCBs[backBufferIndex]->CopyData(0, sceneConstants);
 }
 
-void RayTracerDemo::Run()
+void RayTracerDemo::Render()
 {
-    MSG msg = {};
-    bool running = true;
+    // Get the current back buffer index from the swap chain
+    UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
+    // Wait for GPU to finish with the resources from the previous frame
+    FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
+    m_device->waitForFence(currentFrameContext.fenceValue);
 
-    while (running)
+    // Update constant buffers with current frame's data
+    UpdateConstantBuffers();
+
+    // Record commands
+    // Retrieve current back buffer resource and RTV for render pass setup
+    ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
+    ResourceView currentRtView = m_swapChain->getCurrentRTView();
+
+    // Build render pass descriptor for current frame
+    const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    ResourceView dsvHandle = {};
+    RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
+        currentRtView,
+        currentBackBuffer->getNativeResource(),
+        dsvHandle,
+        WINDOW_WIDTH, WINDOW_HEIGHT,
+        clearColor,
+        false);
+    renderPassDesc.debugName = "Cube Render Pass";
+
+    // Test command list recording
+    m_commandList->begin(currentFrameContext.commandAllocator.Get());
+    m_commandList->beginRenderPass(renderPassDesc);
+
     {
-        // Process all pending Windows messages
-        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
-        {
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
-                running = false;
-        }
-        if (!running)
-            break;
+        // Bind root signature and pipeline state
+        m_commandList->setGraphicsRootSignature(m_rootSignature.get());
+        m_commandList->setPipeline(m_pipeline.get());
 
-        // Get the current back buffer index from the swap chain
-        UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
-        // Wait for GPU to finish with the resources from the previous frame
-        FrameContext& currentFrameContext = m_frameContexts[backBufferIndex];
-        m_device->waitForFence(currentFrameContext.fenceValue);
+        // Bind constant buffers to root parameters (descriptor tables or root descriptors 
+        // depending on how we set up the root signature)
+        m_commandList->setConstantBufferView(
+            0,
+            m_sceneCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
 
-        // Update constant buffers with current frame's data
-        UpdateConstantBuffers();
+        // Bind geometry
+        m_commandList->setVertexBuffer(0, m_vertexBufferView);
+        m_commandList->setIndexBuffer(m_indexBufferView);
 
-        // Record commands
-        // Retrieve current back buffer resource and RTV for render pass setup
-        ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
-        ResourceView currentRtView = m_swapChain->getCurrentRTView();
-
-        // Build render pass descriptor for current frame
-        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        ResourceView dsvHandle = {};
-        RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
-            currentRtView,
-            currentBackBuffer->getNativeResource(),
-            dsvHandle,
-            WINDOW_WIDTH, WINDOW_HEIGHT,
-            clearColor,
-            false);
-        renderPassDesc.debugName = "Cube Render Pass";
-
-        // Test command list recording
-        m_commandList->begin(currentFrameContext.commandAllocator.Get());
-        m_commandList->beginRenderPass(renderPassDesc);
-
-        {
-            // Bind root signature and pipeline state
-            m_commandList->setGraphicsRootSignature(m_rootSignature.get());
-            m_commandList->setPipeline(m_pipeline.get());
-
-            // Bind constant buffers to root parameters (descriptor tables or root descriptors 
-            // depending on how we set up the root signature)
-            m_commandList->setConstantBufferView(
-                0,
-                m_sceneCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
-
-            // Bind geometry
-            m_commandList->setVertexBuffer(0, m_vertexBufferView);
-            m_commandList->setIndexBuffer(m_indexBufferView);
-
-            m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
-        }
-
-        m_commandList->endRenderPass();
-
-        m_commandList->end();
-
-        // Execute command list
-        m_device->executeCommandList(m_commandList.get());
-        // Present the frame
-        m_swapChain->present(true);
-
-        // Signal and increment the fence value for the current frame
-        currentFrameContext.fenceValue = m_device->getNextFenceValue();
-        m_device->signalFence(currentFrameContext.fenceValue);
+        m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
     }
+
+    m_commandList->endRenderPass();
+
+    m_commandList->end();
+
+    // Execute command list
+    m_device->executeCommandList(m_commandList.get());
+    // Present the frame
+    m_swapChain->present(true);
+
+    // Signal and increment the fence value for the current frame
+    currentFrameContext.fenceValue = m_device->getNextFenceValue();
+    m_device->signalFence(currentFrameContext.fenceValue);
 }
 
 void RayTracerDemo::Shutdown()
@@ -364,96 +342,24 @@ void RayTracerDemo::Shutdown()
     OutputDebugStringA("Shutting down RayTracerDemo and releasing resources.\n");
 }
 
-LRESULT RayTracerDemo::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+void RayTracerDemo::Resize(unsigned int width, unsigned int height)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
-        return true;
-
-    switch (msg)
+    if (m_device->getNativeDevice() != nullptr)
     {
-    case WM_SIZE:
-        if (m_device->getNativeDevice() != nullptr && wParam != SIZE_MINIMIZED)
+        // Wait for GPU to finish with resources before resizing
+        for (UINT i = 0; i < g_frameCount; i++)
         {
-            // Wait for GPU to finish with resources before resizing
-            for (UINT i = 0; i < g_frameCount; i++)
-            {
-                m_device->waitForFence(m_frameContexts[i].fenceValue);
-            }
-
-            // TODO: Move this to a separate method since we will need to call it from other places (e.g., when changing display modes)
-            UINT newWidth = LOWORD(lParam);
-            UINT newHeight = HIWORD(lParam);
-
-            // Update global window size variables (used for viewport/scissor rect setup in command list recording, etc.)
-            WINDOW_WIDTH = newWidth;
-            WINDOW_HEIGHT = newHeight;
-
-            m_swapChain->resize(newWidth, newHeight);
+            m_device->waitForFence(m_frameContexts[i].fenceValue);
         }
-        return 0;
 
-    case WM_SYSCOMMAND:
-        if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
-            return 0;
-        break;
+        // TODO: Move this to a separate method since we will need to call it from other places (e.g., when changing display modes)
+        UINT newWidth = width;
+        UINT newHeight = height;
 
-    case WM_DESTROY:
-        ::PostQuitMessage(0);
-        return 0;
+        // Update global window size variables (used for viewport/scissor rect setup in command list recording, etc.)
+        WINDOW_WIDTH = newWidth;
+        WINDOW_HEIGHT = newHeight;
+
+        m_swapChain->resize(newWidth, newHeight);
     }
-
-    return ::DefWindowProcW(hwnd, msg, wParam, lParam);
-}
-
-bool RayTracerDemo::CreateAppWindow()
-{
-    // Implementation for creating application window
-    WNDCLASSEXW wc = {
-            sizeof(wc), CS_CLASSDC, StaticWndProc, 0L, 0L,
-            GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr,
-            L"ImGui Example", nullptr
-    };
-
-    ::RegisterClassExW(&wc);
-
-    m_hwnd = ::CreateWindowW(
-        wc.lpszClassName, L"Raphael Engine - Quad Demo", WS_OVERLAPPEDWINDOW,
-        100, 100, WINDOW_WIDTH, WINDOW_HEIGHT,
-        nullptr, nullptr, wc.hInstance, this
-    );
-
-    return m_hwnd != nullptr;
-}
-
-void RayTracerDemo::DestroyAppWindow()
-{
-    // Implementation for destroying application window
-    if (m_hwnd)
-    {
-        ::DestroyWindow(m_hwnd);
-        ::UnregisterClassW(L"Raphael Engine", GetModuleHandle(nullptr));
-        m_hwnd = nullptr;
-    }
-}
-
-LRESULT WINAPI RayTracerDemo::StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    // Retrieve the RayTracerDemo instance from window user data
-    RayTracerDemo* app = nullptr;
-
-    if (msg == WM_NCCREATE)
-    {
-        CREATESTRUCT* cs = reinterpret_cast<CREATESTRUCT*>(lParam);
-        app = static_cast<RayTracerDemo*>(cs->lpCreateParams);
-        ::SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(app));
-    }
-    else
-    {
-        app = reinterpret_cast<RayTracerDemo*>(::GetWindowLongPtr(hWnd, GWLP_USERDATA));
-    }
-
-    if (app)
-        return app->HandleMessage(hWnd, msg, wParam, lParam);
-
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }

@@ -64,9 +64,9 @@ GBufferOutput PS(VertexOut pin)
     // Indirect light (ambient).
     float4 ambient = 1.0f * diffuseAlbedo;
 
-	/*output.Albedo = diffuseAlbedo;
+	output.Albedo = diffuseAlbedo;
 	output.Normal = float4(pin.Normal, 1.0f);
-	output.Depth = pin.PosH.z / pin.PosH.w;*/
+	output.Depth = pin.PosH.z / pin.PosH.w;
 
     // Visualize normals: remap from [-1,1] to [0,1] for display
     /*output.Albedo = float4(pin.Normal * 0.5f + 0.5f, 1.0f);
@@ -74,10 +74,10 @@ GBufferOutput PS(VertexOut pin)
     output.Depth = pin.PosH.z / pin.PosH.w;*/
 
     // Visualize depth as grayscale
-    float depth = pin.PosH.z / pin.PosH.w;
+    /*float depth = pin.PosH.z / pin.PosH.w;
     output.Albedo = float4(depth, depth, depth, 1.0f);
     output.Normal = float4(pin.Normal, 1.0f);
-    output.Depth = depth;
+    output.Depth = depth;*/
 
 	return output;
 }

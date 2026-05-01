@@ -26,6 +26,8 @@ namespace raphael
         Usage usage = Usage::Default;
         UINT64 width = 0; // For buffers, this is the byte size. For textures, this is the width in pixels.
         UINT height = 0; // Only used for textures, ignored for buffers
+		UINT mipLevels = 1; // Only used for textures, ignored for buffers
+
         ResourceFormat format = ResourceFormat::Unknown; // TODO: make this generic not tied to DXGI
         ResourceBindFlags bindFlags = ResourceBindFlags::None;
     };
@@ -143,6 +145,8 @@ namespace raphael
         UINT numRenderTargets = 1;
         ResourceFormat dsvFormat = ResourceFormat::D24_UNORM_S8_UINT; // Depth stencil format
         InputLayoutDesc inputLayout;
+		RasterizerFillMode rasterizerFillMode = RasterizerFillMode::Solid;
+		RasterizerCullMode rasterizerCullMode = RasterizerCullMode::Back;
         // ... more shader stages, input layout, etc.
     };
 

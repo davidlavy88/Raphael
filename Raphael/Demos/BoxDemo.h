@@ -1,4 +1,5 @@
 #pragma once
+#include "IDemo.h"
 #include "DeviceDx12.h"
 #include "ResourceDx12.h"
 #include "CommandList.h"
@@ -11,27 +12,37 @@
 #include "UploadBufferDx12.h"
 #include "GPUStructs.h"
 #include "ImGuiLoader.h"
+#include "Window.h"
+#include "Camera.h"
 
 using namespace raphael;
 
 static constexpr uint32_t g_frameCount = 2;
 
-class BoxDemo
+class BoxImGui : public ImGuiLoader
 {
 public:
-    bool Initialize();
-    void Shutdown();
-    void Run();
-    LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    void Display() override;
+
+    float cameraSpeed = 0.05f;
+    bool wireframe = false;
+    bool shaderReload = false;
+    bool showShaderError = false;
+};
+
+class BoxDemo : public IDemo
+{
+public:
+    bool Initialize(WindowInfo windowInfo) override;
+    void Shutdown() override;
+    void Render() override;
+    void Resize(unsigned int width, unsigned int height) override;
 
 private:
-    bool CreateAppWindow();
-    void DestroyAppWindow();
-    static LRESULT WINAPI StaticWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
     // ---- Initialization helpers (one per logical step) ----
+    void CreateDevice();
     void CreateDescriptorHeaps();
-    void CreateSwapChainAndDepthBuffer();
+    void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
     void CreateConstantBuffers();
     void CreateRootSignature();
@@ -40,6 +51,9 @@ private:
 
     // ---- Per-frame helpers ----
     void UpdateConstantBuffers();
+
+    // ---- Process input ----
+    void ProcessInput();
 
 private:
     // Core DX12 components
@@ -67,18 +81,24 @@ private:
     std::unique_ptr<RootSignatureDx12> m_rootSignature;
     std::unique_ptr<PipelineDx12> m_pipeline;
 
+    PipelineDesc m_pipelineDesc = {};
+    ShaderDesc m_shaderDesc = {};
+
     // Render state
     ResourceView m_depthStencilView = {};
     // Per-frame resources for double buffering
     std::array<FrameContext, g_frameCount> m_frameContexts;
-    // UINT m_frameIndex = 0; // Current frame index for double buffering
 
     // Camera and transform state
     float m_rotationAngle = 0.0f;
 
-    // Window handle
-    HWND m_hwnd = nullptr;
-
     // ImGui support
-    ImGuiLoader m_imguiLoader;
+    BoxImGui m_imguiLoader;
+
+    // Camera
+    Camera m_camera;
+
+    // Unfortunately we need to store the window handle here 
+    // so input queries are contained withing the rendered window. 
+    HWND m_windowHandle = nullptr;
 };
