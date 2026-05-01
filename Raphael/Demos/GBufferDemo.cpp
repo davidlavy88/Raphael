@@ -13,7 +13,19 @@ void GBufferImGui::Display()
 {
     ImGui::Begin("GBuffer Demo");
     ImGui::Text("GBuffer render");
+    ImGui::Checkbox("Wireframe", &wireframe);
+    if (ImGui::Button("Shader Reload")) shaderReload = true;
     ImGui::End();
+
+    if (showShaderError)
+    {
+        ImGui::Begin("Shader Error", &showShaderError);
+        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Shader compilation failed!");
+        ImGui::Text("Check the Output window for details.");
+        ImGui::Text("The previous valid shader is still active.");
+        if (ImGui::Button("OK")) showShaderError = false;
+        ImGui::End();
+    }
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp
@@ -65,6 +77,7 @@ bool GBufferDemo::Initialize(WindowInfo windowInfo)
 
     // -- 11. Create texture resources --
     CreateTexture();
+    CreateDummyTexture();
 
     return true;
 }
@@ -109,8 +122,8 @@ void GBufferDemo::CreateDescriptorHeaps()
 
     DescriptorHeapDesc textureSrvHeapDesc = {};
     textureSrvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
-	// One SRV for each texture in the model + 1 for ImGui font texture
-    textureSrvHeapDesc.numDescriptors = static_cast<UINT>(m_gltfModel->textures.size() + 1); 
+	// One SRV for each texture in the model + 1 for ImGui font texture + 1 for dummy white texture
+    textureSrvHeapDesc.numDescriptors = static_cast<UINT>(m_gltfModel->textures.size() + 2); 
     textureSrvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
 
     m_textureSrvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
@@ -645,6 +658,55 @@ void GBufferDemo::CreateTexture()
     m_device->waitForFence(fenceValue);
 }
 
+void GBufferDemo::CreateDummyTexture()
+{
+    m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
+
+    static const uint32_t whitePixel = 0xFFFFFFFF;
+    D3D12_SUBRESOURCE_DATA subresource = {};
+    subresource.pData = &whitePixel;
+    subresource.RowPitch = sizeof(whitePixel);
+    subresource.SlicePitch = sizeof(whitePixel);
+
+    ResourceDesc textureDesc = {};
+    textureDesc.type = ResourceDesc::ResourceType::Texture2D;
+    textureDesc.width = 1;
+    textureDesc.height = 1;
+    textureDesc.mipLevels = 1;
+    textureDesc.format = ResourceFormat::R8G8B8A8_UNORM;
+    textureDesc.bindFlags = ResourceBindFlags::ShaderResource;
+
+    auto whiteTextureResource = m_device->createResource(textureDesc);
+    ComPtr<ID3D12Resource> nativeResource = whiteTextureResource->getNativeResource();
+
+    const UINT64 textureBufferSize = GetRequiredIntermediateSize(nativeResource.Get(), 0, 1);
+
+    ResourceDesc textureUploadDesc = {};
+    textureUploadDesc.type = ResourceDesc::ResourceType::Buffer;
+    textureUploadDesc.usage = ResourceDesc::Usage::Upload;
+    textureUploadDesc.width = textureBufferSize;
+
+    std::unique_ptr<ResourceDx12> textureUploadBuffer = m_device->createResource(textureUploadDesc);
+    auto textureResourceBuffer = std::make_unique<ResourceDx12>(m_device.get(), nativeResource);
+
+    m_commandList->copyTextureResource(textureResourceBuffer.get(), textureUploadBuffer.get(), &subresource);
+
+    m_whiteTexture = {
+        std::make_unique<ResourceDx12>(m_device.get(), nativeResource),
+        std::move(textureUploadBuffer) };
+
+    DescriptorHandle srvHandle = {};
+    m_textureSrvHeap->AllocateHeap(&srvHandle);
+    m_whiteTextureSrv = m_whiteTexture.m_textureDefaultBuffer->getResourceView(ResourceBindFlags::ShaderResource, srvHandle);
+
+    m_commandList->end();
+    m_device->executeCommandList(m_commandList.get());
+
+    UINT64 fenceValue = m_device->getNextFenceValue();
+    m_device->signalFence(fenceValue);
+    m_device->waitForFence(fenceValue);
+}
+
 void GBufferDemo::UpdateConstantBuffers()
 {
     // Rotate the cube slowly around Y axis
@@ -738,9 +800,14 @@ void GBufferDemo::Render()
         // TODO: Match each primitive to its corresponding texture/material for multiple meshes
         for (size_t i = 0; i < m_textureSrvs.size(); i++)
         {
-            m_commandList->setGraphicsRootDescriptorTable(
-                2,
-                m_textureSrvs[i].gpuHandle);
+            if (m_imguiLoader.wireframe)
+            {
+                m_commandList->setGraphicsRootDescriptorTable(2, m_whiteTextureSrv.gpuHandle);
+            }
+            else
+            {
+                m_commandList->setGraphicsRootDescriptorTable(2, m_textureSrvs[i].gpuHandle);
+            }
             m_commandList->drawIndexedInstanced(m_meshes[i].indexCount, 1, m_meshes[i].indexBufferOffset, m_meshes[i].vertexBufferOffset, 0);
         }
 
@@ -815,5 +882,54 @@ void GBufferDemo::Resize(unsigned int width, unsigned int height)
 
 void GBufferDemo::ProcessInput()
 {
-    
+    RasterizerFillMode newFillMode = m_imguiLoader.wireframe
+        ? RasterizerFillMode::Wireframe
+        : RasterizerFillMode::Solid;
+
+    if (m_pipelineDesc.rasterizerFillMode != newFillMode)
+    {
+        m_pipelineDesc.rasterizerFillMode = newFillMode;
+
+        // Wait for ALL frames to finish before destroying the old PSO
+        for (UINT i = 0; i < g_frameCount; i++)
+        {
+            m_device->waitForFence(m_frameContexts[i].fenceValue);
+        }
+
+        // Recreate pipeline with new rasterizer state
+        m_pipeline = m_device->createPipeline(m_pipelineDesc);
+        m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
+    }
+
+    // Hot reload shader if the flag is set
+    if (m_imguiLoader.shaderReload)
+    {
+        // Reset the flag immediately to avoid multiple reloads
+        m_imguiLoader.shaderReload = false;
+
+        // Wait for ALL frames to finish before destroying the old PSO and shader
+        for (UINT i = 0; i < g_frameCount; i++)
+        {
+            m_device->waitForFence(m_frameContexts[i].fenceValue);
+        }
+
+        try
+        {
+            // Try to compile the new shader
+            auto newShader = std::make_unique<ShaderDx12>(m_shaderDesc);
+
+            // Attempt to create a new PSO with the new shader
+            auto newPipeline = m_device->createPipeline(m_pipelineDesc);
+            newPipeline->createPipelineState(newShader.get(), m_rootSignature.get());
+
+            // Success: swap in the new shader and pipeline
+            m_shader = std::move(newShader);
+            m_pipeline = std::move(newPipeline);
+        }
+        catch (...)
+        {
+            // Shader compilation threw - keep old pipeline
+            m_imguiLoader.showShaderError = true;
+        }
+    }
 }

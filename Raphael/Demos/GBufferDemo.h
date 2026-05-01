@@ -25,6 +25,11 @@ class GBufferImGui : public ImGuiLoader
 {
 public:
     void Display() override;
+
+    bool shaderReload = false;
+    bool showShaderError = false;
+
+    bool wireframe = false;
 };
 
 class GBufferDemo : public IDemo
@@ -50,6 +55,7 @@ private:
     void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
     void CreateTexture();
+    void CreateDummyTexture();
     void CreateConstantBuffers();
     void CreateRootSignature();
     void CreatePipeline();
@@ -84,6 +90,10 @@ private:
         std::unique_ptr<ResourceDx12> m_textureUploadBuffer;
     };
     std::vector<TextureData> m_textures;
+
+    // Dummy texture resources
+    TextureData m_whiteTexture;
+    ResourceView m_whiteTextureSrv;
 
     // Constant buffers (one per frame for double buffering)
     std::array<std::unique_ptr<UploadBuffer<FrameConstants>>, g_frameCount> m_frameCBs;
