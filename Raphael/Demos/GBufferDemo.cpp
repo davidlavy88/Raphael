@@ -558,7 +558,7 @@ void GBufferDemo::CreateRootSignature()
 void GBufferDemo::CreatePipeline()
 {
     // Compile shader
-    m_shaderDesc.shaderFilePath = L"Shaders\\gBufferDemo.hlsl";
+    m_shaderDesc.shaderFilePath = L"Shaders\\gBufferBasePass.hlsl";
     m_shaderDesc.shaderName = "GBufferDemoShader";
     m_shaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
 

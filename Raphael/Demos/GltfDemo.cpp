@@ -677,8 +677,8 @@ void GltfDemo::UpdateConstantBuffers()
     XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(worldMatrix));
 
     // Frame constant (b1) - ViewProj matrix + eye position
-    XMVECTOR eyePos = XMVectorSet(1.0f, 2.0f, -3.0f, 1.0f);
-    XMVECTOR lookAt = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+    XMVECTOR eyePos = XMVectorSet(0.0f, 0.7f, -2.0f, 1.0f);
+    XMVECTOR lookAt = XMVectorSet(0.0f, 0.7f, 0.0f, 1.0f);
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMMATRIX view = XMMatrixLookAtLH(eyePos, lookAt, up);
 
