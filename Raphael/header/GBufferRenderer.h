@@ -37,8 +37,14 @@ public:
     void BuildMaterials(); // Same as BoxRenderer, but with different textures and materials
     void BuildLights(); // Same as BoxRenderer
 
+    void RenderUI();
+
     // Load model
     void LoadTextures(D3D12Device& device); // Same as BoxRenderer
+
+    // Lighting pass
+    void BuildLightingPassRootSignature(D3D12Device& device);
+    void BuildLightingPassPSO(D3D12Device& device);
 
 private:
     std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers(); // Same as BoxRenderer
@@ -47,17 +53,17 @@ private:
     void CreateGBufferResources(D3D12Device& device, UINT width, UINT height);
 
 private:
-    ComPtr<ID3D12DescriptorHeap> m_cbvHeap = nullptr;
-    ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
-    ComPtr<ID3D12PipelineState> m_pso = nullptr;
+    ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
+    ComPtr<ID3D12RootSignature> m_rootSignature;
+    ComPtr<ID3D12PipelineState> m_pso;
 
-    ComPtr<ID3DBlob> m_vsByteCode = nullptr;
-    ComPtr<ID3DBlob> m_psByteCode = nullptr;
+    ComPtr<ID3DBlob> m_vsByteCode;
+    ComPtr<ID3DBlob> m_psByteCode;
 
     std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
 
-    std::unique_ptr<MeshGeometry> m_modelGeo = nullptr;
-    std::unique_ptr<tinygltf::Model> m_gltfModel = nullptr;
+    std::unique_ptr<MeshGeometry> m_modelGeo;
+    std::unique_ptr<tinygltf::Model> m_gltfModel;
     std::unordered_map<std::string, std::unique_ptr<Material>> m_modelMaterials;
     std::unordered_map<std::string, std::unique_ptr<Texture>> m_modelTextures;
     std::vector<std::unique_ptr<Light>> m_lights;
@@ -69,6 +75,12 @@ private:
     // SRV CPU/GPU descriptor handles for lighting pass can sample the G-buffer render targets
     CD3DX12_CPU_DESCRIPTOR_HANDLE m_gbufferSRVCPUHandles[GBUFFER_NUM_RENDER_TARGETS];
     CD3DX12_GPU_DESCRIPTOR_HANDLE m_gbufferSRVGPUHandles[GBUFFER_NUM_RENDER_TARGETS];
+
+    // Lighting pass root signature and PSO
+    ComPtr<ID3D12RootSignature> m_lightingPassRootSignature;
+    ComPtr<ID3D12PipelineState> m_lightingPassPSO;
+    ComPtr<ID3DBlob> m_lightingPassVsByteCode;
+    ComPtr<ID3DBlob> m_lightingPassPsByteCode;
 
     DirectX::XMVECTOR m_singleBoxPosition = { 0.0f, 0.0f, 0.0f, 0.0f };
 

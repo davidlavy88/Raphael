@@ -98,6 +98,7 @@
     <ClCompile Include="Demos\RayTracerDemo.cpp" />
     <ClCompile Include="ImGui\ImGuiLoader.cpp" />
     <ClCompile Include="Render\SceneRenderer.cpp" />
+    <ClCompile Include="source\GBufferRenderer.cpp" />
     <ClCompile Include="Components\Camera.cpp" />
     <ClCompile Include="Components\Window.cpp" />
     <ClCompile Include="EngineTest\TestRenderer.cpp" />
@@ -209,6 +210,7 @@
     <ClInclude Include="Demos\GltfDemo.h" />
     <ClInclude Include="Components\Camera.h" />
     <ClInclude Include="Demos\GBufferDemo.h" />
+    <ClInclude Include="header\GBufferRenderer.h" />
     <ClInclude Include="Demos\RayTracerDemo.h" />
     <ClInclude Include="ImGui\ImGuiLoader.h" />
     <ClInclude Include="Render\SceneRenderer.h" />

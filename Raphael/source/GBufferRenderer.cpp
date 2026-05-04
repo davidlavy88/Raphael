@@ -32,6 +32,8 @@ bool GBufferRenderer::Initialize(D3D12Device& device, SwapChain& swapChain, HWND
     // BuildRenderItems();
     BuildFrameContexts(device);
     BuildPSO(device);
+    BuildLightingPassRootSignature(device);
+    BuildLightingPassPSO(device);
 
     // ADD: Initialize matrices
     RECT clientRect;
@@ -157,43 +159,64 @@ void GBufferRenderer::Render(const ImVec4& clearColor)
             0);
     }
 
-	// For now we copy albedo in back buffer to see the result of the geometry pass, 
-    // but later I do real implementation for a separate lighting pass that samples 
-    // from the G-buffer render targets to compute the final shaded image.
-    // Transition G-Buffer albedo: RENDER_TARGET -> COPY_SOURCE
-    // Transition back buffer:     PRESENT       -> COPY_DEST
-    D3D12_RESOURCE_BARRIER barriers[2];
-    barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(
-        m_gbufferRenderTargets[GBUFFER_RENDER_TARGET_ALBEDO].Get(),
-        D3D12_RESOURCE_STATE_RENDER_TARGET,
-        D3D12_RESOURCE_STATE_COPY_SOURCE);
-    barriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(
+    // Transition G-Buffer targets: RENDER_TARGET -> PIXEL_SHADER_RESOURCE
+    // so the lighting shader can sample them
+    D3D12_RESOURCE_BARRIER gbufferBarriers[GBUFFER_NUM_RENDER_TARGETS];
+    for (int i = 0; i < GBUFFER_NUM_RENDER_TARGETS; ++i)
+    {
+        gbufferBarriers[i] = CD3DX12_RESOURCE_BARRIER::Transition(
+            m_gbufferRenderTargets[i].Get(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    }
+    // Transition back buffer: PRESENT -> RENDER_TARGET
+    D3D12_RESOURCE_BARRIER backBufferBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
         m_swapChain->GetBackBuffer(backBufferIdx),
         D3D12_RESOURCE_STATE_PRESENT,
-        D3D12_RESOURCE_STATE_COPY_DEST);
-    cmdList->ResourceBarrier(2, barriers);
-
-    // Copy the albedo G-Buffer content to the back buffer so we can see the result
-    cmdList->CopyResource(m_swapChain->GetBackBuffer(backBufferIdx), m_gbufferRenderTargets[GBUFFER_RENDER_TARGET_ALBEDO].Get());
-
-    // Transition albedo back to RENDER_TARGET for next frame
-    // Transition back buffer to RENDER_TARGET so ImGui can draw on top
-    barriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(
-        m_gbufferRenderTargets[GBUFFER_RENDER_TARGET_ALBEDO].Get(),
-        D3D12_RESOURCE_STATE_COPY_SOURCE,
         D3D12_RESOURCE_STATE_RENDER_TARGET);
-    barriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(
-        m_swapChain->GetBackBuffer(backBufferIdx),
-        D3D12_RESOURCE_STATE_COPY_DEST,
-        D3D12_RESOURCE_STATE_RENDER_TARGET);
-    cmdList->ResourceBarrier(2, barriers);
 
-    // Render ImGui on top of the back buffer
+    cmdList->ResourceBarrier(GBUFFER_NUM_RENDER_TARGETS, gbufferBarriers);
+    cmdList->ResourceBarrier(1, &backBufferBarrier);
+
+    // Set back buffer as the render target for the lighting pass
     D3D12_CPU_DESCRIPTOR_HANDLE backBufferRtv = m_swapChain->GetRTVHandle(backBufferIdx);
     cmdList->OMSetRenderTargets(1, &backBufferRtv, FALSE, nullptr);
+
+    // Clear the back buffer before the lighting pass
+    const float clearBlack[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    cmdList->ClearRenderTargetView(backBufferRtv, clearBlack, 0, nullptr);
+
+    // Switch to the lighting pass pipeline
+    cmdList->SetPipelineState(m_lightingPassPSO.Get());
+    cmdList->SetGraphicsRootSignature(m_lightingPassRootSignature.Get());
+
+    // Bind pass constants (contains lights, eye position, ambient)
+    cmdList->SetGraphicsRootConstantBufferView(0, frameContext->PassCB->Resource()->GetGPUVirtualAddress());
+
+    // Bind the 3 G-Buffer SRVs as a descriptor table
+    // The SRVs must be contiguous in the descriptor heap.
+    // m_gbufferSRVGPUHandles[0] is the first — the table covers [t0, t1, t2]
+    cmdList->SetGraphicsRootDescriptorTable(1, m_gbufferSRVGPUHandles[GBUFFER_RENDER_TARGET_ALBEDO]);
+
+    // Draw full-screen triangle (3 vertices, no vertex buffer)
+    cmdList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    cmdList->IASetVertexBuffers(0, 0, nullptr);
+    cmdList->IASetIndexBuffer(nullptr);
+    cmdList->DrawInstanced(3, 1, 0, 0);
+
+    // Render ImGui on top
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmdList);
 
-    // Transition back to present
+    // Transition G-Buffer targets back to RENDER_TARGET for next frame
+    for (int i = 0; i < GBUFFER_NUM_RENDER_TARGETS; ++i)
+    {
+        gbufferBarriers[i] = CD3DX12_RESOURCE_BARRIER::Transition(
+            m_gbufferRenderTargets[i].Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            D3D12_RESOURCE_STATE_RENDER_TARGET);
+    }
+    cmdList->ResourceBarrier(GBUFFER_NUM_RENDER_TARGETS, gbufferBarriers);
+
     // Transition back buffer to PRESENT
     D3D12_RESOURCE_BARRIER presentBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
         m_swapChain->GetBackBuffer(backBufferIdx),
@@ -503,6 +526,73 @@ void GBufferRenderer::LoadTextures(D3D12Device& device)
     }
 }
 
+void GBufferRenderer::BuildLightingPassRootSignature(D3D12Device& device)
+{
+    // The lighting pass reads 3 G-Buffer textures and uses pass constants (lights, eye pos)
+    // Root param [0]: CBV for pass constants (b0)
+    // Root param [1]: Descriptor table with 3 SRVs (t0, t1, t2) for G-Buffer textures
+    CD3DX12_DESCRIPTOR_RANGE gbufferTable;
+    gbufferTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 0); // 3 SRVs starting at t0
+
+    CD3DX12_ROOT_PARAMETER slotRootParameter[2];
+    slotRootParameter[0].InitAsConstantBufferView(0); // Pass constants
+    slotRootParameter[1].InitAsDescriptorTable(1, &gbufferTable, D3D12_SHADER_VISIBILITY_PIXEL);
+
+    auto staticSamplers = GetStaticSamplers();
+
+    // No input assembler needed — full-screen triangle uses SV_VertexID
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2, slotRootParameter,
+        (UINT)staticSamplers.size(), staticSamplers.data(),
+        D3D12_ROOT_SIGNATURE_FLAG_NONE);
+
+    ComPtr<ID3DBlob> serializedRootSig = nullptr;
+    ComPtr<ID3DBlob> errorBlob = nullptr;
+    if (FAILED(D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+        serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf())))
+    {
+        if (errorBlob)
+            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+        throw std::runtime_error("Failed to serialize lighting root signature");
+    }
+
+    if (FAILED(device.GetDevice()->CreateRootSignature(0, serializedRootSig->GetBufferPointer(),
+        serializedRootSig->GetBufferSize(), IID_PPV_ARGS(&m_lightingPassRootSignature))))
+    {
+        throw std::runtime_error("Failed to create lighting root signature");
+    }
+}
+
+void GBufferRenderer::BuildLightingPassPSO(D3D12Device& device)
+{
+    m_lightingPassVsByteCode = D3D12Util::CompileShader(L"Shaders\\deferred_lighting.hlsl", nullptr, "VS", "vs_5_0");
+    m_lightingPassPsByteCode = D3D12Util::CompileShader(L"Shaders\\deferred_lighting.hlsl", nullptr, "PS", "ps_5_0");
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+    // No input layout — the VS generates vertices from SV_VertexID
+    psoDesc.InputLayout = { nullptr, 0 };
+    psoDesc.pRootSignature = m_lightingPassRootSignature.Get();
+    psoDesc.VS = { reinterpret_cast<BYTE*>(m_lightingPassVsByteCode->GetBufferPointer()), m_lightingPassVsByteCode->GetBufferSize() };
+    psoDesc.PS = { reinterpret_cast<BYTE*>(m_lightingPassPsByteCode->GetBufferPointer()), m_lightingPassPsByteCode->GetBufferSize() };
+    psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+
+    // Disable depth testing — the full-screen triangle should always draw
+    CD3DX12_DEPTH_STENCIL_DESC dsDesc(D3D12_DEFAULT);
+    dsDesc.DepthEnable = FALSE;
+    psoDesc.DepthStencilState = dsDesc;
+
+    psoDesc.SampleMask = UINT_MAX;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = device.GetBackBufferFormat(); // Output to back buffer
+    psoDesc.SampleDesc.Count = 1;
+    psoDesc.SampleDesc.Quality = 0;
+    psoDesc.DSVFormat = DXGI_FORMAT_UNKNOWN; // No depth buffer for lighting pass
+
+    if (FAILED(device.GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_lightingPassPSO))))
+        throw std::runtime_error("Failed to create lighting PSO");
+}
+
 void GBufferRenderer::BuildDescriptorHeaps(D3D12Device& device)
 {
     // Create SRVs for each texture
@@ -713,6 +803,38 @@ void GBufferRenderer::BuildLights()
     light->Color = { 0.15f, 0.15f, 0.15f };
     light->Direction = { 0.0f, -0.707f, -0.707f };
     m_lights.push_back(std::move(light));
+}
+
+void GBufferRenderer::RenderUI()
+{
+    // G-Buffer Atlas: Shows each render target as a thumbnail at the top of the screen.
+    // ImGui::Image() can display any GPU texture that has an SRV in the shader-visible heap.
+    // We pass the D3D12_GPU_DESCRIPTOR_HANDLE as the ImTextureID.
+
+    ImGui::Begin("G-Buffer Atlas");
+
+    // Calculate thumbnail size — fit 3 images side by side within the window
+    float windowWidth = ImGui::GetContentRegionAvail().x;
+    float thumbWidth = (windowWidth - 2 * ImGui::GetStyle().ItemSpacing.x) / 3.0f;
+    float thumbHeight = thumbWidth * 0.5625f; // 16:9 aspect ratio
+
+    const char* labels[GBUFFER_NUM_RENDER_TARGETS] = { "Albedo", "Normal", "Depth" };
+
+    for (int i = 0; i < GBUFFER_NUM_RENDER_TARGETS; ++i)
+    {
+        if (i > 0)
+            ImGui::SameLine();
+
+        ImGui::BeginGroup();
+        ImGui::Text("%s", labels[i]);
+
+        // ImGui_ImplDX12 expects the GPU descriptor handle cast to ImTextureID
+        ImTextureID texID = (ImTextureID)m_gbufferSRVGPUHandles[i].ptr;
+        ImGui::Image(texID, ImVec2(thumbWidth, thumbHeight));
+        ImGui::EndGroup();
+    }
+
+    ImGui::End();
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GBufferRenderer::GetStaticSamplers()
