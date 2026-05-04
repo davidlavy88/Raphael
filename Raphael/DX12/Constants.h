@@ -59,7 +59,10 @@ namespace raphael
         ShaderResource = 1 << 3,
         RenderTarget = 1 << 4,
         DepthStencil = 1 << 5,
-        UnorderedAccess = 1 << 6
+        UnorderedAccess = 1 << 6,
+        CopySource = 1 << 7,
+        CopyDestination = 1 << 8,
+        Present = 1 << 9 // For swap chain back buffers that will be presented to the screen
     };
 
     inline ResourceBindFlags operator|(ResourceBindFlags a, ResourceBindFlags b)
@@ -115,5 +118,13 @@ namespace raphael
         None,
         Front,
         Back
+    };
+
+    enum class RenderPassType 
+    {
+        BasePass,
+        DepthPass,
+        ForwardPass,
+        ShadowPass
     };
 } // namespace raphael

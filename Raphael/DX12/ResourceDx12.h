@@ -17,6 +17,7 @@ namespace raphael
 
         // IResource interface
         const ResourceDesc& getDesc() const override { return m_desc; }
+        void setDesc(const ResourceDesc& desc) { m_desc = desc; }
 
         // DX12 specific methods
         ID3D12Resource* getNativeResource() const { return m_resource.Get(); }
@@ -24,6 +25,7 @@ namespace raphael
         void unmap();
 
         ResourceView getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle = {}, UINT strideInBytes = 0);
+        ResourceBindFlags getResourceBindFlags() const { return m_desc.bindFlags; }
 
         void initAsCbv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
         void initAsSrv(D3D12_CPU_DESCRIPTOR_HANDLE handle);

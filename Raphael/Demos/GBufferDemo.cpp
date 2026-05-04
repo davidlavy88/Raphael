@@ -71,9 +71,11 @@ bool GBufferDemo::Initialize(WindowInfo windowInfo)
 
     // -- 9. Create root signature --
     CreateRootSignature();
+    CreateGBufferRootSignature();
 
     // -- 10. Create pipeline state + shaders --
     CreatePipeline();
+    CreateGBufferPipeline();
 
     // -- 11. Create texture resources --
     CreateTexture();
@@ -122,12 +124,21 @@ void GBufferDemo::CreateDescriptorHeaps()
 
     DescriptorHeapDesc textureSrvHeapDesc = {};
     textureSrvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
-	// One SRV for each texture in the model + 1 for ImGui font texture + 1 for dummy white texture
+    // One SRV for each texture in the model + 1 for ImGui font texture + 1 for dummy white texture
     textureSrvHeapDesc.numDescriptors = static_cast<UINT>(m_gltfModel->textures.size() + 2); 
     textureSrvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
 
     m_textureSrvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
     m_textureSrvHeap->createDescriptorHeap();
+
+    // Create GBuffer SRV descriptor heap
+    DescriptorHeapDesc gbufferSrvHeapDesc = {};
+    gbufferSrvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
+    gbufferSrvHeapDesc.numDescriptors = g_numRenderTargets; // One SRV for each GBuffer render target
+    gbufferSrvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the GBuffer SRVs to the pipeline
+
+    m_gbufferSrvHeap = m_device->createDescriptorHeap(gbufferSrvHeapDesc);
+    m_gbufferSrvHeap->createDescriptorHeap();
 
     // Create GBuffer render target descriptor heaps
     DescriptorHeapDesc gbufferRtvHeapDesc = {};
@@ -159,10 +170,13 @@ void GBufferDemo::CreateGBufferRenderTargets()
         // Create RTV for this render target
         DescriptorHandle rtvHandle = {};
         m_gbufferRtvHeap->AllocateHeap(&rtvHandle);
-        m_gbufferTextures[i]->getResourceView(ResourceBindFlags::RenderTarget, rtvHandle);
+        m_gbufferRtvs.push_back(m_gbufferTextures[i]->getResourceView(ResourceBindFlags::RenderTarget, rtvHandle));
+
         // If there is a lighting pass that reads from the GBuffer, we would also need to create SRVs 
         // for these textures and store them in m_textureSrvs so they can be bound to the pipeline. 
-        // For now, we will skip that since we are only doing a geometry pass that writes
+        DescriptorHandle srvHandle = {};
+        m_gbufferSrvHeap->AllocateHeap(&srvHandle);
+        m_gbufferSrvs.push_back(m_gbufferTextures[i]->getResourceView(ResourceBindFlags::ShaderResource, srvHandle));    
     }
 }
 
@@ -484,6 +498,7 @@ void GBufferDemo::CreateConstantBuffers()
     {
         m_frameCBs[i] = std::make_unique<UploadBuffer<FrameConstants>>(m_device.get(), 1, true);
         m_objectCBs[i] = std::make_unique<UploadBuffer<BasicObjectConstants>>(m_device.get(), 1, true);
+        m_gbufferFrameCBs[i] = std::make_unique<UploadBuffer<LightPassConstants>>(m_device.get(), 1, true);
     }
 }
 
@@ -578,6 +593,79 @@ void GBufferDemo::CreatePipeline()
 
     m_pipeline = m_device->createPipeline(m_pipelineDesc);
     m_pipeline->createPipelineState(m_shader.get(), m_rootSignature.get());
+}
+
+void GBufferDemo::CreateGBufferRootSignature()
+{
+    RootSignatureRangeDesc objCbv = {};
+    objCbv.type = RootSignatureRangeDesc::RangeType::ConstantBufferView;
+    objCbv.numParameters = 1;
+    objCbv.shaderRegister = 0;
+
+    RootSignatureRangeDesc textureSrv = {};
+    textureSrv.type = RootSignatureRangeDesc::RangeType::ShaderResourceView;
+    textureSrv.numParameters = 3; // Albedo, Normal, Depth
+    textureSrv.shaderRegister = 0;
+
+    RootSignatureTableLayoutDesc cbvTable = {};
+    cbvTable.visibility = RootSignatureTableLayoutDesc::ShaderVisibility::All;
+    cbvTable.rangeDescs = { objCbv, textureSrv };
+
+    RootSignatureDesc rootSigDesc = {};
+    rootSigDesc.tableLayoutDescs = { cbvTable };
+
+    rootSigDesc.staticSamplers = {
+        StaticSamplerDesc{
+            .shaderRegister = 0, .filter = SamplerFilter::Point,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 1, .filter = SamplerFilter::Point,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 2, .filter = SamplerFilter::Linear,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 3, .filter = SamplerFilter::Linear,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 4, .filter = SamplerFilter::Anisotropic,
+            .addressU = SamplerAddressMode::Wrap, .addressV = SamplerAddressMode::Wrap, .addressW = SamplerAddressMode::Wrap,
+            .mipLODBias = 0.0f, .maxAnisotropy = 8
+        },
+        StaticSamplerDesc{
+            .shaderRegister = 5, .filter = SamplerFilter::Anisotropic,
+            .addressU = SamplerAddressMode::Clamp, .addressV = SamplerAddressMode::Clamp, .addressW = SamplerAddressMode::Clamp,
+            .mipLODBias = 0.0f, .maxAnisotropy = 8
+        }
+    };
+
+    m_gbufferRootSignature = m_device->createRootSignature(rootSigDesc);
+    m_gbufferRootSignature->createRootSignature();
+}
+
+void GBufferDemo::CreateGBufferPipeline()
+{
+    // Compile shader
+    ShaderDesc gBufferShaderDesc = {};
+    gBufferShaderDesc.shaderFilePath = L"Shaders\\deferredLighting.hlsl";
+    gBufferShaderDesc.shaderName = "GBufferLightingPass";
+    gBufferShaderDesc.types = { ShaderDesc::ShaderType::Vertex, ShaderDesc::ShaderType::Pixel };
+
+    m_gbufferShader = std::make_unique<ShaderDx12>(gBufferShaderDesc);
+
+    // Create pipeline state
+    PipelineDesc gBufferPipelineDesc = {};
+    gBufferPipelineDesc.numRenderTargets = 1;
+    gBufferPipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM };
+    gBufferPipelineDesc.inputLayout = {}; // Fullscreen triangle doesn't need vertex input
+    gBufferPipelineDesc.dsvFormat = ResourceFormat::Unknown; // No depth testing for fullscreen pass
+
+    m_gbufferPipeline = m_device->createPipeline(gBufferPipelineDesc);
+    m_gbufferPipeline->createPipelineState(m_gbufferShader.get(), m_gbufferRootSignature.get());
 }
 
 // 10. Create texture resources
@@ -733,10 +821,24 @@ void GBufferDemo::UpdateConstantBuffers()
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
 
+    // Light pass constants
+    LightPassConstants lightPassConstants = {};
+    lightPassConstants.AmbientLight = { 0.5f, 0.5f, 0.5f, 1.0f };
+    lightPassConstants.Lights[0].Intensity = 1.0f;
+    lightPassConstants.Lights[0].Color = { 0.8f, 0.0f, 0.0f };
+    lightPassConstants.Lights[0].Direction = { 0.57735f, -0.57735f, -0.57735f };
+    lightPassConstants.Lights[1].Intensity = 1.0f;
+    lightPassConstants.Lights[1].Color = { 0.0f, 0.0f, 0.8f };
+    lightPassConstants.Lights[1].Direction = { -0.57735f, -0.57735f, -0.57735f };
+    lightPassConstants.Lights[2].Intensity = 1.0f;
+    lightPassConstants.Lights[2].Color = { 0.0f, 0.8f, 0.0f };
+    lightPassConstants.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
+
     // Copy data to the current back buffer's constant buffers
     UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
     m_objectCBs[backBufferIndex]->CopyData(0, objConstants);
     m_frameCBs[backBufferIndex]->CopyData(0, frameConstants);
+    m_gbufferFrameCBs[backBufferIndex]->CopyData(0, lightPassConstants);
 }
 
 void GBufferDemo::Render()
@@ -762,21 +864,32 @@ void GBufferDemo::Render()
     ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
     ResourceView currentRtView = m_swapChain->getCurrentRTView();
 
+    m_commandList->begin(currentFrameContext.commandAllocator.Get());
+
     // Build render pass descriptor for current frame
     const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
-        currentRtView,
-        currentBackBuffer->getNativeResource(),
-        m_depthStencilView,
-        WINDOW_WIDTH, WINDOW_HEIGHT,
-        clearColor);
-    renderPassDesc.debugName = "Textured Box Render Pass";
-
-    // Test command list recording
-    m_commandList->begin(currentFrameContext.commandAllocator.Get());
-    m_commandList->beginRenderPass(renderPassDesc);
 
     {
+        RenderPassDesc renderPassDesc = RenderPassDesc::buildAsMultipleRenderTargets(
+            m_gbufferRtvs.data(), // RTVs for GBuffer render targets
+            g_numRenderTargets,
+            m_depthStencilView,
+            WINDOW_WIDTH, WINDOW_HEIGHT,
+            clearColor);
+        renderPassDesc.debugName = "GBuffer Geometry Pass";
+
+        m_commandList->beginRenderPass(renderPassDesc);
+
+		// Transition GBuffer render targets to render target state for rendering geometry pass output
+		// m_gbufferTextures are created in render target state, so this transition is not necessary 
+        // however, make sure they are in the correct state for subsequent frames after the lighting pass 
+        // transitions them to shader resource state
+        /*m_commandList->transitionResources<g_numRenderTargets>(
+            m_gbufferTextures,
+            ResourceBindFlags::RenderTarget);*/
+
+        m_commandList->clearAndSetRenderTargets(renderPassDesc);
+
         // Set descriptor heaps (for the texture shader resource descriptor heaps)
         m_commandList->setDescriptorHeaps(m_textureSrvHeap.get(), 1);
 
@@ -811,11 +924,74 @@ void GBufferDemo::Render()
             m_commandList->drawIndexedInstanced(m_meshes[i].indexCount, 1, m_meshes[i].indexBufferOffset, m_meshes[i].vertexBufferOffset, 0);
         }
 
-        m_imguiLoader.Render(m_commandList.get());
+		// GBuffer render targets are in render target state. No need to transition them since 
+        // the lighting pass will transition them to shader resource state before reading from them
 
+        m_commandList->endRenderPass();
     }
 
-    m_commandList->endRenderPass();
+    {
+        // Lighting pass - setting the GBuffer render targets, 
+        // binding the GBuffer pipeline and root signature, 
+        // and drawing a full-screen triangle to populate the GBuffer with the 
+        // scene's geometry information (positions, normals, albedo, etc.)
+        ResourceView nullDepthView = {};
+        RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
+            currentRtView,
+            nullDepthView,
+            WINDOW_WIDTH, WINDOW_HEIGHT,
+            clearColor, false);
+        renderPassDesc.debugName = "GBuffer Lighting Pass";
+
+        m_commandList->beginRenderPass(renderPassDesc);
+
+        // Transition GBuffer render targets to shader resource state for reading in the lighting pass
+        m_commandList->transitionResources<g_numRenderTargets>(
+            m_gbufferTextures,
+            ResourceBindFlags::ShaderResource);
+
+        // Transition back buffer to render target state for lighting pass output
+        m_commandList->transitionResource(
+            currentBackBuffer,
+            ResourceBindFlags::RenderTarget);
+
+        m_commandList->clearAndSetRenderTargets(renderPassDesc);
+
+        // Bind GBuffer textures as SRVs to the lighting pass shader
+        m_commandList->setDescriptorHeaps(m_gbufferSrvHeap.get(), 1);
+
+        // Switch to the GBuffer lighting pass pipeline and root signature
+        m_commandList->setGraphicsRootSignature(m_gbufferRootSignature.get());
+        m_commandList->setPipeline(m_gbufferPipeline.get());
+
+        // Bind constant buffers for the lighting pass (e.g., camera position, light parameters, etc.)
+        m_commandList->setConstantBufferView(
+            0,
+            m_gbufferFrameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+
+        // one bind covers all 3 contiguous SRVs(t0, t1, t2)
+        m_commandList->setGraphicsRootDescriptorTable(1, m_gbufferSrvs[0].gpuHandle);
+
+        // Draw a full-screen triangle to execute the lighting pass shader across the entire screen
+        m_commandList->drawInstanced(3, 1, 0, 0);
+
+		// Set descriptor heaps (for ImGui rendering, which uses the same texture SRV heap for font atlas) 
+        // and render ImGui on top of the lighting pass output
+        m_commandList->setDescriptorHeaps(m_textureSrvHeap.get(), 1);
+        m_imguiLoader.Render(m_commandList.get());
+
+        m_commandList->endRenderPass();
+
+        // Transition GBuffer render targets back to render target state for the next frame
+        m_commandList->transitionResources<g_numRenderTargets>(
+            m_gbufferTextures,
+            ResourceBindFlags::RenderTarget);
+
+        // Transition back buffer to present state for presentation
+        m_commandList->transitionResource(
+            currentBackBuffer,
+            ResourceBindFlags::Present);
+    }
 
     m_commandList->end();
 

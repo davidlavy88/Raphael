@@ -1,6 +1,7 @@
 #pragma once
 #include "ObjectDescriptors.h"
 #include "D3D12CommonHeaders.h"
+#include "UtilDx12.h"
 
 namespace raphael
 {
@@ -23,8 +24,11 @@ namespace raphael
         void end();
         void reset();
         void copyResource(ResourceDx12* dst, ResourceDx12* src, const void* data, const UINT buffersize); // record full resource GPU to GPU copy
-		void copyTextureResource(ResourceDx12* dst, ResourceDx12* src, D3D12_SUBRESOURCE_DATA* subresource);
+        void copyTextureResource(ResourceDx12* dst, ResourceDx12* src, D3D12_SUBRESOURCE_DATA* subresource);
         // void copyBufferRegion(IResource* dst, UINT64 dstOffset, IResource* src, UINT64 srcOffset, UINT64 numBytes);
+        void transitionResource(ResourceDx12* resource, ResourceBindFlags bindFlags);
+        template <std::size_t numResources>
+        void transitionResources(std::array<std::unique_ptr<ResourceDx12>, numResources>& resources, ResourceBindFlags bindFlags);
 
         ID3D12GraphicsCommandList* getNativeCommandList() const { return m_commandList.Get(); }
 
@@ -35,12 +39,14 @@ namespace raphael
         void setGraphicsRootDescriptorTable(UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle);
         void setConstantBufferView(UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS gpuAddress);
 
+
         void setViewports(const D3D12_VIEWPORT* viewports, uint32_t numViewports);
         void setScissorRects(const D3D12_RECT* rects, uint32_t numRects);
         void resourceBarrier(const D3D12_RESOURCE_BARRIER* barriers, uint32_t numBarriers);
         void clearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, const FLOAT clearColor[4]);
         void clearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle, float depth, UINT8 stencil);
-        void setRenderTargets(uint32_t numRenderTargets, const D3D12_CPU_DESCRIPTOR_HANDLE* rtvHandles, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle);
+        void setRenderTargets(uint32_t numRenderTargets, const D3D12_CPU_DESCRIPTOR_HANDLE* rtvHandles, const D3D12_CPU_DESCRIPTOR_HANDLE* dsvHandle);
+        void clearAndSetRenderTargets(const RenderPassDesc& renderPassDesc);
         void setVertexBuffer(UINT slot, const ResourceView& vertexBufferView);
         void setIndexBuffer(const ResourceView& indexBufferView);
         void drawInstanced(UINT vertexCountPerInstance, UINT instanceCount, UINT startVertexLocation, UINT startInstanceLocation);
@@ -60,4 +66,22 @@ namespace raphael
         bool m_isInRenderPass = false; // Track if we are currently inside a render pass
 
     };
+
+    // Template definition must be in the header so it's visible at instantiation
+    template <std::size_t numResources>
+    void CommandList::transitionResources(std::array<std::unique_ptr<ResourceDx12>, numResources>& resources, ResourceBindFlags bindFlags)
+    {
+        std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
+        for (auto& resource : resources)
+        {
+            D3D12_RESOURCE_STATES beforeState = getResourceState(resource->getDesc().bindFlags);
+            D3D12_RESOURCE_STATES afterState = getResourceState(bindFlags);
+            barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource->getNativeResource(), beforeState, afterState));
+            // Update the resource's bind flags to reflect the new state
+            ResourceDesc desc = resource->getDesc();
+            desc.bindFlags = bindFlags;
+            resource->setDesc(desc);
+        }
+        m_commandList->ResourceBarrier(static_cast<UINT>(barriers.size()), barriers.data());
+    }
 } // namespace raphael

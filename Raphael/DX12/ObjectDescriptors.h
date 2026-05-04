@@ -26,7 +26,7 @@ namespace raphael
         Usage usage = Usage::Default;
         UINT64 width = 0; // For buffers, this is the byte size. For textures, this is the width in pixels.
         UINT height = 0; // Only used for textures, ignored for buffers
-		UINT mipLevels = 1; // Only used for textures, ignored for buffers
+        UINT mipLevels = 1; // Only used for textures, ignored for buffers
 
         ResourceFormat format = ResourceFormat::Unknown; // TODO: make this generic not tied to DXGI
         ResourceBindFlags bindFlags = ResourceBindFlags::None;
@@ -145,8 +145,8 @@ namespace raphael
         UINT numRenderTargets = 1;
         ResourceFormat dsvFormat = ResourceFormat::D24_UNORM_S8_UINT; // Depth stencil format
         InputLayoutDesc inputLayout;
-		RasterizerFillMode rasterizerFillMode = RasterizerFillMode::Solid;
-		RasterizerCullMode rasterizerCullMode = RasterizerCullMode::Back;
+        RasterizerFillMode rasterizerFillMode = RasterizerFillMode::Solid;
+        RasterizerCullMode rasterizerCullMode = RasterizerCullMode::Back;
         // ... more shader stages, input layout, etc.
     };
 
@@ -221,10 +221,10 @@ namespace raphael
     };
 
     struct RenderPassDesc {
+        RenderPassType type = RenderPassType::ForwardPass;
         // Render targets
         ResourceView rtvHandles[8] = {}; // Support up to 8 render targets
         UINT numRenderTargets = 0;
-        ID3D12Resource* renderTargetResources[8] = {}; // Corresponding resources for the render targets
 
         // Depth stencil
         ResourceView dsvHandle = {};
@@ -245,7 +245,6 @@ namespace raphael
         // Builder for a single render target with depth stencil
         static RenderPassDesc buildAsSingleRenderTarget(
             ResourceView& rtvHandle,
-            ID3D12Resource* rtvResource,
             ResourceView& dsvHandle,
             UINT width, UINT height,
             const float clearColor[4] = nullptr,
@@ -254,9 +253,8 @@ namespace raphael
         {
             RenderPassDesc desc;
             desc.rtvHandles[0] = rtvHandle;
-            desc.renderTargetResources[0] = rtvResource;
             desc.numRenderTargets = 1;
-			desc.hasDepthStencil = hasDepthStencil;
+            desc.hasDepthStencil = hasDepthStencil;
             desc.dsvHandle = dsvHandle;
             desc.viewportWidth = width;
             desc.viewportHeight = height;
@@ -269,5 +267,36 @@ namespace raphael
             return desc;
         }
 
+        static RenderPassDesc buildAsMultipleRenderTargets(
+            const ResourceView* rtvHandles,
+            UINT numRenderTargets,
+            ResourceView& dsvHandle,
+            UINT width, UINT height,
+            const float clearColor[4] = nullptr,
+            bool hasDepthStencil = true,
+            float clearDepth = 1.0f)
+        {
+            if (numRenderTargets > 8)
+            {
+                throw std::runtime_error("numRenderTargets cannot exceed 8");
+            }
+
+            RenderPassDesc desc;
+            for (UINT i = 0; i < numRenderTargets; ++i)
+            {
+                desc.rtvHandles[i] = rtvHandles[i];
+            }
+            desc.numRenderTargets = numRenderTargets;
+            desc.hasDepthStencil = hasDepthStencil;
+            desc.dsvHandle = dsvHandle;
+            desc.viewportWidth = width;
+            desc.viewportHeight = height;
+            desc.clearDepth = clearDepth;
+            if (clearColor)
+            {
+                std::copy(clearColor, clearColor + 4, desc.clearColor);
+            }
+            return desc;
+        }
     };
 } // namespace raphael

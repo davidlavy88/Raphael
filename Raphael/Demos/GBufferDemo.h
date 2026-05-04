@@ -39,7 +39,7 @@ class GBufferDemo : public IDemo
         Albedo = 0,
         Normal = 1,
         Depth = 2
-	};
+    };
 
 public:
     bool Initialize(WindowInfo windowInfo) override;
@@ -51,7 +51,7 @@ private:
     // ---- Initialization helpers (one per logical step) ----
     void CreateGltfModel();
     void CreateDescriptorHeaps();
-	void CreateGBufferRenderTargets();
+    void CreateGBufferRenderTargets();
     void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void CreateGeometry();
     void CreateTexture();
@@ -60,6 +60,10 @@ private:
     void CreateRootSignature();
     void CreatePipeline();
     void CreateCommandObjects();
+
+    // ---- GBuffer specific helpers ----
+    void CreateGBufferRootSignature();
+    void CreateGBufferPipeline();
 
     // ---- Per-frame helpers ----
     void UpdateConstantBuffers();
@@ -98,11 +102,16 @@ private:
     // Constant buffers (one per frame for double buffering)
     std::array<std::unique_ptr<UploadBuffer<FrameConstants>>, g_frameCount> m_frameCBs;
     std::array<std::unique_ptr<UploadBuffer<BasicObjectConstants>>, g_frameCount> m_objectCBs;
+	std::array<std::unique_ptr<UploadBuffer<LightPassConstants>>, g_frameCount> m_gbufferFrameCBs;
 
     // Pipeline resources
     std::unique_ptr<ShaderDx12> m_shader;
     std::unique_ptr<RootSignatureDx12> m_rootSignature;
     std::unique_ptr<PipelineDx12> m_pipeline;
+
+    std::unique_ptr<ShaderDx12> m_gbufferShader;
+    std::unique_ptr<RootSignatureDx12> m_gbufferRootSignature;
+    std::unique_ptr<PipelineDx12> m_gbufferPipeline;
 
     PipelineDesc m_pipelineDesc = {};
     ShaderDesc m_shaderDesc = {};
@@ -123,9 +132,12 @@ private:
     };
     std::vector<MeshData> m_meshes;
     
-	// GBuffer texture resources
-	std::array<std::unique_ptr<ResourceDx12>, g_numRenderTargets> m_gbufferTextures;
+    // GBuffer texture resources
+    std::array<std::unique_ptr<ResourceDx12>, g_numRenderTargets> m_gbufferTextures;
     std::unique_ptr<DescriptorHeapDx12> m_gbufferRtvHeap;
+    std::unique_ptr<DescriptorHeapDx12> m_gbufferSrvHeap;
+    std::vector<ResourceView> m_gbufferSrvs;
+    std::vector<ResourceView> m_gbufferRtvs;
 
     // Camera and transform state
     float m_rotationAngle = 0.0f;

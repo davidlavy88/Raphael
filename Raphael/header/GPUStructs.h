@@ -95,6 +95,21 @@ namespace raphael
         float Pad0 = 0.0f; // Padding to ensure 16-byte alignment
     };
 
+    struct LightParameters
+    {
+        XMFLOAT3 Color = { 1.0f, 1.0f, 1.0f };		// Light color
+        float Intensity = 1.0f;                     // Light intensity multiplier
+        XMFLOAT3 Direction = { 0.0f, -1.0f, 0.0f };	// Directional/spot light only
+        float Pad0 = 0.0f;                          // Padding to ensure 16-byte alignment
+    };
+
+    struct LightPassConstants
+    {
+        XMFLOAT4 AmbientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+        LightParameters Lights[MAX_LIGHTS];
+    };
+
     struct RayTracingSceneConstants
     {
         XMFLOAT4X4 InvViewProj;
@@ -107,5 +122,5 @@ namespace raphael
         XMFLOAT4 CubeMin; // x, y, z: min corner
         XMFLOAT4 CubeMax; // x, y, z: max corner
         XMFLOAT4 CubeColor;
-	};
+    };
 }

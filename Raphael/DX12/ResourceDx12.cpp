@@ -153,6 +153,11 @@ namespace raphael
         CD3DX12_HEAP_PROPERTIES heapProp(D3D12_HEAP_TYPE_DEFAULT);
 
         // Translate bind flags to D3D12 resource flags
+        // TODO: Right now bindFlags are used for both usage and initial state. 
+        // We should separate usage and bind flags in ResourceDesc for better clarity and control. 
+        // For example, a texture might be created with RenderTarget bind flag but we might want 
+        // to start it in a COMMON state and transition to RENDER_TARGET when we first use it as 
+        // a render target.
         D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE;
         if (hasFlag(desc.bindFlags, ResourceBindFlags::RenderTarget))
             resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -197,6 +202,8 @@ namespace raphael
         // If the resource will be used as a depth stencil, we can start it in the DEPTH_WRITE state to optimize for depth clears and writes.
         if (hasFlag(desc.bindFlags, ResourceBindFlags::DepthStencil))
             initialState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+        if (hasFlag(desc.bindFlags, ResourceBindFlags::RenderTarget))
+            initialState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
         if (FAILED(m_device->getNativeDevice()->CreateCommittedResource(
             &heapProp,
