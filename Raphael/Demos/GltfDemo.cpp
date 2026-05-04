@@ -723,7 +723,6 @@ void GltfDemo::Render()
     const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
         currentRtView,
-        currentBackBuffer->getNativeResource(),
         m_depthStencilView,
         WINDOW_WIDTH, WINDOW_HEIGHT,
         clearColor);
@@ -732,6 +731,13 @@ void GltfDemo::Render()
     // Test command list recording
     m_commandList->begin(currentFrameContext.commandAllocator.Get());
     m_commandList->beginRenderPass(renderPassDesc);
+
+    // Transition back buffer to render target state for rendering
+    m_commandList->transitionResource(
+        currentBackBuffer,
+        ResourceBindFlags::RenderTarget);
+
+    m_commandList->clearAndSetRenderTargets(renderPassDesc);
 
     {
         // Set descriptor heaps (for the texture shader resource descriptor heaps)
@@ -773,6 +779,11 @@ void GltfDemo::Render()
     }
 
     m_commandList->endRenderPass();
+
+    // Transition back buffer to present state for presentation
+    m_commandList->transitionResource(
+        currentBackBuffer,
+        ResourceBindFlags::Present);
 
     m_commandList->end();
 
