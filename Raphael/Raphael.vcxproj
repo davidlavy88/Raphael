@@ -91,6 +91,8 @@
     <ClCompile Include="Demos\RayTracerDemo.cpp" />
     <ClCompile Include="EngineTest\TestRenderer.cpp" />
     <ClCompile Include="ImGui\ImGuiLoader.cpp" />
+    <ClCompile Include="Mesh\Mesh.cpp" />
+    <ClCompile Include="Mesh\MeshGenerator.cpp" />
     <ClCompile Include="Render\SceneRenderer.cpp" />
     <ClCompile Include="source\GBufferRenderer.cpp" />
     <ClCompile Include="source\PoissonDiskDistribution.cpp" />
@@ -109,6 +111,7 @@
     <ClCompile Include="Demos\QuadDemo.cpp" />
     <ClCompile Include="DX12\SwapChainDx12.cpp" />
     <ClCompile Include="Demos\TexturedBoxDemo.cpp" />
+    <ClCompile Include="Texture\Texture.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="Utilities\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="Utilities\imgui\imgui.cpp" />
@@ -148,7 +151,7 @@
     <ClInclude Include="header\Light.h" />
     <ClInclude Include="header\Material.h" />
     <ClInclude Include="header\PoissonDiskDistribution.h" />
-    <ClInclude Include="header\Texture.h" />
+    <ClInclude Include="header\OldTexture.h" />
     <ClInclude Include="header\BoxRenderer.h" />
     <ClInclude Include="header\D3D12Util.h" />
     <ClInclude Include="header\d3dx12.h" />
@@ -167,7 +170,10 @@
     <ClInclude Include="Demos\RayTracerDemo.h" />
     <ClInclude Include="Demos\IDemo.h" />
     <ClInclude Include="ImGui\ImGuiLoader.h" />
+    <ClInclude Include="Mesh\Mesh.h" />
+    <ClInclude Include="Mesh\MeshGenerator.h" />
     <ClInclude Include="Render\SceneRenderer.h" />
+    <ClInclude Include="Texture\Texture.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="Utilities\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Utilities\imgui\imconfig.h" />
@@ -184,6 +190,7 @@
     <ClInclude Include="Utilities\tinygltf\stb_image_write.h" />
     <ClInclude Include="Utilities\tinygltf\tiny_gltf.h" />
     <ClInclude Include="Components\Window.h" />
+    <ClInclude Include="Mesh\Vertex.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -5,7 +5,7 @@
 #include "Camera.h"
 #include "Material.h"
 #include "Light.h"
-#include "Texture.h"
+#include "OldTexture.h"
 #include "tinygltf/tiny_gltf.h"
 
 static constexpr int GBUFFER_NUM_RENDER_TARGETS = 3;
@@ -65,7 +65,7 @@ private:
     std::unique_ptr<MeshGeometry> m_modelGeo;
     std::unique_ptr<tinygltf::Model> m_gltfModel;
     std::unordered_map<std::string, std::unique_ptr<Material>> m_modelMaterials;
-    std::unordered_map<std::string, std::unique_ptr<Texture>> m_modelTextures;
+    std::unordered_map<std::string, std::unique_ptr<OldTexture>> m_modelTextures;
     std::vector<std::unique_ptr<Light>> m_lights;
 
     // Create a resource for each texture (Albedo, Normal and depth)

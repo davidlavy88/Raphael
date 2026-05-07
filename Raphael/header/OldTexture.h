@@ -2,10 +2,10 @@
 
 #include "D3D12CommonHeaders.h"
 
-class Texture
+class OldTexture
 {
 public:
-	Texture(std::string name, std::wstring filename)
+	OldTexture(std::string name, std::wstring filename)
 		: Name(name)
 		, Filename(filename)
 	{
