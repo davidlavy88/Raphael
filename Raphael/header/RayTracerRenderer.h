@@ -2,7 +2,7 @@
 #include "Renderer.h"
 #include "UploadBuffer.h"
 #include "D3D12Util.h"
-#include "Camera.h"
+#include "Components/Camera.h"
 
 struct Vertex
 {

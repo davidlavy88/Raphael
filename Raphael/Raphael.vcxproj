@@ -50,7 +50,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos;$(SolutionDir)Raphael\ImGui;$(SolutionDir)Raphael\Components;$(SolutionDir)Raphael\EngineTest</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -67,7 +67,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael\DX12;$(SolutionDir)Raphael\Demos;$(SolutionDir)Raphael\ImGui;$(SolutionDir)Raphael\Components;$(SolutionDir)Raphael\EngineTest</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Raphael\Utilities;$(SolutionDir)Raphael\header;$(SolutionDir)Raphael\Utilities\imgui;$(SolutionDir)Raphael\Utilities\tinygltf;$(SolutionDir)Raphael</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

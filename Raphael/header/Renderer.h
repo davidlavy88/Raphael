@@ -2,7 +2,7 @@
 
 #include "Device.h"
 #include "SwapChain.h"
-#include "Camera.h"
+#include "Components/Camera.h"
 
 class Renderer
 {

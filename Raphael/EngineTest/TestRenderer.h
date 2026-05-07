@@ -1,6 +1,6 @@
 #pragma once
-#include "IDemo.h"
-#include "Window.h"
+#include "Demos/IDemo.h"
+#include "Components/Window.h"
 
 using namespace raphael;
 

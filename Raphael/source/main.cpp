@@ -10,7 +10,7 @@
 
 #include <tchar.h>
 #if TEST_RENDERER_INTERFACE
-#include "TestRenderer.h"
+#include "EngineTest/TestRenderer.h"
 #else
 #include "Application.h"
 #endif

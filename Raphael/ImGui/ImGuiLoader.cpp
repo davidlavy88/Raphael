@@ -1,7 +1,7 @@
 #include "ImGuiLoader.h"
-#include "DeviceDx12.h"
-#include "DescriptorHeapDx12.h"
-#include "CommandList.h"
+#include "DX12/DeviceDx12.h"
+#include "DX12/DescriptorHeapDx12.h"
+#include "DX12/CommandList.h"
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
