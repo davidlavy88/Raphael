@@ -63,7 +63,7 @@ private:
     std::unique_ptr<CommandList> m_commandList;
     std::unique_ptr<DescriptorHeapDx12> m_dsvHeap;
     std::unique_ptr<DescriptorHeapDx12> m_rtvHeap;
-    std::unique_ptr<DescriptorHeapDx12> m_textureSrvHeap;
+	std::shared_ptr<DescriptorHeapDx12> m_srvHeap;
     std::unique_ptr<ResourceDx12> m_depthBuffer;
 
     // Geometry resources
@@ -74,15 +74,7 @@ private:
     UINT m_indexCount = 0;
 
     // Texture resources
-    struct TextureData {
-        std::unique_ptr<ResourceDx12> m_textureDefaultBuffer;
-        std::unique_ptr<ResourceDx12> m_textureUploadBuffer;
-    };
-    std::vector<TextureData> m_textures;
-
-	// Dummy texture resources
-    TextureData m_whiteTexture;
-    ResourceView m_whiteTextureSrv;
+    std::unordered_map<std::string, std::unique_ptr<Texture>> m_textures;
 
     // Constant buffers (one per frame for double buffering)
     std::array<std::unique_ptr<UploadBuffer<FrameConstants>>, g_frameCount> m_frameCBs;
@@ -98,7 +90,6 @@ private:
 
     // Render state
     ResourceView m_depthStencilView = {};
-    std::vector<ResourceView> m_textureSrvs;
     // Per-frame resources for double buffering
     std::array<FrameContext, g_frameCount> m_frameContexts;
 
@@ -109,6 +100,7 @@ private:
         uint32_t indexBufferOffset = 0;
         uint32_t indexCount = 0;
         int textureIndex = -1; // Index of the texture used by this mesh
+        std::string texturePath;
     };
     std::vector<MeshData> m_meshes;
 
