@@ -52,7 +52,7 @@ bool GltfDemo::Initialize(WindowInfo windowInfo)
     CreateDescriptorHeaps();
 
     // -- 4. Initialize ImGui --
-    if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_textureSrvHeap.get(), g_frameCount))
+    if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
         return false;
 
     // -- 4. Create swap chain and depth buffer --
@@ -120,11 +120,11 @@ void GltfDemo::CreateDescriptorHeaps()
     DescriptorHeapDesc textureSrvHeapDesc = {};
     textureSrvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
     // One SRV for each texture in the model + 1 for ImGui font texture + 1 for dummy white texture
-	textureSrvHeapDesc.numDescriptors = static_cast<UINT>(m_gltfModel->textures.size() + 2); 
+	textureSrvHeapDesc.numDescriptors = 64; 
     textureSrvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
 
-    m_textureSrvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
-    m_textureSrvHeap->createDescriptorHeap();
+    m_srvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
+    m_srvHeap->createDescriptorHeap();
 }
 
 // 4. Create swap chain and depth buffer
@@ -346,6 +346,13 @@ void GltfDemo::CreateGeometry()
             meshData.indexBufferOffset = indexOffset;
             meshData.indexCount = indices.size();
 
+            // Store the material's texture path for this primitive
+            if (primitive.material >= 0)
+            {
+                const tinygltf::Material& material = m_gltfModel->materials[primitive.material];
+                meshData.texturePath = "Models/sora/textures/" + material.name + "_diffuse.png";
+            }
+
             m_meshes.push_back(meshData);
             totalVertices.insert(totalVertices.end(), vertices.begin(), vertices.end());
             totalIndices.insert(totalIndices.end(), indices.begin(), indices.end());
@@ -555,54 +562,13 @@ void GltfDemo::CreateTexture()
 
         const tinygltf::Image& image = m_gltfModel->images[texture.source];
 
-        // Upload image to GPU as a texture resource
+		auto texture = std::make_unique<Texture>();
+		texture->Initialize(m_srvHeap, m_device.get());
+
         std::string texturePath = "Models/sora/" + image.uri;
-        std::wstring imageUri{ texturePath.begin(), texturePath.end() };
+        texture->LoadTextureFromWICFile(texturePath, m_device.get(), m_commandList.get());
 
-        // WIC loader needs these additional outputs
-        std::unique_ptr<uint8_t[]> decodedData;
-        D3D12_SUBRESOURCE_DATA subresource = {};
-
-        ComPtr<ID3D12Resource> textureResource;
-
-            // Load the texture from file
-            HRESULT hr = DirectX::LoadWICTextureFromFile(
-                m_device->getNativeDevice(),
-                imageUri.c_str(),
-                textureResource.GetAddressOf(),  // Creates the texture resource
-                decodedData,                            // Stores decoded pixel data
-                subresource);                           // Contains upload info
-
-            if (FAILED(hr))
-            {
-                throw std::runtime_error("Failed to load texture " + std::string(imageUri.begin(), imageUri.end()));
-            }
-
-        // Query the texture resource to calculate how many bytes the staging buffer needs
-        const UINT64 textureBufferSize = GetRequiredIntermediateSize(
-            textureResource.Get(), 0, 1);
-
-        // Create texture buffer resource
-        ResourceDesc textureUploadDesc = {};
-        textureUploadDesc.type = ResourceDesc::ResourceType::Buffer;
-        textureUploadDesc.usage = ResourceDesc::Usage::Upload;
-        textureUploadDesc.width = textureBufferSize;
-        
-        std::unique_ptr<ResourceDx12> textureUploadBuffer = m_device->createResource(textureUploadDesc);
-        auto textureResourceBuffer = std::make_unique<ResourceDx12>(m_device.get(), textureResource);
-
-        m_commandList->copyTextureResource(
-            textureResourceBuffer.get(), textureUploadBuffer.get(), &subresource);
-        // Wrap the native D3D12 resource in our ResourceDx12 class
-        TextureData textureData = { 
-            std::make_unique<ResourceDx12>(m_device.get(), textureResource), 
-            std::move(textureUploadBuffer) };
-
-        m_textures.push_back(std::move(textureData));
-
-        DescriptorHandle srvHandle = {};
-        m_textureSrvHeap->AllocateHeap(&srvHandle);
-        m_textureSrvs.push_back(m_textures.back().m_textureDefaultBuffer->getResourceView(ResourceBindFlags::ShaderResource, srvHandle));
+        m_textures[texturePath] = std::move(texture);
     }
 
     // Close and execute the command list to perform the texture upload
@@ -619,42 +585,12 @@ void GltfDemo::CreateDummyTexture()
 {
     m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
 
-    static const uint32_t whitePixel = 0xFFFFFFFF;
-    D3D12_SUBRESOURCE_DATA subresource = {};
-    subresource.pData = &whitePixel;
-    subresource.RowPitch = sizeof(whitePixel);
-    subresource.SlicePitch = sizeof(whitePixel);
+	auto dummyTexture = std::make_unique<Texture>();
+	dummyTexture->Initialize(m_srvHeap, m_device.get());
+	// Create a simple 1x1 white texture for wireframe mode
+	dummyTexture->CreateDummyTexture(m_device.get(), m_commandList.get());
 
-    ResourceDesc textureDesc = {};
-    textureDesc.type = ResourceDesc::ResourceType::Texture2D;
-    textureDesc.width = 1;
-    textureDesc.height = 1;
-    textureDesc.mipLevels = 1;
-    textureDesc.format = ResourceFormat::R8G8B8A8_UNORM;
-    textureDesc.bindFlags = ResourceBindFlags::ShaderResource;
-
-    auto whiteTextureResource = m_device->createResource(textureDesc);
-    ComPtr<ID3D12Resource> nativeResource = whiteTextureResource->getNativeResource();
-
-    const UINT64 textureBufferSize = GetRequiredIntermediateSize(nativeResource.Get(), 0, 1);
-
-    ResourceDesc textureUploadDesc = {};
-    textureUploadDesc.type = ResourceDesc::ResourceType::Buffer;
-    textureUploadDesc.usage = ResourceDesc::Usage::Upload;
-    textureUploadDesc.width = textureBufferSize;
-
-    std::unique_ptr<ResourceDx12> textureUploadBuffer = m_device->createResource(textureUploadDesc);
-    auto textureResourceBuffer = std::make_unique<ResourceDx12>(m_device.get(), nativeResource);
-
-    m_commandList->copyTextureResource(textureResourceBuffer.get(), textureUploadBuffer.get(), &subresource);
-
-    m_whiteTexture = {
-        std::make_unique<ResourceDx12>(m_device.get(), nativeResource),
-        std::move(textureUploadBuffer) };
-
-    DescriptorHandle srvHandle = {};
-    m_textureSrvHeap->AllocateHeap(&srvHandle);
-    m_whiteTextureSrv = m_whiteTexture.m_textureDefaultBuffer->getResourceView(ResourceBindFlags::ShaderResource, srvHandle);
+    m_textures["dummy"] = std::move(dummyTexture);
 
     m_commandList->end();
     m_device->executeCommandList(m_commandList.get());
@@ -741,7 +677,7 @@ void GltfDemo::Render()
 
     {
         // Set descriptor heaps (for the texture shader resource descriptor heaps)
-        m_commandList->setDescriptorHeaps(m_textureSrvHeap.get(), 1);
+        m_commandList->setDescriptorHeaps(m_srvHeap.get(), 1);
 
         // Bind root signature and pipeline state
         m_commandList->setGraphicsRootSignature(m_rootSignature.get());
@@ -761,15 +697,15 @@ void GltfDemo::Render()
         m_commandList->setIndexBuffer(m_indexBufferView);
 
         // TODO: Match each primitive to its corresponding texture/material for multiple meshes
-        for (size_t i = 0; i < m_textureSrvs.size(); i++)
+        for (size_t i = 0; i < m_meshes.size(); i++)
         {
             if (m_imguiLoader.wireframe)
             {
-                m_commandList->setGraphicsRootDescriptorTable(2, m_whiteTextureSrv.gpuHandle);
+                m_commandList->setGraphicsRootDescriptorTable(2, m_textures["dummy"]->GetResourceView().gpuHandle);
             }
             else
             {
-                m_commandList->setGraphicsRootDescriptorTable(2, m_textureSrvs[i].gpuHandle);
+                m_commandList->setGraphicsRootDescriptorTable(2, m_textures[m_meshes[i].texturePath]->GetResourceView().gpuHandle);
             }
             m_commandList->drawIndexedInstanced(m_meshes[i].indexCount, 1, m_meshes[i].indexBufferOffset, m_meshes[i].vertexBufferOffset, 0);
         }

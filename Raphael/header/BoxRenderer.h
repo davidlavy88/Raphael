@@ -2,10 +2,10 @@
 #include "Renderer.h"
 #include "UploadBuffer.h"
 #include "D3D12Util.h"
-#include "Camera.h"
+#include "Components/Camera.h"
 #include "Material.h"
 #include "Light.h"
-#include "Texture.h"
+#include "OldTexture.h"
 #include "PoissonDiskDistribution.h"
 #include "tinygltf/tiny_gltf.h"
 
@@ -56,7 +56,7 @@ private:
     std::unique_ptr<MeshGeometry> m_boxGeo = nullptr;
     std::unique_ptr<tinygltf::Model> m_gltfModel = nullptr;
     std::unordered_map<std::string, std::unique_ptr<Material>> m_boxMaterial;
-    std::unordered_map<std::string, std::unique_ptr<Texture>> m_boxTexture;
+    std::unordered_map<std::string, std::unique_ptr<OldTexture>> m_boxTexture;
     std::vector<std::unique_ptr<Light>> m_lights;
 
     int m_passCbvOffset = 0;

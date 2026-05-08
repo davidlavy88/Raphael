@@ -1,17 +1,17 @@
 #pragma once
 #include "IDemo.h"
-#include "DeviceDx12.h"
-#include "ResourceDx12.h"
-#include "CommandList.h"
-#include "ShaderDx12.h"
-#include "RootSignatureDx12.h"
-#include "DescriptorHeapDx12.h"
-#include "PipelineDx12.h"
-#include "SwapChainDx12.h"
-#include "FrameContext.h"
-#include "UploadBufferDx12.h"
+#include "DX12/DeviceDx12.h"
+#include "DX12/ResourceDx12.h"
+#include "DX12/CommandList.h"
+#include "DX12/ShaderDx12.h"
+#include "DX12/RootSignatureDx12.h"
+#include "DX12/DescriptorHeapDx12.h"
+#include "DX12/PipelineDx12.h"
+#include "DX12/SwapChainDx12.h"
+#include "DX12/FrameContext.h"
+#include "DX12/UploadBufferDx12.h"
 #include "GPUStructs.h"
-#include "Window.h"
+#include "Components/Window.h"
 
 using namespace raphael;
 

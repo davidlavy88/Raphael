@@ -6,11 +6,11 @@
 // - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
 // - Introduction, links and more at the top of imgui.cpp
 
-#define TEST_RENDERER_INTERFACE 0
+#define TEST_RENDERER_INTERFACE 1
 
 #include <tchar.h>
 #if TEST_RENDERER_INTERFACE
-#include "TestRenderer.h"
+#include "EngineTest/TestRenderer.h"
 #else
 #include "Application.h"
 #endif

@@ -316,7 +316,7 @@ void BoxRenderer::LoadTextures(D3D12Device& device)
 
         std::string textureName = image.uri;
 
-        std::unique_ptr<Texture> gltfTexture = std::make_unique<Texture>(textureName, imageUri);
+        std::unique_ptr<OldTexture> gltfTexture = std::make_unique<OldTexture>(textureName, imageUri);
 
         // WIC loader needs these additional outputs
         std::unique_ptr<uint8_t[]> decodedData;

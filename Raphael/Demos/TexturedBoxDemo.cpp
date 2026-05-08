@@ -43,7 +43,7 @@ bool TexturedBoxDemo::Initialize(WindowInfo windowInfo)
     CreateDescriptorHeaps();
 
     // -- 4. Initialize ImGui --
-    if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_textureSrvHeap.get(), g_frameCount))
+    if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
         return false;
 
     // -- 4. Create swap chain and depth buffer --
@@ -97,11 +97,14 @@ void TexturedBoxDemo::CreateDescriptorHeaps()
 
     DescriptorHeapDesc textureSrvHeapDesc = {};
     textureSrvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
-	textureSrvHeapDesc.numDescriptors = 2; // One SRV for the texture + one SRV for ImGui's font texture (allocated in ImGui initialization)
+    textureSrvHeapDesc.numDescriptors = 64;
     textureSrvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
 
-    m_textureSrvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
-    m_textureSrvHeap->createDescriptorHeap();
+    m_srvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
+    m_srvHeap->createDescriptorHeap();
+
+    m_textureData = std::make_unique<Texture>();
+    m_textureData->Initialize(m_srvHeap, m_device.get());
 }
 
 // 4. Create swap chain and depth buffer
@@ -415,21 +418,10 @@ void TexturedBoxDemo::CreatePipeline()
 // and records the necessary copy commands to upload the texture data to the GPU.
 void TexturedBoxDemo::CreateTexture()
 {   
-    ComPtr<ID3D12Resource> textureResource;
-    ComPtr<ID3D12Resource> uploadResource;
-
     // Reset the command list to record texture upload commands
     m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
 
-    if (FAILED(DirectX::CreateDDSTextureFromFile12(
-        m_device->getNativeDevice(),
-        m_commandList->getNativeCommandList(),
-        L"Textures/WoodCrate01.dds",
-        textureResource,
-        uploadResource)))
-    {
-        throw std::runtime_error("Failed to load texture " + std::string("Textures/WoodCrate01.dds"));
-    }
+    m_textureData->LoadTextureFromDDSFile("Textures/WoodCrate01.dds", m_device.get(), m_commandList.get());
 
     // Close and execute the command list to perform the texture upload
     m_commandList->end();
@@ -439,14 +431,6 @@ void TexturedBoxDemo::CreateTexture()
     UINT64 fenceValue = m_device->getNextFenceValue();
     m_device->signalFence(fenceValue);
     m_device->waitForFence(fenceValue);
-
-    // Wrap the native D3D12 resource in our ResourceDx12 class
-    m_texture = std::make_unique<ResourceDx12>(m_device.get(), textureResource);
-    m_textureUploadBuffer = std::make_unique<ResourceDx12>(m_device.get(), uploadResource);
-
-    DescriptorHandle srvHandle = {};
-    m_textureSrvHeap->AllocateHeap(&srvHandle);
-    m_textureSrv = m_texture->getResourceView(ResourceBindFlags::ShaderResource, srvHandle);
 }
 
 void TexturedBoxDemo::UpdateConstantBuffers()
@@ -523,7 +507,7 @@ void TexturedBoxDemo::Render()
 
     {
         // Set descriptor heaps (for the texture shader resource descriptor heaps)
-        m_commandList->setDescriptorHeaps(m_textureSrvHeap.get(), 1);
+        m_commandList->setDescriptorHeaps(m_srvHeap.get(), 1);
 
         // Bind root signature and pipeline state
         m_commandList->setGraphicsRootSignature(m_rootSignature.get());
@@ -539,7 +523,7 @@ void TexturedBoxDemo::Render()
             m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
         m_commandList->setGraphicsRootDescriptorTable(
             2, 
-            m_textureSrv.gpuHandle);
+            m_textureData->GetResourceView().gpuHandle);
 
         // Bind geometry
         m_commandList->setVertexBuffer(0, m_vertexBufferView);
