@@ -17,7 +17,7 @@ struct FrameContext
     // that reference it.  So each frame n eeds their own cbuffers.
     std::unique_ptr<UploadBuffer<PassConstants>> PassCB = nullptr;
     std::unique_ptr<UploadBuffer<ObjectConstants>> ObjectCB = nullptr;
-    std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
+    std::unique_ptr<UploadBuffer<OldMaterialConstants>> MaterialCB = nullptr;
 
     FrameContext(ID3D12Device* device)
     {
@@ -38,7 +38,7 @@ struct FrameContext
 
         PassCB = std::make_unique<UploadBuffer<PassConstants>>(device, passCount, true);
         ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(device, objectCount, true);
-        MaterialCB = std::make_unique<UploadBuffer<MaterialConstants>>(device, objectCount, true);
+        MaterialCB = std::make_unique<UploadBuffer<OldMaterialConstants>>(device, objectCount, true);
     }
 };
 

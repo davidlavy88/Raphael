@@ -60,7 +60,7 @@ struct PassConstants
     LightConstants Lights[MAX_LIGHTS];
 };
 
-struct MaterialConstants
+struct OldMaterialConstants
 {
     XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
     XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f};
@@ -94,6 +94,13 @@ namespace raphael
         XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
         float Pad0 = 0.0f; // Padding to ensure 16-byte alignment
     };
+
+    struct MaterialConstants
+    {
+        XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+		float Metallic = 0.0f;
+        float Roughness = 0.25f;
+	};
 
     struct LightParameters
     {

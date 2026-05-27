@@ -78,6 +78,7 @@
   <ItemGroup>
     <ClCompile Include="Demos\BoxDemo.cpp" />
     <ClCompile Include="Demos\GltfDemo.cpp" />
+    <ClCompile Include="Demos\MultiObjectDemo.cpp" />
     <ClCompile Include="DX12\DescriptorHeapDx12.cpp" />
     <ClCompile Include="DX12\CommandList.cpp" />
     <ClCompile Include="DX12\DeviceDx12.cpp" />
@@ -90,6 +91,7 @@
     <ClCompile Include="Demos\GBufferDemo.cpp" />
     <ClCompile Include="Demos\RayTracerDemo.cpp" />
     <ClCompile Include="EngineTest\TestRenderer.cpp" />
+    <ClCompile Include="Mesh\GltfLoader.cpp" />
     <ClCompile Include="ImGui\ImGuiLoader.cpp" />
     <ClCompile Include="Mesh\Mesh.cpp" />
     <ClCompile Include="Mesh\MeshGenerator.cpp" />
@@ -128,6 +130,7 @@
   <ItemGroup>
     <ClInclude Include="Demos\BoxDemo.h" />
     <ClInclude Include="Demos\GltfDemo.h" />
+    <ClInclude Include="Demos\MultiObjectDemo.h" />
     <ClInclude Include="DX12\DescriptorHeapDx12.h" />
     <ClInclude Include="DX12\CommandList.h" />
     <ClInclude Include="DX12\Constants.h" />
@@ -140,6 +143,7 @@
     <ClInclude Include="Components\Camera.h" />
     <ClInclude Include="Demos\GBufferDemo.h" />
     <ClInclude Include="EngineTest\TestRenderer.h" />
+    <ClInclude Include="Mesh\GltfLoader.h" />
     <ClInclude Include="header\Device.h" />
     <ClInclude Include="header\DescriptorHeapAllocator.h" />
     <ClInclude Include="header\GameTimer.h" />
@@ -170,6 +174,7 @@
     <ClInclude Include="Demos\RayTracerDemo.h" />
     <ClInclude Include="Demos\IDemo.h" />
     <ClInclude Include="ImGui\ImGuiLoader.h" />
+    <ClInclude Include="Mesh\Material.h" />
     <ClInclude Include="Mesh\Mesh.h" />
     <ClInclude Include="Mesh\MeshGenerator.h" />
     <ClInclude Include="Render\SceneRenderer.h" />

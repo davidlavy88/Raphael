@@ -54,6 +54,11 @@ namespace raphael
             return m_uploadBuffer->getNativeResource();
         }
 
+        UINT getElementByteSize() const
+        {
+            return m_byteSize;
+        }
+
         void CopyData(size_t elementIndex, const T& data)
         {
             memcpy(&m_mappedData[elementIndex * m_byteSize], &data, sizeof(T));

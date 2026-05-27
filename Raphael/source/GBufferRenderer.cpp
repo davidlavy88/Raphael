@@ -745,7 +745,7 @@ void GBufferRenderer::Update(float deltaTime)
 
     // Update material constants
     // TODO: Support multiple materials if we have multiple boxes with different materials in the future
-    MaterialConstants matConstants;
+    OldMaterialConstants matConstants;
     matConstants.DiffuseAlbedo = XMFLOAT4(Colors::White);
     matConstants.FresnelR0 = XMFLOAT3(0.2f, 0.2f, 0.2f);
     matConstants.Roughness = 0.9f;

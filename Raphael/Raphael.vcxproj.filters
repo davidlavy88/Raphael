@@ -103,8 +103,10 @@
     <ClCompile Include="Components\Window.cpp" />
     <ClCompile Include="EngineTest\TestRenderer.cpp" />
     <ClCompile Include="Mesh\Mesh.cpp" />
+    <ClCompile Include="Mesh\GltfLoader.cpp" />
     <ClCompile Include="Texture\Texture.cpp" />
     <ClCompile Include="Mesh\MeshGenerator.cpp" />
+    <ClCompile Include="Demos\MultiObjectDemo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Utilities\imgui\imconfig.h">
@@ -222,8 +224,11 @@
     <ClInclude Include="Demos\IDemo.h" />
     <ClInclude Include="Mesh\Vertex.h" />
     <ClInclude Include="Mesh\Mesh.h" />
+    <ClInclude Include="Mesh\GltfLoader.h" />
     <ClInclude Include="Texture\Texture.h" />
     <ClInclude Include="Mesh\MeshGenerator.h" />
+    <ClInclude Include="Mesh\Material.h" />
+    <ClInclude Include="Demos\MultiObjectDemo.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\imgui\misc\imgui.natstepfilter">

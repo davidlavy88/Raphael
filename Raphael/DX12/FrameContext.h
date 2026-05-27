@@ -10,8 +10,8 @@ namespace raphael
     {
         // We cannot update a cbuffer until the GPU is done processing the commands
         // that reference it.  So each frame needs their own cbuffers.
-        std::unique_ptr<UploadBuffer<PassConstants>> passCB;
-        std::unique_ptr<UploadBuffer<ObjectConstants>> objectCB;
+        std::unique_ptr<UploadBuffer<FrameConstants>> frameCB;
+        std::unique_ptr<UploadBuffer<BasicObjectConstants>> objectCB;
         std::unique_ptr<UploadBuffer<MaterialConstants>> materialCB;
     };
 
