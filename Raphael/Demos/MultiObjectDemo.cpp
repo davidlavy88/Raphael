@@ -46,6 +46,17 @@ bool MultiObjectDemo::Initialize(WindowInfo windowInfo)
     deviceDesc.enableDebugLayer = true;
     m_device = std::make_unique<DeviceDx12>(deviceDesc);
 
+    m_camera.Initialize(
+        XMVectorSet(0.0f, 0.5f, 5.0f, 1.0f),
+        XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f),
+        0.0f,
+        XM_PI,
+        0.05f
+    );
+
+    float aspect = static_cast<float>(windowInfo.width) / windowInfo.height;
+    m_camera.SetProjectionMatrix(0.25f * XM_PI, aspect, 1.0f, 1000.0f);
+
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
@@ -73,7 +84,7 @@ bool MultiObjectDemo::Initialize(WindowInfo windowInfo)
 
     // -- 10. Create texture resources --
     CreateTexture();
-	CreateDummyTexture();
+    CreateDummyTexture();
 
     return true;
 }
@@ -106,7 +117,7 @@ void MultiObjectDemo::CreateDescriptorHeaps()
     DescriptorHeapDesc textureSrvHeapDesc = {};
     textureSrvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
     // One SRV for each texture in the model + 1 for ImGui font texture + 1 for dummy white texture
-	textureSrvHeapDesc.numDescriptors = 64; 
+    textureSrvHeapDesc.numDescriptors = 64; 
     textureSrvHeapDesc.shaderVisible = true; // This heap needs to be shader visible since we'll bind the texture SRV to the pipeline
 
     m_srvHeap = m_device->createDescriptorHeap(textureSrvHeapDesc);
@@ -191,8 +202,8 @@ void MultiObjectDemo::SetupScene()
 
     Material portalGunMaterial = { .name = "portalGunMaterial0",
         .albedoTexturePath = "Models/portal_gun/textures/PORTAL_GUN_baseColor.png",
-		.roughnessFactor = 1.0f };
-	m_materialRepo.AddMaterial("portalGunMaterial", portalGunMaterial);
+        .roughnessFactor = 1.0f };
+    m_materialRepo.AddMaterial("portalGunMaterial", portalGunMaterial);
 
     Material shinyMetal = { .name = "shinyMetal",
         .baseColorFactor = { 0.8f, 0.8f, 0.85f, 1.0f },
@@ -204,6 +215,12 @@ void MultiObjectDemo::SetupScene()
         .baseColorFactor = { 0.9f, 0.1f, 0.1f, 1.0f },
         .roughnessFactor = 0.6f };
     m_materialRepo.AddMaterial("redPlastic", redPlastic);
+
+    Material stoneFloor = { .name = "stoneFloor",
+        .albedoTexturePath = "Textures/stone.dds",
+        .roughnessFactor = 1.0f,
+        .uvTiling = { 8.0f, 8.0f } };
+    m_materialRepo.AddMaterial("stoneFloor", stoneFloor);
 
     // --- Meshes ---
     // glTF model: loaded via GltfLoader, produces submeshes automatically
@@ -224,6 +241,11 @@ void MultiObjectDemo::SetupScene()
     m_meshes["cube"].GenerateIndices16();
     m_meshes["cube"].m_drawMeshes["whole"] = {
         .indexCount = static_cast<uint32_t>(m_meshes["cube"].GetIndices16().size())};
+
+    m_meshes["floor"] = MeshGenerator::CreateGrid(20.0f, 20.0f, 8, 8);
+    m_meshes["floor"].GenerateIndices16();
+    m_meshes["floor"].m_drawMeshes["whole"] = {
+        .indexCount = static_cast<uint32_t>(m_meshes["floor"].GetIndices16().size()) };
 
     // --- Render items (what to draw, with what material, where) ---
     XMFLOAT4X4 identity;
@@ -259,6 +281,11 @@ void MultiObjectDemo::SetupScene()
     XMFLOAT4X4 cubeWorld;
     XMStoreFloat4x4(&cubeWorld, XMMatrixTranslation(-1.2f, 0.5f, 0.0f));
     m_renderItems.push_back({ "cube", "whole", "redPlastic", cubeWorld });
+
+    // Floor
+    XMFLOAT4X4 floorWorld;
+    XMStoreFloat4x4(&floorWorld, XMMatrixTranslation(0.0f, -0.01f, 0.0f));
+    m_renderItems.push_back({ "floor", "whole", "stoneFloor", floorWorld });
 
     // Step 8: Create MeshGeometry object and upload vertex/index data to GPU
     // Combine all mesh vertices and indices into single buffers
@@ -486,7 +513,13 @@ void MultiObjectDemo::CreateTexture()
 
         auto texture = std::make_unique<Texture>();
         texture->Initialize(m_srvHeap, m_device.get());
-        texture->LoadTextureFromWICFile(texturePath, m_device.get(), m_commandList.get());
+        // Check if texture is a DDS file or a WIC-supported format based on file extension
+        if (texturePath.substr(texturePath.find_last_of('.')) == ".dds")
+            texture->LoadTextureFromDDSFile(texturePath, m_device.get(), m_commandList.get());
+        else if (texturePath.substr(texturePath.find_last_of('.')) == ".png" || texturePath.substr(texturePath.find_last_of('.')) == ".jpg")
+            texture->LoadTextureFromWICFile(texturePath, m_device.get(), m_commandList.get());
+        else
+            throw std::runtime_error("Unsupported texture format: " + texturePath);
         m_textures[texturePath] = std::move(texture);
     }
 
@@ -504,10 +537,10 @@ void MultiObjectDemo::CreateDummyTexture()
 {
     m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
 
-	auto dummyTexture = std::make_unique<Texture>();
-	dummyTexture->Initialize(m_srvHeap, m_device.get());
-	// Create a simple 1x1 white texture for wireframe mode
-	dummyTexture->CreateDummyTexture(m_device.get(), m_commandList.get());
+    auto dummyTexture = std::make_unique<Texture>();
+    dummyTexture->Initialize(m_srvHeap, m_device.get());
+    // Create a simple 1x1 white texture for wireframe mode
+    dummyTexture->CreateDummyTexture(m_device.get(), m_commandList.get());
 
     m_textures["dummy"] = std::move(dummyTexture);
 
@@ -526,6 +559,9 @@ void MultiObjectDemo::UpdateConstantBuffers()
 
     // Object constant (b0) - World matrix
     XMMATRIX rotation = XMMatrixRotationY(m_rotationAngle);
+
+    // Update pass constants
+    m_camera.UpdateViewMatrix();
 
     UINT backBufferIndex = m_swapChain->getCurrentBackBufferIndex();
 
@@ -549,23 +585,15 @@ void MultiObjectDemo::UpdateConstantBuffers()
             matConstants.DiffuseAlbedo = material->baseColorFactor;
             matConstants.Metallic = material->metallicFactor;
             matConstants.Roughness = material->roughnessFactor;
+            matConstants.UVTiling = material->uvTiling;
         }
         m_frameContexts[backBufferIndex].resources->materialCB->CopyData(static_cast<int>(i), matConstants);
     }
 
-    // Frame constant (b1) - ViewProj matrix + eye position
-    XMVECTOR eyePos = XMVectorSet(0.0f, 0.7f, 7.0f, 1.0f);
-    XMVECTOR lookAt = XMVectorSet(0.0f, 0.7f, 0.0f, 1.0f);
-    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    XMMATRIX view = XMMatrixLookAtLH(eyePos, lookAt, up);
-
-    float aspectRatio = static_cast<float>(WINDOW_WIDTH) / static_cast<float>(WINDOW_HEIGHT);
-    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.1f, 100.0f);
-    XMMATRIX viewProj = view * proj;
 
     // Frame: identity viewproj (renders in NDC space directly)
     FrameConstants frameConstants = {};
-    XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
+    XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(m_camera.GetViewProjectionMatrix()));
 
     // Copy data to the current back buffer's constant buffers
     m_frameContexts[backBufferIndex].resources->frameCB->CopyData(0, frameConstants);
@@ -753,6 +781,55 @@ void MultiObjectDemo::Resize(unsigned int width, unsigned int height)
 
 void MultiObjectDemo::ProcessInput()
 {
+    // Gate input processing on whether my window is the foreground window.
+    HWND foreground = ::GetForegroundWindow();
+    bool windowFocused = (foreground == m_windowHandle);
+
+    if (windowFocused && !m_imguiLoader.WantsCaptureKeyboard())
+    {
+        // Process camera movement input only if ImGui is not capturing the input
+        if (GetAsyncKeyState('W') & 0x8000)
+            m_camera.MoveForward();
+        if (GetAsyncKeyState('S') & 0x8000)
+            m_camera.MoveBackward();
+        if (GetAsyncKeyState('A') & 0x8000)
+            m_camera.MoveLeft();
+        if (GetAsyncKeyState('D') & 0x8000)
+            m_camera.MoveRight();
+        if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+            m_camera.MoveUpDown(1.0f);
+        if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+            m_camera.MoveUpDown(-1.0f);
+        if (GetAsyncKeyState('R') & 0x8000)
+            m_camera.Reset();
+    }
+
+    if (windowFocused && !m_imguiLoader.WantsCaptureMouse())
+    {
+        // Process camera rotation input only if ImGui is not capturing the input
+        static POINT lastMousePos = {};
+        POINT currentMousePos;
+        GetCursorPos(&currentMousePos);
+        if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
+        {
+            if (currentMousePos.x != lastMousePos.x || currentMousePos.y != lastMousePos.y)
+            {
+                m_camera.SetYaw(m_camera.GetYaw() + (currentMousePos.x - lastMousePos.x) * 0.005f);
+                m_camera.SetPitch(m_camera.GetPitch() + (currentMousePos.y - lastMousePos.y) * 0.005f);
+            }
+        }
+        else if (GetAsyncKeyState(VK_RBUTTON) & 0x8000)
+        {
+            if (currentMousePos.y != lastMousePos.y)
+            {
+                m_camera.MoveUpDown(static_cast<float>(currentMousePos.y - lastMousePos.y));
+            }
+        }
+        lastMousePos = currentMousePos;
+    }
+
+    m_camera.UpdateLook();
+
     RasterizerFillMode newFillMode = m_imguiLoader.wireframe
         ? RasterizerFillMode::Wireframe
         : RasterizerFillMode::Solid;

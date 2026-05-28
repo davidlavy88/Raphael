@@ -16,6 +16,7 @@
 #include "Texture/Texture.h"
 #include "Mesh/Mesh.h"
 #include "Mesh/Material.h"
+#include "Components/Camera.h"
 
 #include "tinygltf/tiny_gltf.h"
 
@@ -45,7 +46,7 @@ private:
     void CreateSwapChainAndDepthBuffer(WindowInfo windowInfo);
     void SetupScene();
     void CreateTexture();
-	void CreateDummyTexture();
+    void CreateDummyTexture();
     void CreateConstantBuffers();
     void CreateRootSignature();
     void CreatePipeline();
@@ -64,7 +65,7 @@ private:
     std::unique_ptr<CommandList> m_commandList;
     std::unique_ptr<DescriptorHeapDx12> m_dsvHeap;
     std::unique_ptr<DescriptorHeapDx12> m_rtvHeap;
-	std::shared_ptr<DescriptorHeapDx12> m_srvHeap;
+    std::shared_ptr<DescriptorHeapDx12> m_srvHeap;
     std::unique_ptr<ResourceDx12> m_depthBuffer;
 
     // Geometry resources
@@ -93,13 +94,16 @@ private:
     // GLTF model data
     MaterialRepository m_materialRepo;
     std::unordered_map<std::string, Mesh> m_meshes;
-	std::vector<RenderItem> m_renderItems;
+    std::vector<RenderItem> m_renderItems;
 
     // Camera and transform state
     float m_rotationAngle = 0.0f;
 
     // ImGui support
     MultiObjectImGui m_imguiLoader;
+
+    // Camera
+    Camera m_camera;
 
     // Window handle
     HWND m_windowHandle = nullptr;

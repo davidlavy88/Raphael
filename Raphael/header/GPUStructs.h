@@ -100,6 +100,7 @@ namespace raphael
         XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
 		float Metallic = 0.0f;
         float Roughness = 0.25f;
+		XMFLOAT2 UVTiling = { 1.0f, 1.0f };
 	};
 
     struct LightParameters

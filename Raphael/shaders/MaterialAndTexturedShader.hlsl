@@ -18,6 +18,7 @@ cbuffer cbMaterial : register(b2)
     float4 gDiffuseAlbedo;
 	float gMetallic;
 	float gRoughness;
+	float2 uvTile; // For scaling texture coordinates
 };
 
 struct VertexIn
@@ -56,7 +57,8 @@ VertexOut VS(VertexIn vin)
 float4 PS(VertexOut pin) : SV_Target
 {
     // Sample the diffuse texture and modulate by material albedo.
-    float4 texColor = gDiffuseMap.Sample(gSampler, pin.TexC);
+	float2 tiledTexC = pin.TexC * uvTile; // Apply tiling to texture coordinates
+    float4 texColor = gDiffuseMap.Sample(gSampler, tiledTexC);
     float4 diffuseAlbedo = texColor * gDiffuseAlbedo;
 
     // Normalize interpolated normal.
