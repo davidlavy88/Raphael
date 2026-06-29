@@ -1,5 +1,5 @@
 #include "TestRenderer.h"
-#include "Demos/GBufferDemo.h"
+#include "Demos/DemoFactory.h"
 #include "imgui/backends/imgui_impl_win32.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -39,7 +39,7 @@ LRESULT TestRenderer::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 
 bool TestRenderer::Initialize()
 {
-    m_demo = new GBufferDemo();
+    m_demo = CreateDemo(DemoType::GBuffer);
     m_window.setMessageCallback([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         return HandleMessage(hwnd, msg, wParam, lParam);
     });
@@ -47,8 +47,7 @@ bool TestRenderer::Initialize()
 	m_window.createWindow();
     if (!m_demo->Initialize(m_window.getWindowInfo()))
     {
-        delete m_demo;
-        m_demo = nullptr;
+        m_demo.reset();
         return false;
     }
 
@@ -66,7 +65,6 @@ void TestRenderer::Shutdown()
     if (m_demo)
     {
         m_demo->Shutdown();
-        delete m_demo;
-        m_demo = nullptr;
+        m_demo.reset();
     }
 }

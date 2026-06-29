@@ -22,8 +22,6 @@
 
 using namespace raphael;
 
-static constexpr uint32_t g_frameCount = 2;
-
 class MultiObjectImGui : public ImGuiLoader
 {
 public:

@@ -1,6 +1,8 @@
 #pragma once
 #include "Demos/IDemo.h"
+#include "Demos/DemoFactory.h"
 #include "Components/Window.h"
+#include <memory>
 
 using namespace raphael;
 
@@ -15,8 +17,7 @@ private:
 	LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 private:
-	// TODO: Change this to a smart pointer and have a factory method to create different demos
-	IDemo* m_demo = nullptr;
+	std::unique_ptr<IDemo> m_demo;
 	Window m_window;
 	bool m_initialized = false;
 };

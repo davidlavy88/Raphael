@@ -91,6 +91,7 @@
     <ClCompile Include="DX12\SwapChainDx12.cpp" />
     <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
     <ClCompile Include="Demos\BoxDemo.cpp" />
+    <ClCompile Include="Demos\DemoFactory.cpp" />
     <ClCompile Include="Demos\QuadDemo.cpp" />
     <ClCompile Include="Demos\TexturedBoxDemo.cpp" />
     <ClCompile Include="Demos\GltfDemo.cpp" />
@@ -209,6 +210,7 @@
     <ClInclude Include="DX12\UtilDx12.h" />
     <ClInclude Include="DX12\RootSignatureTableDx12.h" />
     <ClInclude Include="Demos\BoxDemo.h" />
+    <ClInclude Include="Demos\DemoFactory.h" />
     <ClInclude Include="DX12\UploadBufferDx12.h" />
     <ClInclude Include="Demos\QuadDemo.h" />
     <ClInclude Include="Demos\TexturedBoxDemo.h" />

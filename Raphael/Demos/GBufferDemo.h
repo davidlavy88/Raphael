@@ -18,7 +18,6 @@
 
 using namespace raphael;
 
-static constexpr uint32_t g_frameCount = 2;
 static constexpr int g_numRenderTargets = 3;
 
 class GBufferImGui : public ImGuiLoader
