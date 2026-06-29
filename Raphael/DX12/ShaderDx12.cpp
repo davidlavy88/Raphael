@@ -73,8 +73,11 @@ namespace raphael
         if (FAILED(D3DCompileFromFile(filename.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
             entrypoint.c_str(), target.c_str(), compileFlags, 0, &byteCode, &errors)))
         {
-            OutputDebugStringA((char*)errors->GetBufferPointer());
-            throw std::runtime_error("Failed to compile shader");
+            if (errors != nullptr)
+                OutputDebugStringA((char*)errors->GetBufferPointer());
+            else
+                OutputDebugStringA("Shader compilation failed with no error blob (check file path / includes).\n");
+            throw std::runtime_error("Failed to compile shader (entry '" + entrypoint + "')");
         }
 
         if (errors != nullptr)

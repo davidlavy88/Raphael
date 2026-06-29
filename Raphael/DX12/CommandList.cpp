@@ -119,7 +119,7 @@ namespace raphael
 
     void CommandList::setGraphicsRootSignature(RootSignatureDx12* rootSignature)
     {
-        m_commandList->SetGraphicsRootSignature(rootSignature->getNativeDevice());
+        m_commandList->SetGraphicsRootSignature(rootSignature->getNativeRootSignature());
     }
 
     void CommandList::setGraphicsRootDescriptorTable(UINT rootParameterIndex, const RootSignatureTableDx12* rootSignatureTable)

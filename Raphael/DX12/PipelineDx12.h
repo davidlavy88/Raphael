@@ -18,7 +18,7 @@ namespace raphael
 
         // DX12 specific methods
         ID3D12PipelineState* getNativePipelineState() const { return m_pipelineState.Get(); }
-        ID3D12RootSignature* getRootSignature() const { return m_rootSignature->getNativeDevice(); }
+        ID3D12RootSignature* getRootSignature() const { return m_rootSignature->getNativeRootSignature(); }
 
         void createPipelineState(ShaderDx12* shader, RootSignatureDx12* rootSignature);
 

@@ -12,7 +12,7 @@ namespace raphael
         ~RootSignatureDx12() = default;
                    
 
-        ID3D12RootSignature* getNativeDevice() const { return m_rootSignature.Get(); }
+        ID3D12RootSignature* getNativeRootSignature() const { return m_rootSignature.Get(); }
 
         void createRootSignature();
 

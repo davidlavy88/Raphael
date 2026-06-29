@@ -17,7 +17,7 @@ namespace raphael
     {
         D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
         psoDesc.InputLayout = { m_inputLayout.data(), (UINT)m_inputLayout.size() };
-        psoDesc.pRootSignature = rootSignature->getNativeDevice();
+        psoDesc.pRootSignature = rootSignature->getNativeRootSignature();
         psoDesc.VS = shader->getVertexShaderBytecode();
         psoDesc.PS = shader->getPixelShaderBytecode();
         CD3DX12_RASTERIZER_DESC rsDesc(D3D12_DEFAULT);

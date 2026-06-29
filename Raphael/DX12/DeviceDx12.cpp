@@ -26,12 +26,11 @@ namespace raphael
     {
         if (m_desc.enableDebugLayer)
         {
-            ID3D12Debug* debug = nullptr;
+            ComPtr<ID3D12Debug> debug;
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))))
             {
                 debug->EnableDebugLayer();
             }
-            debug->Release();
         }
 
         // Create device
