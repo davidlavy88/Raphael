@@ -37,6 +37,16 @@ namespace raphael
                     rootParam.InitAsConstantBufferView(rangeDesc.shaderRegister, rangeDesc.registerSpace, D3D12_SHADER_VISIBILITY_ALL);
                     rootParameters.push_back(rootParam);
                 }
+                // For a single SRV, use an inline root SRV descriptor ONLY when explicitly
+                // requested via useRootDescriptor. Inline root SRV descriptors are valid for
+                // Raw/Structured buffers only (never textures), so texture SRVs leave the flag
+                // false and fall through to the descriptor table path below.
+                else if (rangeDesc.type == RootSignatureRangeDesc::RangeType::ShaderResourceView && rangeDesc.numParameters == 1 && rangeDesc.useRootDescriptor)
+                {
+                    CD3DX12_ROOT_PARAMETER rootParam = {};
+                    rootParam.InitAsShaderResourceView(rangeDesc.shaderRegister, rangeDesc.registerSpace, D3D12_SHADER_VISIBILITY_ALL);
+                    rootParameters.push_back(rootParam);
+                }
                 else
                 {
                     // Use a descriptor table for multi-descriptor ranges or SRV/UAV/Sampler

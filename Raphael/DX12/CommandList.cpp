@@ -137,6 +137,11 @@ namespace raphael
         m_commandList->SetGraphicsRootConstantBufferView(rootParameterIndex, gpuAddress);
     }
 
+    void CommandList::setShaderResourceView(UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS gpuAddress)
+    {
+        m_commandList->SetGraphicsRootShaderResourceView(rootParameterIndex, gpuAddress);
+    }
+
     void CommandList::setViewports(const D3D12_VIEWPORT* viewports, uint32_t numViewports)
     {
         m_commandList->RSSetViewports(numViewports, viewports);

@@ -12,6 +12,8 @@
 #include "DX12/UploadBufferDx12.h"
 #include "GPUStructs.h"
 #include "Components/Window.h"
+#include "Mesh/GltfLoader.h"
+#include "Mesh/Mesh.h"
 
 using namespace raphael;
 
@@ -34,6 +36,7 @@ private:
     void CreateRootSignature();
     void CreatePipeline();
     void CreateCommandObjects();
+    void LoadModelAndCreateTriangleBuffer();
 
     // ---- Per-frame helpers ----
     void UpdateConstantBuffers();
@@ -51,6 +54,10 @@ private:
     ResourceView m_vertexBufferView = {};
     ResourceView m_indexBufferView = {};
     UINT m_indexCount = 0;
+
+    // Triangle structured buffer for ray tracing (uploaded from glTF model)
+    std::unique_ptr<ResourceDx12> m_triangleBuffer;
+    UINT m_triangleCount = 0;
 
     // Constant buffers (one per frame for double buffering)
     std::array<std::unique_ptr<UploadBuffer<RayTracingSceneConstants>>, g_frameCount> m_sceneCBs;

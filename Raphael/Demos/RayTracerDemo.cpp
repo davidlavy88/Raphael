@@ -39,6 +39,9 @@ bool RayTracerDemo::Initialize(WindowInfo windowInfo)
     // -- 5. Create geometry resources --
     CreateGeometry();
 
+    // -- 5b. Load glTF model and create triangle structured buffer --
+    LoadModelAndCreateTriangleBuffer();
+
     // -- 6. Create constant buffers --
     CreateConstantBuffers();
 
@@ -151,6 +154,84 @@ void RayTracerDemo::CreateGeometry()
         ResourceBindFlags::IndexBuffer, {}, sizeof(uint16_t));
 }
 
+void RayTracerDemo::LoadModelAndCreateTriangleBuffer()
+{
+    // Load the glTF model using the existing loader
+    GltfLoader loader;
+    Mesh mesh;
+    if (!loader.LoadFromFile("Models/portal_gun/scene.gltf", mesh))
+    {
+        throw std::runtime_error("Failed to load glTF model for ray tracing");
+    }
+
+    // Extract triangles from the mesh's vertex and index buffers.
+    // Important: glTF primitive indices are local to each primitive.
+    // We must apply each submesh's vertex/index offsets when building triangles.
+    const auto& vertices = mesh.m_vertices;
+    const auto& indices = mesh.m_indices16;
+
+    std::vector<GPUTriangle> triangles;
+    triangles.reserve(indices.size() / 3);
+
+    for (const auto& [submeshName, submesh] : mesh.m_drawMeshes)
+    {
+        const size_t indexStart = static_cast<size_t>(submesh.indexBufferOffset);
+        const size_t indexEnd = indexStart + static_cast<size_t>(submesh.indexCount);
+        const uint32_t baseVertex = submesh.vertexBufferOffset;
+
+        for (size_t i = indexStart; i + 2 < indexEnd; i += 3)
+        {
+            const uint32_t i0 = baseVertex + static_cast<uint32_t>(indices[i + 0]);
+            const uint32_t i1 = baseVertex + static_cast<uint32_t>(indices[i + 1]);
+            const uint32_t i2 = baseVertex + static_cast<uint32_t>(indices[i + 2]);
+
+            if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size())
+            {
+                continue;
+            }
+
+            GPUTriangle tri;
+            tri.v0 = vertices[i0].Position;
+            tri.v1 = vertices[i1].Position;
+            tri.v2 = vertices[i2].Position;
+
+            // Compute face normal: cross(v1-v0, v2-v0), normalized
+            XMVECTOR e0 = XMVectorSubtract(XMLoadFloat3(&tri.v1), XMLoadFloat3(&tri.v0));
+            XMVECTOR e1 = XMVectorSubtract(XMLoadFloat3(&tri.v2), XMLoadFloat3(&tri.v0));
+            XMVECTOR normal = XMVector3Normalize(XMVector3Cross(e0, e1));
+            XMStoreFloat3(&tri.normal, normal);
+
+            triangles.push_back(tri);
+        }
+    }
+
+    m_triangleCount = static_cast<UINT>(triangles.size());
+
+    OutputDebugStringA(("Loaded " + std::to_string(m_triangleCount) + " triangles for ray tracing\n").c_str());
+
+    // Create GPU buffer (Upload heap so the shader can read it directly via root SRV)
+    const UINT bufferSize = static_cast<UINT>(triangles.size() * sizeof(GPUTriangle));
+
+    ResourceDesc triBufferDesc = {};
+    triBufferDesc.type = ResourceDesc::ResourceType::Buffer;
+    triBufferDesc.usage = ResourceDesc::Usage::Upload;
+    triBufferDesc.width = bufferSize;
+
+    m_triangleBuffer = m_device->createResource(triBufferDesc);
+
+    // Copy triangle data to the GPU buffer
+    void* mappedData = nullptr;
+    if (m_triangleBuffer->map(&mappedData))
+    {
+        memcpy(mappedData, triangles.data(), bufferSize);
+        m_triangleBuffer->unmap();
+    }
+    else
+    {
+        throw std::runtime_error("Failed to map triangle buffer");
+    }
+}
+
 void RayTracerDemo::CreateConstantBuffers()
 {
     for (UINT i = 0; i < g_frameCount; i++)
@@ -162,19 +243,26 @@ void RayTracerDemo::CreateConstantBuffers()
 void RayTracerDemo::CreateRootSignature()
 {
     // Create root signature
+    // Root parameter 0: CBV at b0 (scene constants - inline root descriptor)
+    // Root parameter 1: SRV at t0 (triangle structured buffer - inline root descriptor)
 
-    // For this simple test, we have a frame constant buffer (per-frame data like view/projection matrices) 
     RootSignatureRangeDesc frameCbv = {};
     frameCbv.type = RootSignatureRangeDesc::RangeType::ConstantBufferView;
     frameCbv.numParameters = 1;
     frameCbv.shaderRegister = 0;
 
-    RootSignatureTableLayoutDesc cbvTable = {};
-    cbvTable.visibility = RootSignatureTableLayoutDesc::ShaderVisibility::All;
-    cbvTable.rangeDescs = { frameCbv };
+    RootSignatureRangeDesc triangleSrv = {};
+    triangleSrv.type = RootSignatureRangeDesc::RangeType::ShaderResourceView;
+    triangleSrv.numParameters = 1;
+    triangleSrv.shaderRegister = 0;
+    triangleSrv.useRootDescriptor = true; // Structured buffer -> bind as inline root SRV (t0)
+
+    RootSignatureTableLayoutDesc table = {};
+    table.visibility = RootSignatureTableLayoutDesc::ShaderVisibility::All;
+    table.rangeDescs = { frameCbv, triangleSrv };
 
     RootSignatureDesc rootSigDesc = {};
-    rootSigDesc.tableLayoutDescs = { cbvTable };
+    rootSigDesc.tableLayoutDescs = { table };
 
     m_rootSignature = m_device->createRootSignature(rootSigDesc);
     m_rootSignature->createRootSignature();
@@ -226,7 +314,7 @@ void RayTracerDemo::UpdateConstantBuffers()
     RayTracingSceneConstants sceneConstants;
 
     // Frame constant (b1) - ViewProj matrix + eye position
-    XMVECTOR eyePos = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
+    XMVECTOR eyePos = XMVectorSet(0.0f, 0.0f, -15.0f, 1.0f);
     XMVECTOR lookAt = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMMATRIX view = XMMatrixLookAtLH(eyePos, lookAt, up);
@@ -258,6 +346,7 @@ void RayTracerDemo::UpdateConstantBuffers()
     XMStoreFloat4(&sceneConstants.CubeMin, transformedCubeMin);
     XMStoreFloat4(&sceneConstants.CubeMax, transformedCubeMax);
     sceneConstants.CubeColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);       // Blue cube
+    sceneConstants.NumTriangles = m_triangleCount;
 
     XMStoreFloat4x4(&sceneConstants.InvViewProj, XMMatrixTranspose(viewProjInverse));
 
@@ -314,6 +403,11 @@ void RayTracerDemo::Render()
         m_commandList->setConstantBufferView(
             0,
             m_sceneCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+
+        // Bind triangle structured buffer as SRV (root parameter 1)
+        m_commandList->setShaderResourceView(
+            1,
+            m_triangleBuffer->getNativeResource()->GetGPUVirtualAddress());
 
         // Bind geometry
         m_commandList->setVertexBuffer(0, m_vertexBufferView);

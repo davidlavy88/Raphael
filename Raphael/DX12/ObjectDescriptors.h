@@ -184,6 +184,11 @@ namespace raphael
         size_t numParameters = 0; // Number of descriptors in the range 
         UINT shaderRegister = 0;
         UINT registerSpace = 0;
+        // Bind a single SRV/UAV as an inline root descriptor instead of a descriptor table.
+        // D3D12 only permits inline root SRV/UAV descriptors for Raw or Structured BUFFERS,
+        // never for textures. Leave this false for texture SRVs so they go through a
+        // descriptor table (the default), and set it true only for raw/structured buffers.
+        bool useRootDescriptor = false;
     };
 
     struct RootSignatureTableLayoutDesc {

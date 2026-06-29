@@ -17,12 +17,22 @@ cbuffer SceneCB : register(b0)
     float4 cubeMin; // min corner of cube
     float4 cubeMax; // max corner of cube
     float4 cubeColor; // rgb: color, a: unused
-    
+    uint numTriangles; // number of triangles in the structured buffer
+    uint pad0;
+    uint pad1;
+    uint pad2;
 };
 
-// I will use these later for adding textures
-//Texture2D tex00 : register(t0);
-//SamplerState sam00 : register(s0);
+// Triangle structured buffer for mesh ray tracing
+struct GPUTriangle
+{
+    float3 v0;
+    float3 v1;
+    float3 v2;
+    float3 normal;
+};
+
+StructuredBuffer<GPUTriangle> triangleBuffer : register(t0);
 
 // -----------------------------------------------------------
 // Vertex shader input/output
@@ -189,6 +199,59 @@ bool IntersectCube(float3 rayOrigin, float3 rayDir, float maxT, out float t, out
     return true;
 }
 
+// Möller-Trumbore ray-triangle intersection algorithm.
+// This is the standard method used in most ray tracers. It works by:
+// 1. Computing the determinant (tests if ray is parallel to triangle)
+// 2. Computing barycentric coordinate u (tests if hit is outside edge 0)
+// 3. Computing barycentric coordinate v (tests if hit is outside edge 1 or 2)
+// 4. Computing t (distance along ray to intersection point)
+// Each step can reject early, making this efficient for misses.
+bool IntersectTriangle(float3 rayOrigin, float3 rayDir, float3 v0, float3 v1, float3 v2, float maxT, out float t)
+{
+    t = 0.0f;
+    
+    float3 edge1 = v1 - v0;
+    float3 edge2 = v2 - v0;
+    
+    // Begin calculating determinant - also used to calculate u parameter
+    float3 pvec = cross(rayDir, edge2);
+    float det = dot(edge1, pvec);
+    
+    // If determinant is near zero, ray lies in plane of triangle (parallel)
+    // Using absolute value allows hitting both front and back faces
+    if (abs(det) < 1e-8f)
+        return false;
+    
+    float invDet = 1.0f / det;
+    
+    // Calculate distance from v0 to ray origin
+    float3 tvec = rayOrigin - v0;
+    
+    // Calculate u parameter and test bounds
+    float u = dot(tvec, pvec) * invDet;
+    if (u < 0.0f || u > 1.0f)
+        return false;
+    
+    // Prepare to test v parameter
+    float3 qvec = cross(tvec, edge1);
+    
+    // Calculate v parameter and test bounds
+    float v = dot(rayDir, qvec) * invDet;
+    if (v < 0.0f || u + v > 1.0f)
+        return false;
+    
+    // Calculate t - this is where the ray hits the triangle
+    float tHit = dot(edge2, qvec) * invDet;
+    
+    if (tHit > 0.0f && tHit < maxT)
+    {
+        t = tHit;
+        return true;
+    }
+    
+    return false;
+}
+
 // Calculate sphere normal
 float3 SphereNormal(float3 p, float4 sphere)
 {
@@ -240,6 +303,17 @@ bool IsInShadow(float3 p, float3 lightDir, float lightDistance)
     {
         return true; // In shadow
     }
+    
+    // Check shadow from mesh triangles
+    for (uint i = 0; i < numTriangles; i++)
+    {
+        GPUTriangle tri = triangleBuffer[i];
+        if (IntersectTriangle(rayOrigin, lightDir, tri.v0, tri.v1, tri.v2, lightDistance, t))
+        {
+            return true;
+        }
+    }
+    
     return false; // Not in shadow
 }
 
@@ -371,6 +445,25 @@ float4 PS(VSOut IN) : SV_TARGET
             hitPoint = rayOrigin + rayDir * tPlane;
             hitNormal = PlaneNormal(planeData);
             hitColor = planeColor;
+        }
+    }
+    
+    // Brute-force loop over all triangles in the structured buffer.
+    // This tests every triangle for every pixel — O(pixels * triangles).
+    // This is the baseline we will replace with BVH traversal later.
+    {
+        for (uint i = 0; i < numTriangles; i++)
+        {
+            GPUTriangle tri = triangleBuffer[i];
+            float tTri;
+            if (IntersectTriangle(rayOrigin, rayDir, tri.v0, tri.v1, tri.v2, tMin, tTri))
+            {
+                hitSomething = true;
+                tMin = tTri;
+                hitPoint = rayOrigin + rayDir * tTri;
+                hitNormal = tri.normal;
+                hitColor = float4(0.8f, 0.8f, 0.8f, 1.0f); // Gray for mesh triangles
+            }
         }
     }
     

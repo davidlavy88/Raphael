@@ -118,6 +118,17 @@ namespace raphael
         LightParameters Lights[MAX_LIGHTS];
     };
 
+    // Triangle representation for GPU ray tracing structured buffer.
+    // 4 x float3 = 48 bytes, tightly packed (no 16-byte alignment in StructuredBuffer).
+    // Must match the HLSL struct exactly.
+    struct GPUTriangle
+    {
+        XMFLOAT3 v0;
+        XMFLOAT3 v1;
+        XMFLOAT3 v2;
+        XMFLOAT3 normal;
+    };
+
     struct RayTracingSceneConstants
     {
         XMFLOAT4X4 InvViewProj;
@@ -130,5 +141,9 @@ namespace raphael
         XMFLOAT4 CubeMin; // x, y, z: min corner
         XMFLOAT4 CubeMax; // x, y, z: max corner
         XMFLOAT4 CubeColor;
+        UINT NumTriangles;  // Number of triangles in the structured buffer
+        UINT Pad0;
+        UINT Pad1;
+        UINT Pad2;
     };
 }
