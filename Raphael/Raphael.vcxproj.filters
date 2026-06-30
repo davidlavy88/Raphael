@@ -92,6 +92,7 @@
     <ClCompile Include="DX12\RootSignatureTableDx12.cpp" />
     <ClCompile Include="Demos\BoxDemo.cpp" />
     <ClCompile Include="Demos\DemoFactory.cpp" />
+    <ClCompile Include="Demos\IDemo.cpp" />
     <ClCompile Include="Demos\QuadDemo.cpp" />
     <ClCompile Include="Demos\TexturedBoxDemo.cpp" />
     <ClCompile Include="Demos\GltfDemo.cpp" />

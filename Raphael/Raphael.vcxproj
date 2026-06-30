@@ -78,6 +78,7 @@
   <ItemGroup>
     <ClCompile Include="Demos\BoxDemo.cpp" />
     <ClCompile Include="Demos\DemoFactory.cpp" />
+    <ClCompile Include="Demos\IDemo.cpp" />
     <ClCompile Include="Demos\GltfDemo.cpp" />
     <ClCompile Include="Demos\MultiObjectDemo.cpp" />
     <ClCompile Include="DX12\DescriptorHeapDx12.cpp" />

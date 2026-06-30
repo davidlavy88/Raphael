@@ -40,6 +40,7 @@ LRESULT TestRenderer::HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 bool TestRenderer::Initialize()
 {
     m_demo = CreateDemo(DemoType::GBuffer);
+    m_demo->SetDemoType(DemoType::GBuffer);
     m_window.setMessageCallback([this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         return HandleMessage(hwnd, msg, wParam, lParam);
     });
@@ -57,7 +58,27 @@ bool TestRenderer::Initialize()
 
 void TestRenderer::Run()
 {
+    if (!m_demo)
+        return;
+
     m_demo->Render();
+
+    if (auto next = m_demo->TakeSwitchRequest())
+        SwitchDemo(*next);
+}
+
+void TestRenderer::SwitchDemo(DemoType type)
+{
+    // The current demo owns its DeviceDx12/SwapChain/ImGui. Shutdown() waits for
+    // the GPU to go idle before its resources are released, so tearing the demo
+    // down and rebuilding on the same window is safe between frames.
+    m_demo->Shutdown();
+    m_demo.reset();
+
+    m_demo = CreateDemo(type);
+    m_demo->SetDemoType(type);
+    if (!m_demo->Initialize(m_window.getWindowInfo()))
+        m_demo.reset();
 }
 
 void TestRenderer::Shutdown()

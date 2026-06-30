@@ -349,6 +349,7 @@ void QuadDemo::Render()
     // Start ImGui frame
     m_imguiLoader.NewFrame();
     m_imguiLoader.Display();
+    DrawDemoSwitcher();
 
     // Record commands
     // Retrieve current back buffer resource and RTV for render pass setup

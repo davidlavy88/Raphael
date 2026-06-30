@@ -646,6 +646,7 @@ void GltfDemo::Render()
     // Start ImGui frame
     m_imguiLoader.NewFrame();
     m_imguiLoader.Display();
+    DrawDemoSwitcher();
 
     // Process input (after starting ImGui frame so that we can query ImGui input capture state)
     ProcessInput();

@@ -15,6 +15,7 @@ public:
 
 private:
 	LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	void SwitchDemo(DemoType type);
 
 private:
 	std::unique_ptr<IDemo> m_demo;
