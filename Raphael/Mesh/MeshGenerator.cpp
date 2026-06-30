@@ -2,6 +2,8 @@
 
 namespace raphael
 {
+    using namespace DirectX;
+
     Mesh MeshGenerator::CreateBox(float width, float height, float depth, uint32 numSubdivisions)
     {
         Mesh mesh;

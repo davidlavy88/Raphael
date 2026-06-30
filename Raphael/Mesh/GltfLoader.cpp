@@ -5,6 +5,8 @@
 
 namespace raphael
 {
+    using namespace DirectX;
+
     bool GltfLoader::LoadFromFile(const std::string& filename, Mesh& outmesh)
     {        
         std::unique_ptr<tinygltf::Model> gltfModel = std::make_unique<tinygltf::Model>();

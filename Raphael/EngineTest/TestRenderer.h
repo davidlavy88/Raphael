@@ -4,8 +4,6 @@
 #include "Components/Window.h"
 #include <memory>
 
-using namespace raphael;
-
 class TestRenderer
 {
 public:
@@ -15,11 +13,11 @@ public:
 
 private:
 	LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-	void SwitchDemo(DemoType type);
+	void SwitchDemo(raphael::DemoType type);
 
 private:
-	std::unique_ptr<IDemo> m_demo;
-	Window m_window;
+	std::unique_ptr<raphael::IDemo> m_demo;
+	raphael::Window m_window;
 	bool m_initialized = false;
 };
 

@@ -3,18 +3,16 @@
 #include <vector>
 #include "DirectXMath.h"
 
-using namespace DirectX;
-
 namespace raphael
 {
     struct Vertex
     {
         Vertex() {}
         Vertex(
-            const XMFLOAT3& p,
-            const XMFLOAT3& n,
-            const XMFLOAT3& t,
-            const XMFLOAT2& uv) :
+            const DirectX::XMFLOAT3& p,
+            const DirectX::XMFLOAT3& n,
+            const DirectX::XMFLOAT3& t,
+            const DirectX::XMFLOAT2& uv) :
             Position(p),
             Normal(n),
             TangentU(t),
@@ -31,18 +29,18 @@ namespace raphael
             TexC(u, v) {
         }
 
-        XMFLOAT3 Position;
-        XMFLOAT3 Normal;
-        XMFLOAT3 TangentU;
-        XMFLOAT2 TexC;
+        DirectX::XMFLOAT3 Position;
+        DirectX::XMFLOAT3 Normal;
+        DirectX::XMFLOAT3 TangentU;
+        DirectX::XMFLOAT2 TexC;
     };
 
     struct PrimitiveVertex
     {
         PrimitiveVertex() {}
         PrimitiveVertex(
-            const XMFLOAT3& p,
-            const XMFLOAT4& c) :
+            const DirectX::XMFLOAT3& p,
+            const DirectX::XMFLOAT4& c) :
             Position(p),
             Color(c) {
         }
@@ -53,8 +51,8 @@ namespace raphael
             Color(r, g, b, a) {
         }
 
-        XMFLOAT3 Position;
-        XMFLOAT4 Color;
+        DirectX::XMFLOAT3 Position;
+        DirectX::XMFLOAT4 Color;
     };
 }
 

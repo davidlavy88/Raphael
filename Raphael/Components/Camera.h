@@ -1,39 +1,37 @@
 #pragma once
 #include "DirectXMath.h"
 
-using namespace DirectX;
-
 class Camera
 {
 public:
     Camera() = default;
 
-    void Initialize(const XMVECTOR& position, const XMVECTOR& up, float pitch, float yaw, float speed);
+    void Initialize(const DirectX::XMVECTOR& position, const DirectX::XMVECTOR& up, float pitch, float yaw, float speed);
     void Reset();
 
-    XMVECTOR GetPosition() { return m_position; }
+    DirectX::XMVECTOR GetPosition() const { return m_position; }
 
-    XMMATRIX GetViewMatrix() const { return m_viewMatrix; }
-    XMMATRIX GetProjectionMatrix() const { return m_projectionMatrix; }
-    XMMATRIX GetViewProjectionMatrix() const { return m_viewProjectionMatrix; }
+    DirectX::XMMATRIX GetViewMatrix() const { return m_viewMatrix; }
+    DirectX::XMMATRIX GetProjectionMatrix() const { return m_projectionMatrix; }
+    DirectX::XMMATRIX GetViewProjectionMatrix() const { return m_viewProjectionMatrix; }
 
-    XMVECTOR GetUp() const { return m_up; }
-    XMVECTOR GetLook() const { return m_look; }
+    DirectX::XMVECTOR GetUp() const { return m_up; }
+    DirectX::XMVECTOR GetLook() const { return m_look; }
 
     float GetPitch() const { return m_pitch; }
     float GetYaw() const { return m_yaw; }
 
     float GetSpeed() const { return m_speed; }
 
-    void SetPosition(const XMVECTOR& position) { m_position = position; }
+    void SetPosition(const DirectX::XMVECTOR& position) { m_position = position; }
 
-    void SetUp(const XMVECTOR& up) { m_up = up; }
-    void SetLook(const XMVECTOR& look) { m_look = look; }
+    void SetUp(const DirectX::XMVECTOR& up) { m_up = up; }
+    void SetLook(const DirectX::XMVECTOR& look) { m_look = look; }
     void UpdateLook();
 
     void UpdateViewMatrix();
     void SetProjectionMatrix(float fovY, float aspectRatio, float nearZ, float farZ);
-    void SetProjectionMatrix(const XMMATRIX& projectionMatrix) { m_projectionMatrix = projectionMatrix; }
+    void SetProjectionMatrix(const DirectX::XMMATRIX& projectionMatrix) { m_projectionMatrix = projectionMatrix; }
 
     void SetPitch(float pitch);
     void SetYaw(float yaw) { m_yaw = yaw; }
@@ -50,13 +48,13 @@ public:
 
 
 private:
-    XMMATRIX m_viewMatrix;
-    XMMATRIX m_projectionMatrix;
-    XMMATRIX m_viewProjectionMatrix;
+    DirectX::XMMATRIX m_viewMatrix;
+    DirectX::XMMATRIX m_projectionMatrix;
+    DirectX::XMMATRIX m_viewProjectionMatrix;
     
-    XMVECTOR m_position;
-    XMVECTOR m_up;
-    XMVECTOR m_look;
+    DirectX::XMVECTOR m_position;
+    DirectX::XMVECTOR m_up;
+    DirectX::XMVECTOR m_look;
 
     float m_pitch;
     float m_yaw;
@@ -64,8 +62,8 @@ private:
     float m_speed;
 
     // Initial values for Reset
-    XMVECTOR m_initialPosition;
-    XMVECTOR m_initialUp;
+    DirectX::XMVECTOR m_initialPosition;
+    DirectX::XMVECTOR m_initialUp;
     float m_initialPitch;
     float m_initialYaw;
     float m_initialSpeed;

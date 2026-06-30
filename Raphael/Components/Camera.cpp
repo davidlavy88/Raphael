@@ -1,6 +1,8 @@
 #include "Camera.h"
 #include "D3D12Util.h"
 
+using namespace DirectX;
+
 void Camera::Initialize(const XMVECTOR& position, const XMVECTOR& up, float pitch, float yaw, float speed)
 {
     m_initialPosition = position;
