@@ -19,6 +19,7 @@ namespace raphael
             { DemoType::TexturedBox, "Textured Box" },
             { DemoType::Gltf,        "glTF" },
             { DemoType::GBuffer,     "GBuffer (Deferred)" },
+            { DemoType::RayTracer,   "Ray Tracer" },
             { DemoType::MultiObject, "Multi Object" },
         };
     }

@@ -11,6 +11,7 @@
 #include "DX12/FrameContext.h"
 #include "DX12/UploadBufferDx12.h"
 #include "GPUStructs.h"
+#include "ImGui/ImGuiLoader.h"
 #include "Components/Window.h"
 #include "Mesh/GltfLoader.h"
 #include "Mesh/Mesh.h"
@@ -45,6 +46,7 @@ private:
     std::unique_ptr<SwapChainDx12> m_swapChain;
     std::unique_ptr<CommandList> m_commandList;
     std::unique_ptr<DescriptorHeapDx12> m_rtvHeap;
+    std::unique_ptr<DescriptorHeapDx12> m_srvHeap;
 
     // Geometry resources
     std::unique_ptr<ResourceDx12> m_vertexBuffer;
@@ -71,6 +73,9 @@ private:
 
     // Transform state
     float m_time = 0.0f;
+
+    // ImGui support
+    ImGuiLoader m_imguiLoader;
 
     // Window handle
     HWND m_windowHandle = nullptr;

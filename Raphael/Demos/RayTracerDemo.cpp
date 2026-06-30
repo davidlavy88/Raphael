@@ -33,6 +33,10 @@ bool RayTracerDemo::Initialize(WindowInfo windowInfo)
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
+    // -- 3b. Initialize ImGui --
+    if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
+        return false;
+
     // -- 4. Create swap chain and depth buffer --
     CreateSwapChainAndDepthBuffer(windowInfo);
 
@@ -70,6 +74,17 @@ void RayTracerDemo::CreateDescriptorHeaps()
 
     m_rtvHeap = m_device->createDescriptorHeap(rtvHeapDesc);
     m_rtvHeap->createDescriptorHeap();
+
+    // Create SRV descriptor heap (shader-visible) for ImGui's font texture.
+    // RayTracer binds its own resources via root descriptors, so this heap is
+    // dedicated to ImGui.
+    DescriptorHeapDesc srvHeapDesc = {};
+    srvHeapDesc.type = DescriptorHeapDesc::DescriptorHeapType::CBV_SRV_UAV;
+    srvHeapDesc.numDescriptors = 1;
+    srvHeapDesc.shaderVisible = true;
+
+    m_srvHeap = m_device->createDescriptorHeap(srvHeapDesc);
+    m_srvHeap->createDescriptorHeap();
 }
 
 void RayTracerDemo::CreateSwapChainAndDepthBuffer(WindowInfo windowInfo)
@@ -366,6 +381,11 @@ void RayTracerDemo::Render()
     // Update constant buffers with current frame's data
     UpdateConstantBuffers();
 
+    // Start ImGui frame
+    m_imguiLoader.NewFrame();
+    m_imguiLoader.Display();
+    DrawDemoSwitcher();
+
     // Record commands
     // Retrieve current back buffer resource and RTV for render pass setup
     ResourceDx12* currentBackBuffer = m_swapChain->getCurrentBackBuffer();
@@ -414,6 +434,10 @@ void RayTracerDemo::Render()
         m_commandList->setIndexBuffer(m_indexBufferView);
 
         m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+
+        // Render ImGui (needs SRV descriptor heap set since ImGui uses a font texture)
+        m_commandList->setDescriptorHeaps(m_srvHeap.get(), 1);
+        m_imguiLoader.Render(m_commandList.get());
     }
 
     m_commandList->endRenderPass();
@@ -442,6 +466,8 @@ void RayTracerDemo::Shutdown()
     {
         m_device->waitForFence(m_frameContexts[i].fenceValue);
     }
+
+    m_imguiLoader.Shutdown();
 
     // Cleanup resources if needed
     OutputDebugStringA("Shutting down RayTracerDemo and releasing resources.\n");
