@@ -40,11 +40,12 @@ bool GBufferDemo::Initialize(WindowInfo windowInfo)
     // Store the window handle for input processing (sad thing)
     m_windowHandle = windowInfo.hWnd;
 
-    // -- 2. Create device --
+    // -- 1. Create device --
     DeviceDesc deviceDesc = {};
     deviceDesc.enableDebugLayer = true;
     m_device = std::make_unique<DeviceDx12>(deviceDesc);
 
+    // -- 2. Load glTF model --
     CreateGltfModel();
 
     // -- 3. Create descriptor heaps --
@@ -54,30 +55,30 @@ bool GBufferDemo::Initialize(WindowInfo windowInfo)
     if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_textureSrvHeap.get(), g_frameCount))
         return false;
 
-    // -- 4. Create GBuffer render targets --
+    // -- 5. Create GBuffer render targets --
     CreateGBufferRenderTargets();
 
-    // -- 5. Create swap chain and depth buffer --
+    // -- 6. Create swap chain and depth buffer --
     CreateSwapChainAndDepthBuffer(windowInfo);
 
-    // -- 6. Create command objects --
+    // -- 7. Create command objects --
     CreateCommandObjects();
 
-    // -- 7. Create geometry resources --
+    // -- 8. Create geometry resources --
     CreateGeometry();
 
-    // -- 8. Create constant buffers --
+    // -- 9. Create constant buffers --
     CreateConstantBuffers();
 
-    // -- 9. Create root signature --
+    // -- 10. Create root signature --
     CreateRootSignature();
     CreateGBufferRootSignature();
 
-    // -- 10. Create pipeline state + shaders --
+    // -- 11. Create pipeline state + shaders --
     CreatePipeline();
     CreateGBufferPipeline();
 
-    // -- 11. Create texture resources --
+    // -- 12. Create texture resources --
     CreateTexture();
     CreateDummyTexture();
 
@@ -97,11 +98,12 @@ void GBufferDemo::CreateGltfModel()
     }
 }
 
-// 3. Create descriptor heaps 
-// - RTV  heap: g_frameCount descriptors for the back buffer RTVs (one per frame in the swap chain)
-// - DSV heaps: 1 descriptor for the depth buffer DSV
-// - CBV/SRV/UAV heap: 1 descriptor for the texture SRV
-// - GBuffer RTV heap: g_numRenderTargets descriptors for the GBuffer render target RTVs (one per GBuffer render target)
+// Create descriptor heaps
+// - RTV heap: g_frameCount descriptors for the back buffer RTVs (one per frame in the swap chain)
+// - DSV heap: 1 descriptor for the depth buffer DSV
+// - CBV/SRV/UAV heap: one SRV per model texture, plus ImGui font and the dummy white texture
+// - GBuffer SRV heap: g_numRenderTargets descriptors for sampling the GBuffer in the lighting pass
+// - GBuffer RTV heap: g_numRenderTargets descriptors, one per GBuffer render target
 void GBufferDemo::CreateDescriptorHeaps()
 {
     // Create DSV descriptor heap
@@ -180,7 +182,7 @@ void GBufferDemo::CreateGBufferRenderTargets()
     }
 }
 
-// 4. Create swap chain and depth buffer
+// Create swap chain and depth buffer
 void GBufferDemo::CreateSwapChainAndDepthBuffer(WindowInfo windowInfo)
 {
     // We couple swap chain and depth buffer creation together since they both depend 
@@ -211,7 +213,7 @@ void GBufferDemo::CreateSwapChainAndDepthBuffer(WindowInfo windowInfo)
     m_depthStencilView = m_depthBuffer->getResourceView(ResourceBindFlags::DepthStencil, dsvHandle);
 }
 
-// 5. Create command allocators and command list
+// Create command allocators and command list
 // Each frame in the swap chain gets its own command allocator, 
 // which we will reset at the beginning of each frame when we record commands for that frame. 
 // We only need one command list since we will execute it and wait for it to finish 
@@ -231,12 +233,12 @@ void GBufferDemo::CreateCommandObjects()
     m_commandList->createCommandList(m_frameContexts[0].commandAllocator.Get());
 }
 
-// 6. Create geometry resources (vertex/index buffers, views)
+// Create geometry resources (vertex/index buffers, views)
 void GBufferDemo::CreateGeometry()
 {
     // TODO: Add warning handling
 
-    // Step 3: Extract vertex positions
+    // Accumulate every primitive's vertices and indices into one buffer each
     std::vector<VertexWithTexCoord> totalVertices;
     std::vector<std::uint16_t> totalIndices;
 
@@ -245,8 +247,7 @@ void GBufferDemo::CreateGeometry()
 
     for (const tinygltf::Mesh& mesh : m_gltfModel->meshes)
     {
-        // Process the loaded model data and create vertex/index buffers
-        // Step 1: Get meshes
+        // Each mesh has one or more primitives; process them all
         OutputDebugStringA(("Loading mesh: " + mesh.name + "\n").c_str());
 
         size_t primitiveIndex = 0;
@@ -278,7 +279,7 @@ void GBufferDemo::CreateGeometry()
             size_t vertexCount = positionAccessor.count;
             OutputDebugStringA(("Vertex count: " + std::to_string(vertexCount) + "\n").c_str());
 
-            // Step 4: Extract vertex normals (if available)
+            // Extract vertex normals (required by this demo)
             auto normalAttrIt = primitive.attributes.find("NORMAL");
             if (normalAttrIt == primitive.attributes.end())
             {
@@ -296,7 +297,7 @@ void GBufferDemo::CreateGeometry()
             // Calculate the pointer to the normal data
             const float* normalData = reinterpret_cast<const float*>(&normalBuffer.data[normalBufferView.byteOffset + normalAccessor.byteOffset]);
 
-            // Step 5: Extract texture coordinates (if available)
+            // Extract texture coordinates (required by this demo)
             auto texCoordAttrIt = primitive.attributes.find("TEXCOORD_0");
             if (texCoordAttrIt == primitive.attributes.end())
             {
@@ -311,21 +312,19 @@ void GBufferDemo::CreateGeometry()
             // This buffer contains the actual binary data for the textures
             const tinygltf::Buffer& textureBuffer = m_gltfModel->buffers[textureBufferView.buffer];
 
-            // Calculate the pointer to the position data
+            // Calculate the pointer to the texture coordinate data
             const float* textureData = reinterpret_cast<const float*>(&textureBuffer.data[textureBufferView.byteOffset + textureAccessor.byteOffset]);
 
-            // Step 6: Create vertex array
+            // Build the interleaved vertex array
             vertices.resize(vertexCount);
             for (size_t i = 0; i < vertexCount; ++i)
             {
                 vertices[i].Pos = XMFLOAT3(positionData[i * 3], positionData[i * 3 + 1], positionData[i * 3 + 2]);
-
-                // TODO: Set normals and texture coordinates if available
                 vertices[i].Normal = XMFLOAT3(normalData[i * 3], normalData[i * 3 + 1], normalData[i * 3 + 2]);
                 vertices[i].TexC = XMFLOAT2(textureData[i * 2], textureData[i * 2 + 1]);
             }
 
-            // Step 7: Extract indices
+            // Extract indices
             std::vector<std::uint16_t> indices;
 
             if (primitive.indices >= 0)
@@ -408,7 +407,7 @@ void GBufferDemo::CreateGeometry()
         }
     }
 
-    // Step 8: Create MeshGeometry object and upload vertex/index data to GPU
+    // Create the vertex/index buffers and upload the data to the GPU
     const UINT vertexBufferSize = static_cast<UINT>(totalVertices.size() * sizeof(VertexWithTexCoord));
     const UINT indexBufferSize = static_cast<UINT>(totalIndices.size() * sizeof(std::uint16_t));
     m_indexCount = totalIndices.size();
@@ -487,11 +486,10 @@ void GBufferDemo::CreateGeometry()
     OutputDebugStringA("glTF model loaded successfully!\n");
 }
 
-// 7. Create constant buffers (per-frame upload buffers)
-// Each frame gets its own constant buffers to avoid GPU/CPU synchronization issues.
-// We have two constant buffers: one for per-object data (world matrix) 
-// and one for per-frame data (view/projection matrices, eye position).
-// Layout matches cubeTexturedShader.hlsl's FrameConstants and BasicObjectConstants structs.
+// Create constant buffers (per-frame upload buffers)
+// Each frame gets its own set so we never touch a buffer the GPU is still reading.
+// Three per frame: per-object (world matrix), per-frame (view/projection, eye position),
+// and the lighting-pass constants for the deferred pass.
 void GBufferDemo::CreateConstantBuffers()
 {
     for (UINT i = 0; i < g_frameCount; i++)
@@ -502,11 +500,11 @@ void GBufferDemo::CreateConstantBuffers()
     }
 }
 
-// 8. Create root signature
+// Create root signature
 // The root signature defines how shader resources are bound to the pipeline.
-// Root parameter  0: inline CBV at b0 for per-object constants (world matrix)  
-// Root parameter  1: inline CBV at b1 for per-frame constants (view/projection matrices, eye position)
-// Root parameter  2: descriptor table with 1 SRV for the texture (t0)
+// Root parameter 0: inline CBV at b0 for per-object constants (world matrix)
+// Root parameter 1: inline CBV at b1 for per-frame constants (view/projection matrices, eye position)
+// Root parameter 2: descriptor table with 1 SRV for the texture (t0)
 void GBufferDemo::CreateRootSignature()
 {
     // Create root signature
@@ -569,7 +567,7 @@ void GBufferDemo::CreateRootSignature()
     m_rootSignature->createRootSignature();
 }
 
-// 9. Create pipeline state and compile shaders
+// Create pipeline state and compile shaders
 void GBufferDemo::CreatePipeline()
 {
     // Compile shader
@@ -668,10 +666,9 @@ void GBufferDemo::CreateGBufferPipeline()
     m_gbufferPipeline->createPipelineState(m_gbufferShader.get(), m_gbufferRootSignature.get());
 }
 
-// 10. Create texture resources
-// We will load a texture from a DDS file using the DirectXTK's CreateDDSTextureFromFile12 helper function,
-// which creates both the texture resource and an intermediate upload resource, 
-// and records the necessary copy commands to upload the texture data to the GPU.
+// Create texture resources
+// Load each glTF texture from file with DirectXTK's LoadWICTextureFromFile helper,
+// which decodes the image into a subresource we then upload to a GPU texture.
 void GBufferDemo::CreateTexture()
 {
     // Reset the command list to record texture upload commands
@@ -797,7 +794,7 @@ void GBufferDemo::CreateDummyTexture()
 
 void GBufferDemo::UpdateConstantBuffers()
 {
-    // Rotate the cube slowly around Y axis
+    // Rotate the model slowly around the Y axis
     m_rotationAngle += 0.003f;
 
     // Object constant (b0) - World matrix
@@ -817,7 +814,7 @@ void GBufferDemo::UpdateConstantBuffers()
     XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.1f, 100.0f);
     XMMATRIX viewProj = view * proj;
 
-    // Frame: identity viewproj (renders in NDC space directly)
+    // Frame: store the transposed view-projection matrix
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
 
@@ -932,10 +929,10 @@ void GBufferDemo::Render()
     }
 
     {
-        // Lighting pass - setting the GBuffer render targets, 
-        // binding the GBuffer pipeline and root signature, 
-        // and drawing a full-screen triangle to populate the GBuffer with the 
-        // scene's geometry information (positions, normals, albedo, etc.)
+        // Lighting pass - bind the back buffer as the render target, switch to the
+        // lighting pipeline/root signature, sample the GBuffer (albedo, normals, depth)
+        // as SRVs, and shade a full-screen triangle to compute final lighting into the
+        // back buffer.
         ResourceView nullDepthView = {};
         RenderPassDesc renderPassDesc = RenderPassDesc::buildAsSingleRenderTarget(
             currentRtView,

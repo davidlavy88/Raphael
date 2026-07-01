@@ -42,7 +42,7 @@ bool TexturedBoxDemo::Initialize(WindowInfo windowInfo)
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
-    // -- 4. Initialize ImGui --
+    // -- Initialize ImGui --
     if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
         return false;
 
@@ -455,7 +455,7 @@ void TexturedBoxDemo::UpdateConstantBuffers()
     XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.1f, 100.0f);
     XMMATRIX viewProj = view * proj;
 
-    // Frame: identity viewproj (renders in NDC space directly)
+    // Frame: store the transposed view-projection matrix
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
 

@@ -15,7 +15,7 @@ namespace raphael
             d12dDesc.Format = convertFormatToDXGI(element.format);
             d12dDesc.InputSlot = element.inputSlot;
             d12dDesc.AlignedByteOffset = element.alignedByteOffset;
-            d12dDesc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA; // Assuming per-vertex data for now. You can extend InputElementDesc to specify this if needed.
+            d12dDesc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA; // Per-vertex data only for now; extend InputElementDesc if you need per-instance.
             d12dDesc.InstanceDataStepRate = 0; // Not used for per-vertex data
 
             inputLayout.push_back(d12dDesc);

@@ -328,7 +328,7 @@ void RayTracerDemo::UpdateConstantBuffers()
 	// Scene constants for ray tracing shader
     RayTracingSceneConstants sceneConstants;
 
-    // Frame constant (b1) - ViewProj matrix + eye position
+    // Build a fixed camera; we invert its view-projection below to generate primary rays
     XMVECTOR eyePos = XMVectorSet(0.0f, 0.0f, -15.0f, 1.0f);
     XMVECTOR lookAt = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);

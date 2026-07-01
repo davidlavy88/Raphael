@@ -29,7 +29,7 @@ namespace raphael
             throw std::runtime_error("Failed to create DXGI factory");
         }
 
-        // TOD: Check for tearing support
+        // TODO: Check for tearing support
 
         // Create swap chain
         IDXGISwapChain1* swapChain1 = nullptr;
@@ -48,7 +48,7 @@ namespace raphael
 
         m_swapChain->SetMaximumFrameLatency(desc.bufferCount);
         m_waitableObject = m_swapChain->GetFrameLatencyWaitableObject();
-        // Then, before each frame, you wait on it:
+        // One-time wait on the frame-latency object right after creation.
         WaitForSingleObjectEx(m_waitableObject, 1000, TRUE);
 
         // Initialize back buffer resources and RTV handles

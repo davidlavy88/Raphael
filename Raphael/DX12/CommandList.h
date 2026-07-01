@@ -23,7 +23,7 @@ namespace raphael
         void begin(ID3D12CommandAllocator* allocator);
         void end();
         void reset();
-        void copyResource(ResourceDx12* dst, ResourceDx12* src, const void* data, const UINT buffersize); // record full resource GPU to GPU copy
+        void copyResource(ResourceDx12* dst, ResourceDx12* src, const void* data, const UINT buffersize); // upload CPU data into dst through the src upload heap
         void copyTextureResource(ResourceDx12* dst, ResourceDx12* src, D3D12_SUBRESOURCE_DATA* subresource);
         // void copyBufferRegion(IResource* dst, UINT64 dstOffset, IResource* src, UINT64 srcOffset, UINT64 numBytes);
         void transitionResource(ResourceDx12* resource, ResourceBindFlags bindFlags);

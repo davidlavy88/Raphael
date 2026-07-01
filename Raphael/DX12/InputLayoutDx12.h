@@ -10,7 +10,7 @@ namespace raphael
         InputLayoutDx12() = default;
         ~InputLayoutDx12() = default;
 
-        // Convert API -agnostic input element descriptions to D3D12_INPUT_ELEMENT_DESC and store them
+        // Convert API-agnostic input element descriptions into D3D12_INPUT_ELEMENT_DESCs
         static std::vector<D3D12_INPUT_ELEMENT_DESC> convertToD3D12InputLayout(const InputLayoutDesc& desc);
 
     private:

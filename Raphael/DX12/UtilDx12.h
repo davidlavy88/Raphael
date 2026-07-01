@@ -4,7 +4,7 @@
 
 namespace raphael
 {
-    // Utility function to convert ResourceBindFlags to D3D12_RESOURCE_FLAGS
+    // Convert the engine's ResourceFormat to the matching DXGI_FORMAT
     inline DXGI_FORMAT convertFormatToDXGI(ResourceFormat format)
     {
         switch (format)

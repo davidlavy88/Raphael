@@ -60,7 +60,7 @@ bool MultiObjectDemo::Initialize(WindowInfo windowInfo)
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
-    // -- 4. Initialize ImGui --
+    // -- Initialize ImGui --
     if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
         return false;
 
@@ -287,8 +287,7 @@ void MultiObjectDemo::SetupScene()
     XMStoreFloat4x4(&floorWorld, XMMatrixTranslation(0.0f, -0.01f, 0.0f));
     m_renderItems.push_back({ "floor", "whole", "stoneFloor", floorWorld });
 
-    // Step 8: Create MeshGeometry object and upload vertex/index data to GPU
-    // Combine all mesh vertices and indices into single buffers
+    // Combine every mesh's vertices and indices into single buffers, then upload to the GPU
     std::vector<Vertex> totalVertices;
     std::vector<std::uint16_t> totalIndices;
 
@@ -386,9 +385,9 @@ void MultiObjectDemo::SetupScene()
 
 // 7. Create constant buffers (per-frame upload buffers)
 // Each frame gets its own constant buffers to avoid GPU/CPU synchronization issues.
-// We have two constant buffers: one for per-object data (world matrix) 
-// and one for per-frame data (view/projection matrices, eye position).
-// Layout matches cubeTexturedShader.hlsl's FrameConstants and BasicObjectConstants structs.
+// We have three constant buffers: per-object data (world matrix), per-frame data
+// (view/projection matrices, eye position), and per-object material parameters.
+// Layout matches MaterialAndTexturedShader.hlsl's FrameConstants and BasicObjectConstants structs.
 void MultiObjectDemo::CreateConstantBuffers()
 {
     for (UINT i = 0; i < g_frameCount; i++)
@@ -495,9 +494,9 @@ void MultiObjectDemo::CreatePipeline()
 }
 
 // 10. Create texture resources
-// We will load a texture from a DDS file using the DirectXTK's CreateDDSTextureFromFile12 helper function,
-// which creates both the texture resource and an intermediate upload resource, 
-// and records the necessary copy commands to upload the texture data to the GPU.
+// Load every texture referenced by the scene's materials, picking the DDS or WIC loader
+// based on the file extension. Each loader creates the texture and its upload resource and
+// records the copy commands to get the data onto the GPU.
 void MultiObjectDemo::CreateTexture()
 {   
     // Reset the command list to record texture upload commands
@@ -554,7 +553,7 @@ void MultiObjectDemo::CreateDummyTexture()
 
 void MultiObjectDemo::UpdateConstantBuffers()
 {
-    // Rotate the cube slowly around Y axis
+    // Rotate all objects slowly around the Y axis
     // m_rotationAngle += 0.01f;
 
     // Object constant (b0) - World matrix
@@ -591,7 +590,7 @@ void MultiObjectDemo::UpdateConstantBuffers()
     }
 
 
-    // Frame: identity viewproj (renders in NDC space directly)
+    // Frame: store the transposed view-projection matrix
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(m_camera.GetViewProjectionMatrix()));
 

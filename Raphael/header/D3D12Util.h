@@ -3,18 +3,16 @@
 #include "D3D12CommonHeaders.h"
 #include <DirectXCollision.h>
 
-// Defines a subrange of geometry in a MeshGeometry.  This is for when multiple
-// geometries are stored in one vertex and index buffer.  It provides the offsets
-// and data needed to draw a subset of geometry stores in the vertex and index 
-// buffers so that we can implement the technique described by Figure 6.3.
+// Defines a subrange of geometry in a MeshGeometry, for when several sub-geometries
+// share one vertex and index buffer.  It holds the offsets and counts needed to draw
+// just that subset out of the shared buffers.
 struct SubmeshGeometry
 {
 	UINT IndexCount = 0;
 	UINT StartIndexLocation = 0;
 	INT BaseVertexLocation = 0;
 
-	// Bounding box of the geometry defined by this submesh. 
-	// This is used in later chapters of the book.
+	// Bounding box of the geometry defined by this submesh.
 	DirectX::BoundingBox Bounds;
 };
 

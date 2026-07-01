@@ -37,7 +37,7 @@ namespace raphael
         for (const tinygltf::Mesh& mesh : gltfModel->meshes)
         {
             // Process the loaded model data and create vertex/index buffers
-            // Step 1: Get meshes
+            // Get meshes
             OutputDebugStringA(("Loading mesh: " + mesh.name + "\n").c_str());
 
             size_t primitiveIndex = 0;
@@ -69,7 +69,7 @@ namespace raphael
                 size_t vertexCount = positionAccessor.count;
                 OutputDebugStringA(("Vertex count: " + std::to_string(vertexCount) + "\n").c_str());
 
-                // Step 4: Extract vertex normals (if available)
+                // Extract vertex normals
                 auto normalAttrIt = primitive.attributes.find("NORMAL");
                 if (normalAttrIt == primitive.attributes.end())
                 {
@@ -87,7 +87,7 @@ namespace raphael
                 // Calculate the pointer to the normal data
                 const float* normalData = reinterpret_cast<const float*>(&normalBuffer.data[normalBufferView.byteOffset + normalAccessor.byteOffset]);
 
-                // Step 5: Extract texture coordinates (if available)
+                // Extract texture coordinates
                 auto texCoordAttrIt = primitive.attributes.find("TEXCOORD_0");
                 if (texCoordAttrIt == primitive.attributes.end())
                 {
@@ -102,21 +102,19 @@ namespace raphael
                 // This buffer contains the actual binary data for the textures
                 const tinygltf::Buffer& textureBuffer = gltfModel->buffers[textureBufferView.buffer];
 
-                // Calculate the pointer to the position data
+                // Calculate the pointer to the texture coordinate data
                 const float* textureData = reinterpret_cast<const float*>(&textureBuffer.data[textureBufferView.byteOffset + textureAccessor.byteOffset]);
 
-                // Step 6: Create vertex array
+                // Create vertex array
                 vertices.resize(vertexCount);
                 for (size_t i = 0; i < vertexCount; ++i)
                 {
                     vertices[i].Position = XMFLOAT3(positionData[i * 3], positionData[i * 3 + 1], positionData[i * 3 + 2]);
-
-                    // TODO: Set normals and texture coordinates if available
                     vertices[i].Normal = XMFLOAT3(normalData[i * 3], normalData[i * 3 + 1], normalData[i * 3 + 2]);
                     vertices[i].TexC = XMFLOAT2(textureData[i * 2], textureData[i * 2 + 1]);
                 }
 
-                // Step 7: Extract indices
+                // Extract indices
                 std::vector<std::uint16_t> indices;
 
                 if (primitive.indices >= 0)
@@ -185,7 +183,6 @@ namespace raphael
                 }
 
                 // Append this primitive's vertices and indices to the total vertex/index arrays
-                // std::unique_ptr<Mesh> meshData = std::make_unique<Mesh>();
                 Submesh meshData = {};
                 meshData.vertexBufferOffset = vertexOffset;
                 meshData.indexBufferOffset = indexOffset;

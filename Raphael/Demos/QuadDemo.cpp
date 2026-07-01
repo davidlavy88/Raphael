@@ -40,7 +40,7 @@ bool QuadDemo::Initialize(WindowInfo windowInfo)
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
-    // -- 4. Initialize ImGui --
+    // -- Initialize ImGui --
     if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
         return false;
 
@@ -305,7 +305,7 @@ void QuadDemo::CreateCommandObjects()
 
 void QuadDemo::UpdateConstantBuffers()
 {
-    // Rotate the cube slowly around Y axis
+    // Rotate the quad slowly around the Y axis
     m_rotationAngle += 0.01f;
 
     // Object constant (b0) - World matrix
@@ -325,7 +325,7 @@ void QuadDemo::UpdateConstantBuffers()
     XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.1f, 100.0f);
     XMMATRIX viewProj = view * proj;
 
-    // Frame: identity viewproj (renders in NDC space directly)
+    // Frame: store the transposed view-projection matrix
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
 

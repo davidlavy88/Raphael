@@ -21,7 +21,7 @@ namespace raphael
 
         descriptorRangesPerTable.reserve(m_desc.tableLayoutDescs.size());
 
-        // Convert RootSignatureTableLayoutDescs to CD3DX12_ROOT_PARAMETERs and store them in m_rootParameters
+        // Convert each RootSignatureTableLayoutDesc into CD3DX12_ROOT_PARAMETERs (collected in rootParameters)
         for (const auto& tableLayoutDesc : m_desc.tableLayoutDescs)
         {
             size_t numRanges = tableLayoutDesc.rangeDescs.size();
@@ -30,7 +30,7 @@ namespace raphael
             for (const auto& rangeDesc : tableLayoutDesc.rangeDescs)
             {
                 // For CBV root descriptors (single descriptor), use inline root descriptor
-                    // which avoids needing a descriptor heap. This matches the existing behavior.
+                // which avoids needing a descriptor heap. This matches the existing behavior.
                 if (rangeDesc.type == RootSignatureRangeDesc::RangeType::ConstantBufferView && rangeDesc.numParameters == 1)
                 {
                     CD3DX12_ROOT_PARAMETER rootParam = {};

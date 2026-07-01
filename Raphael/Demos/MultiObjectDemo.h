@@ -89,7 +89,7 @@ private:
     // Per-frame resources for double buffering
     std::array<FrameContext, g_frameCount> m_frameContexts;
 
-    // GLTF model data
+    // Scene data (meshes, materials, render items)
     MaterialRepository m_materialRepo;
     std::unordered_map<std::string, Mesh> m_meshes;
     std::vector<RenderItem> m_renderItems;

@@ -86,13 +86,11 @@ namespace raphael
 
     std::unique_ptr<ResourceDx12> DeviceDx12::createResource(const ResourceDesc& desc)
     {
-        // *outResource = new ResourceDx12(this, desc);
         return std::make_unique<ResourceDx12>(this, desc);
     }
 
     std::unique_ptr<CommandList> DeviceDx12::createCommandList(const CommandListDesc& desc)
     {
-        //*outCommandList = new CommandList(this, desc);
         return std::make_unique<CommandList>(this, desc);
     }
 

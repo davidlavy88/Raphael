@@ -370,7 +370,7 @@ void BoxDemo::UpdateConstantBuffers()
     XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.1f, 100.0f);
     XMMATRIX viewProj = view * proj;
 
-    // Frame: identity viewproj (renders in NDC space directly)
+    // Frame: store the transposed view-projection matrix
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(m_camera.GetViewProjectionMatrix()));
 

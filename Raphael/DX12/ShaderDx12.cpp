@@ -62,7 +62,7 @@ namespace raphael
     {
         UINT compileFlags = 0;
 #if defined(DEBUG) || defined(_DEBUG)  
-		// Enable WARNING_ARE_ERRORS in debug mode for shader hot reload to catch shader compilation issues immediately
+		// Debug builds keep symbols and skip optimization. Uncomment WARNINGS_ARE_ERRORS below to make shader hot reload fail loudly on warnings.
         compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION; // | D3DCOMPILE_WARNINGS_ARE_ERRORS;
 #endif
 

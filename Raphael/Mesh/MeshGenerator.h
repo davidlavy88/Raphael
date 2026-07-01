@@ -8,8 +8,8 @@ namespace raphael
     public:
         using uint32 = std::uint32_t;
 
-        /// Creates a box centered at the origin with the given dimensions, where each
-        /// face has m rows and n columns of vertices.
+        /// Creates a box centered at the origin with the given dimensions.
+        /// numSubdivisions controls how finely each face is tessellated.
         static Mesh CreateBox(float width, float height, float depth, uint32 numSubdivisions);
 
         /// Creates a sphere centered at the origin with the given radius.  The
@@ -22,7 +22,7 @@ namespace raphael
 
         /// Creates a cylinder parallel to the y-axis, and centered about the origin.  
         /// The bottom and top radius can vary to form various cone shapes rather than true
-        // cylinders.  The slices and stacks parameters control the degree of tessellation.
+        /// cylinders.  The slices and stacks parameters control the degree of tessellation.
         static Mesh CreateCylinder(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount);
 
         /// Creates an mxn grid in the xz-plane with m rows and n columns, centered

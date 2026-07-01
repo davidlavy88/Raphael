@@ -97,6 +97,6 @@ private:
     Camera m_camera;
 
     // Unfortunately we need to store the window handle here 
-    // so input queries are contained withing the rendered window. 
+    // so input queries are contained within the rendered window. 
     HWND m_windowHandle = nullptr;
 };

@@ -51,7 +51,7 @@ bool GltfDemo::Initialize(WindowInfo windowInfo)
     // -- 3. Create descriptor heaps --
     CreateDescriptorHeaps();
 
-    // -- 4. Initialize ImGui --
+    // -- Initialize ImGui --
     if (!m_imguiLoader.Initialize(windowInfo.hWnd, m_device.get(), m_srvHeap.get(), g_frameCount))
         return false;
 
@@ -183,7 +183,7 @@ void GltfDemo::CreateGeometry()
 {
     // TODO: Add warning handling
 
-    // Step 3: Extract vertex positions
+    // Extract vertex positions
     std::vector<VertexWithTexCoord> totalVertices;
     std::vector<std::uint16_t> totalIndices;
 
@@ -193,7 +193,7 @@ void GltfDemo::CreateGeometry()
     for (const tinygltf::Mesh& mesh : m_gltfModel->meshes)
     {
         // Process the loaded model data and create vertex/index buffers
-        // Step 1: Get meshes
+        // Get meshes
         OutputDebugStringA(("Loading mesh: " + mesh.name + "\n").c_str());
 
         size_t primitiveIndex = 0;
@@ -225,7 +225,7 @@ void GltfDemo::CreateGeometry()
             size_t vertexCount = positionAccessor.count;
             OutputDebugStringA(("Vertex count: " + std::to_string(vertexCount) + "\n").c_str());
 
-            // Step 4: Extract vertex normals (if available)
+            // Extract vertex normals
             auto normalAttrIt = primitive.attributes.find("NORMAL");
             if (normalAttrIt == primitive.attributes.end())
             {
@@ -243,7 +243,7 @@ void GltfDemo::CreateGeometry()
             // Calculate the pointer to the normal data
             const float* normalData = reinterpret_cast<const float*>(&normalBuffer.data[normalBufferView.byteOffset + normalAccessor.byteOffset]);
 
-            // Step 5: Extract texture coordinates (if available)
+            // Extract texture coordinates
             auto texCoordAttrIt = primitive.attributes.find("TEXCOORD_0");
             if (texCoordAttrIt == primitive.attributes.end())
             {
@@ -258,21 +258,19 @@ void GltfDemo::CreateGeometry()
             // This buffer contains the actual binary data for the textures
             const tinygltf::Buffer& textureBuffer = m_gltfModel->buffers[textureBufferView.buffer];
 
-            // Calculate the pointer to the position data
+            // Calculate the pointer to the texture coordinate data
             const float* textureData = reinterpret_cast<const float*>(&textureBuffer.data[textureBufferView.byteOffset + textureAccessor.byteOffset]);
 
-            // Step 6: Create vertex array
+            // Create vertex array
             vertices.resize(vertexCount);
             for (size_t i = 0; i < vertexCount; ++i)
             {
                 vertices[i].Pos = XMFLOAT3(positionData[i * 3], positionData[i * 3 + 1], positionData[i * 3 + 2]);
-
-                // TODO: Set normals and texture coordinates if available
                 vertices[i].Normal = XMFLOAT3(normalData[i * 3], normalData[i * 3 + 1], normalData[i * 3 + 2]);
                 vertices[i].TexC = XMFLOAT2(textureData[i * 2], textureData[i * 2 + 1]);
             }
 
-            // Step 7: Extract indices
+            // Extract indices
             std::vector<std::uint16_t> indices;
 
             if (primitive.indices >= 0)
@@ -362,7 +360,7 @@ void GltfDemo::CreateGeometry()
         }
     }
 
-    // Step 8: Create MeshGeometry object and upload vertex/index data to GPU
+    // Upload the combined vertex/index data to the GPU
     const UINT vertexBufferSize = static_cast<UINT>(totalVertices.size() * sizeof(VertexWithTexCoord));
     const UINT indexBufferSize = static_cast<UINT>(totalIndices.size() * sizeof(std::uint16_t));
     m_indexCount = totalIndices.size();
@@ -545,9 +543,9 @@ void GltfDemo::CreatePipeline()
 }
 
 // 10. Create texture resources
-// We will load a texture from a DDS file using the DirectXTK's CreateDDSTextureFromFile12 helper function,
-// which creates both the texture resource and an intermediate upload resource, 
-// and records the necessary copy commands to upload the texture data to the GPU.
+// Load each glTF texture from file with DirectXTK's LoadWICTextureFromFile helper,
+// which creates the texture resource plus an intermediate upload resource and
+// records the copy commands to upload the pixels to the GPU.
 void GltfDemo::CreateTexture()
 {   
     // Reset the command list to record texture upload commands
@@ -602,7 +600,7 @@ void GltfDemo::CreateDummyTexture()
 
 void GltfDemo::UpdateConstantBuffers()
 {
-    // Rotate the cube slowly around Y axis
+    // Rotate the model slowly around the Y axis
     m_rotationAngle += 0.01f;
 
     // Object constant (b0) - World matrix
@@ -622,7 +620,7 @@ void GltfDemo::UpdateConstantBuffers()
     XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.1f, 100.0f);
     XMMATRIX viewProj = view * proj;
 
-    // Frame: identity viewproj (renders in NDC space directly)
+    // Frame: store the transposed view-projection matrix
     FrameConstants frameConstants = {};
     XMStoreFloat4x4(&frameConstants.ViewProj, XMMatrixTranspose(viewProj));
 

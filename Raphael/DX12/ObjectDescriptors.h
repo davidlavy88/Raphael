@@ -36,7 +36,7 @@ namespace raphael
         ResourceViewType type = ResourceViewType::Unknown;
         ResourceFormat format = ResourceFormat::Unknown;
 
-        // Descriptor handles (used  for RTV/DSV/SRV/UAV)
+        // Descriptor handles (used for RTV/DSV/SRV/UAV)
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
         D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = {};
 
@@ -147,7 +147,7 @@ namespace raphael
         InputLayoutDesc inputLayout;
         RasterizerFillMode rasterizerFillMode = RasterizerFillMode::Solid;
         RasterizerCullMode rasterizerCullMode = RasterizerCullMode::Back;
-        // ... more shader stages, input layout, etc.
+        // ... more shader stages, blend/depth state, topology, etc.
     };
 
     struct ShaderDesc {
@@ -239,7 +239,7 @@ namespace raphael
         float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
         float clearDepth = 1.0f;
         UINT8 clearStencil = 0;
-        // Other render state (e.g., viewport, scissor rect) can be added here as needed
+        // Other render state (blend, depth func, etc.) can be added here as needed
 
         // Viewport and scissor rect
         UINT viewportWidth = 0;

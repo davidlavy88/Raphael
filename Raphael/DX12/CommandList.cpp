@@ -73,9 +73,8 @@ namespace raphael
         subResourceData.RowPitch = buffersize;
         subResourceData.SlicePitch = subResourceData.RowPitch;
 
-        // Schedule to copy the data to the default buffer resource.  At a high level, the helper function UpdateSubresources
-        // will copy the CPU memory into the intermediate upload heap.  Then, using ID3D12CommandList::CopySubresourceRegion,
-        // the intermediate upload heap data will be copied to mBuffer.
+        // Stage the bytes through the upload heap (src) and let UpdateSubresources schedule
+        // the GPU copy into the default buffer (dst).
         CD3DX12_RESOURCE_BARRIER rbDescDest = CD3DX12_RESOURCE_BARRIER::Transition(dst->getNativeResource(),
             D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
         CD3DX12_RESOURCE_BARRIER rbDescRead = CD3DX12_RESOURCE_BARRIER::Transition(dst->getNativeResource(),
@@ -224,8 +223,8 @@ namespace raphael
         m_currentRenderPassDesc = renderPassDesc;
         m_isInRenderPass = true;
 
-        // Set render targets and clear them based on the render pass description
-        // Set viewport and scissor rect to cover the entire render target
+        // Only viewport + scissor here (covering the whole target).
+        // RTs get bound and cleared later, in clearAndSetRenderTargets.
         D3D12_VIEWPORT viewport = {};
         viewport.Height = static_cast<FLOAT>(renderPassDesc.viewportHeight);
         viewport.Width = static_cast<FLOAT>(renderPassDesc.viewportWidth);

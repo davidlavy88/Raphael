@@ -23,7 +23,7 @@ namespace raphael
     ResourceDx12::ResourceDx12(DeviceDx12* device, ID3D12Resource* resource)
         : m_device(device)
     {
-        // ComPtr will automatically AddRef the resource, so we can just assign it
+        // Attach takes ownership of the existing ref without AddRef'ing it
         m_resource.Attach(resource);
         // Retrieve resource description to fill m_desc
         D3D12_RESOURCE_DESC resDesc = m_resource->GetDesc();
@@ -173,7 +173,7 @@ namespace raphael
             1,
             desc.mipLevels, 1, 0,
             resourceFlags
-        ); // Default values for other fields like MipLevels, SampleDesc, etc. can be set as needed. For now, no mipmaps
+        ); // arraySize 1, single sample; mip count comes from desc.mipLevels
 
         // For textures that will be used as render targets or depth stencils, we should specify an optimized clear value. 
         // This is optional but can improve performance when clearing these resources.
@@ -228,7 +228,7 @@ namespace raphael
 
     void ResourceDx12::initAsSrv(D3D12_CPU_DESCRIPTOR_HANDLE handle)
     {
-        // For simplicity, we will create a basic SRV for a buffer or texture. In a real implementation, you would want to allow for more customization.
+        // Basic SRV only for now, no format/mip customization.
         if (m_desc.type == ResourceDesc::ResourceType::Buffer)
         {
             // Not implemented yet. For now, textures only
@@ -238,7 +238,7 @@ namespace raphael
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Texture2D.MipLevels = m_desc.mipLevels; // Assuming no mipmaps for simplicity
+            srvDesc.Texture2D.MipLevels = m_desc.mipLevels; // Use whatever mip count the resource was created with
             srvDesc.Format = convertFormatToDXGI(m_desc.format);
             m_device->getNativeDevice()->CreateShaderResourceView(m_resource.Get(), &srvDesc, handle);
         }

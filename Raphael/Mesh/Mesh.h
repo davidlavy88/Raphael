@@ -31,9 +31,9 @@ namespace raphael
         std::vector<uint32> m_indices32;		
         std::vector<uint16> m_indices16;
 
-        // A MeshGeometry may store multiple geometries in one vertex/index buffer.
-        // Use this container to define the Submesh geometries so we can draw
-        // the Submeshes individually.
+        // A Mesh may pack several sub-geometries into one vertex/index buffer.
+        // Use this container to define the Submesh ranges so we can draw
+        // each Submesh individually.
         std::unordered_map<std::string, Submesh> m_drawMeshes;
     };
 }
