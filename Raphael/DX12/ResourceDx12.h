@@ -24,12 +24,12 @@ namespace raphael
         bool map(void** data);
         void unmap();
 
-        ResourceView getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle = {}, UINT strideInBytes = 0);
+        ResourceView getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle = {}, UINT strideInBytes = 0, DXGI_FORMAT rtvFormatOverride = DXGI_FORMAT_UNKNOWN);
         ResourceBindFlags getResourceBindFlags() const { return m_desc.bindFlags; }
 
         void initAsCbv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
         void initAsSrv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
-        void initAsRtv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
+        void initAsRtv(D3D12_CPU_DESCRIPTOR_HANDLE handle, DXGI_FORMAT formatOverride = DXGI_FORMAT_UNKNOWN);
         void initAsDsv(D3D12_CPU_DESCRIPTOR_HANDLE handle);
 
     private:

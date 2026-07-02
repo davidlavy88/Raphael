@@ -295,7 +295,7 @@ void RayTracerDemo::CreatePipeline()
 
     // Create pipeline state
     PipelineDesc pipelineDesc = {};
-    pipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM };
+    pipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM_SRGB };
 	pipelineDesc.dsvFormat = ResourceFormat::Unknown; // No depth buffer
     pipelineDesc.inputLayout = InputLayoutDesc::build({
         InputElementDesc::setAsPosition(0, ResourceFormat::R32G32B32_FLOAT, 0, 0)

@@ -320,7 +320,7 @@ void BoxDemo::CreatePipeline()
     m_shader = std::make_unique<ShaderDx12>(m_shaderDesc);
 
     // Create pipeline state
-    m_pipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM };
+    m_pipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM_SRGB };
     m_pipelineDesc.inputLayout = InputLayoutDesc::build({
         InputElementDesc::setAsPosition(0, ResourceFormat::R32G32B32_FLOAT, 0, 0),
         InputElementDesc::setAsColor(0, ResourceFormat::R32G32B32A32_FLOAT, 0, 12)

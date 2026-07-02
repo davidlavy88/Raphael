@@ -123,7 +123,8 @@ namespace raphael
             m_backBuffers[i] = std::make_unique<ResourceDx12>(m_device, backBuffer);
             DescriptorHandle handle = {};
             rtvHeap->getDescriptorHandle(i, &handle);
-            m_rtvViews[i] = m_backBuffers[i]->getResourceView(ResourceBindFlags::RenderTarget, handle);
+            // View the UNORM back buffer as sRGB so the GPU encodes linear->sRGB on write.
+            m_rtvViews[i] = m_backBuffers[i]->getResourceView(ResourceBindFlags::RenderTarget, handle, 0, convertFormatToDXGI(ResourceFormat::R8G8B8A8_UNORM_SRGB));
         }
     }
 }

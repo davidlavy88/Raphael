@@ -658,7 +658,7 @@ void GBufferDemo::CreateGBufferPipeline()
     // Create pipeline state
     PipelineDesc gBufferPipelineDesc = {};
     gBufferPipelineDesc.numRenderTargets = 1;
-    gBufferPipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM };
+    gBufferPipelineDesc.rtvFormats = { ResourceFormat::R8G8B8A8_UNORM_SRGB };
     gBufferPipelineDesc.inputLayout = {}; // Fullscreen triangle doesn't need vertex input
     gBufferPipelineDesc.dsvFormat = ResourceFormat::Unknown; // No depth testing for fullscreen pass
 

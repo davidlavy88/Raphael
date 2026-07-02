@@ -27,6 +27,8 @@ namespace raphael
             return DXGI_FORMAT_R32_FLOAT;
         case raphael::ResourceFormat::R32_UINT:
             return DXGI_FORMAT_R32_UINT;
+        case raphael::ResourceFormat::R8G8B8A8_UNORM_SRGB:
+            return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
         default:
             return DXGI_FORMAT_UNKNOWN;
         }
@@ -40,6 +42,8 @@ namespace raphael
             return ResourceFormat::Unknown;
         case DXGI_FORMAT_R8G8B8A8_UNORM:
             return ResourceFormat::R8G8B8A8_UNORM;
+        case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+            return ResourceFormat::R8G8B8A8_UNORM_SRGB;
         case DXGI_FORMAT_R16G16B16A16_FLOAT:
             return ResourceFormat::R16G16B16A16_FLOAT;
         case DXGI_FORMAT_R32G32_FLOAT:

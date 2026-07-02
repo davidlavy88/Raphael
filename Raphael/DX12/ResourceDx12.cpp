@@ -60,7 +60,7 @@ namespace raphael
         }
     }
 
-    ResourceView ResourceDx12::getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle, UINT strideInBytes)
+    ResourceView ResourceDx12::getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle, UINT strideInBytes, DXGI_FORMAT rtvFormatOverride)
     {
         ResourceView view = {};
 
@@ -82,7 +82,7 @@ namespace raphael
             view.type = ResourceViewType::RenderTarget;
             view.cpuHandle = descriptorHandle.cpuHandle;
             view.gpuHandle = descriptorHandle.gpuHandle;
-            initAsRtv(descriptorHandle.cpuHandle);
+            initAsRtv(descriptorHandle.cpuHandle, rtvFormatOverride);
             break;
         case ResourceBindFlags::DepthStencil:
             view.type = ResourceViewType::DepthStencil;
@@ -244,14 +244,27 @@ namespace raphael
         }
     }
 
-    void ResourceDx12::initAsRtv(D3D12_CPU_DESCRIPTOR_HANDLE handle)
+    void ResourceDx12::initAsRtv(D3D12_CPU_DESCRIPTOR_HANDLE handle, DXGI_FORMAT formatOverride)
     {
         // TODO: Implement RTV creation based on resource type and format
         if (m_desc.type == ResourceDesc::ResourceType::Texture2D)
         {
-            // nullptr as pDesc lets D3D12 infer the view from the resource desc.
-            // WARNING: Use an explicit desc if typeless formats or specific mip/array targeting is needed.
-            m_device->getNativeDevice()->CreateRenderTargetView(m_resource.Get(), nullptr, handle);
+            if (formatOverride != DXGI_FORMAT_UNKNOWN)
+            {
+                // Explicit desc lets the RTV reinterpret the resource's format, e.g. view a
+                // UNORM back buffer as sRGB so the GPU sRGB-encodes on write. Flip-model swap
+                // chains can't use an _SRGB swap-chain format, so we apply it at the RTV instead.
+                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+                rtvDesc.Format = formatOverride;
+                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                m_device->getNativeDevice()->CreateRenderTargetView(m_resource.Get(), &rtvDesc, handle);
+            }
+            else
+            {
+                // nullptr as pDesc lets D3D12 infer the view from the resource desc.
+                // WARNING: Use an explicit desc if typeless formats or specific mip/array targeting is needed.
+                m_device->getNativeDevice()->CreateRenderTargetView(m_resource.Get(), nullptr, handle);
+            }
         }
     }
 

@@ -46,7 +46,8 @@ namespace raphael
         R32G32B32A32_FLOAT ,
         D24_UNORM_S8_UINT ,
         R32_FLOAT ,
-        R32_UINT 
+        R32_UINT ,
+        R8G8B8A8_UNORM_SRGB
         // TODO: Add more formats as needed
     };
 

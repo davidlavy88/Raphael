@@ -33,7 +33,7 @@ namespace raphael
         initInfo.Device = device->getNativeDevice();
         initInfo.CommandQueue = device->getCommandQueue();
         initInfo.NumFramesInFlight = numBackBuffers;
-        initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+        initInfo.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
         initInfo.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
         initInfo.SrvDescriptorHeap = srvHeap->getNativeHeap();
         initInfo.SrvDescriptorAllocFn = SrvDescriptorAllocFn;
