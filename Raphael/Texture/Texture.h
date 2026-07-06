@@ -16,8 +16,8 @@ namespace raphael
 
 		void Initialize(std::shared_ptr<DescriptorHeapDx12>& srvHeap, DeviceDx12* device);
 
-		void LoadTextureFromDDSFile(const std::string& filename, DeviceDx12* device, CommandList* commandList);
-		void LoadTextureFromWICFile(const std::string& filename, DeviceDx12* device, CommandList* commandList);
+		void LoadTextureFromDDSFile(const std::string& filename, DeviceDx12* device, CommandList* commandList, bool isSRGB = false);
+		void LoadTextureFromWICFile(const std::string& filename, DeviceDx12* device, CommandList* commandList, bool isSRGB = false);
 		void CreateDummyTexture(DeviceDx12* device, CommandList* commandList);
 		
 		ResourceDx12* GetResource() const { return m_defaultResource.get(); }

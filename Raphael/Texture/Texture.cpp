@@ -1,6 +1,7 @@
 #include "Texture.h"
 #include "TextureLoader/DDSTextureLoader.h"
 #include "TextureLoader/WICTextureLoader12.h"
+#include "DX12/UtilDx12.h"
 
 namespace raphael
 {
@@ -9,7 +10,7 @@ namespace raphael
 		m_srvDescriptorHeap = srvHeap;
 	}
 
-	void Texture::LoadTextureFromDDSFile(const std::string& filename, DeviceDx12* device, CommandList* commandList)
+	void Texture::LoadTextureFromDDSFile(const std::string& filename, DeviceDx12* device, CommandList* commandList, bool isSRGB)
 	{
 		ComPtr<ID3D12Resource> textureResource;
 		ComPtr<ID3D12Resource> uploadResource;
@@ -29,10 +30,12 @@ namespace raphael
 
 		DescriptorHandle srvHandle = {};
 		m_srvDescriptorHeap->AllocateHeap(&srvHandle);
-		m_srvResourceView = m_defaultResource->getResourceView(ResourceBindFlags::ShaderResource, srvHandle);
+		// Color textures are viewed as sRGB so the sampler decodes to linear on read.
+		DXGI_FORMAT srvFormat = isSRGB ? toSRGB(m_defaultResource->getNativeResource()->GetDesc().Format) : DXGI_FORMAT_UNKNOWN;
+		m_srvResourceView = m_defaultResource->getResourceView(ResourceBindFlags::ShaderResource, srvHandle, 0, srvFormat);
 	}
 
-	void Texture::LoadTextureFromWICFile(const std::string& filename, DeviceDx12* device, CommandList* commandList)
+	void Texture::LoadTextureFromWICFile(const std::string& filename, DeviceDx12* device, CommandList* commandList, bool isSRGB)
 	{
 		// WIC loader needs these additional outputs
 		std::unique_ptr<uint8_t[]> decodedData;
@@ -71,7 +74,9 @@ namespace raphael
 
 		DescriptorHandle srvHandle = {};
 		m_srvDescriptorHeap->AllocateHeap(&srvHandle);
-		m_srvResourceView = m_defaultResource->getResourceView(ResourceBindFlags::ShaderResource, srvHandle);
+		// Color textures are viewed as sRGB so the sampler decodes to linear on read.
+		DXGI_FORMAT srvFormat = isSRGB ? toSRGB(m_defaultResource->getNativeResource()->GetDesc().Format) : DXGI_FORMAT_UNKNOWN;
+		m_srvResourceView = m_defaultResource->getResourceView(ResourceBindFlags::ShaderResource, srvHandle, 0, srvFormat);
 	}
 	void Texture::CreateDummyTexture(DeviceDx12* device, CommandList* commandList)
 	{

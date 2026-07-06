@@ -421,7 +421,7 @@ void TexturedBoxDemo::CreateTexture()
     // Reset the command list to record texture upload commands
     m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
 
-    m_textureData->LoadTextureFromDDSFile("Textures/WoodCrate01.dds", m_device.get(), m_commandList.get());
+    m_textureData->LoadTextureFromDDSFile("Textures/WoodCrate01.dds", m_device.get(), m_commandList.get(), /*isSRGB*/ true);
 
     // Close and execute the command list to perform the texture upload
     m_commandList->end();

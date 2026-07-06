@@ -63,6 +63,25 @@ namespace raphael
         }
     }
 
+    // Return the sRGB sibling of a linear color format, so a color texture can be viewed
+    // as sRGB and the sampler decodes to linear on read. Returns the input unchanged if
+    // there is no sRGB variant (or it is already sRGB). Data textures (normal/roughness/
+    // metallic/AO) must NOT be passed through this.
+    inline DXGI_FORMAT toSRGB(DXGI_FORMAT format)
+    {
+        switch (format)
+        {
+        case DXGI_FORMAT_R8G8B8A8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        case DXGI_FORMAT_B8G8R8A8_UNORM: return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+        case DXGI_FORMAT_B8G8R8X8_UNORM: return DXGI_FORMAT_B8G8R8X8_UNORM_SRGB;
+        case DXGI_FORMAT_BC1_UNORM:      return DXGI_FORMAT_BC1_UNORM_SRGB;
+        case DXGI_FORMAT_BC2_UNORM:      return DXGI_FORMAT_BC2_UNORM_SRGB;
+        case DXGI_FORMAT_BC3_UNORM:      return DXGI_FORMAT_BC3_UNORM_SRGB;
+        case DXGI_FORMAT_BC7_UNORM:      return DXGI_FORMAT_BC7_UNORM_SRGB;
+        default:                         return format;
+        }
+    }
+
     inline D3D12_FILL_MODE convertFillModeToD3D12(RasterizerFillMode fillMode)
     {
         switch (fillMode)

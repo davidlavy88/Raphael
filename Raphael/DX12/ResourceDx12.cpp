@@ -60,7 +60,7 @@ namespace raphael
         }
     }
 
-    ResourceView ResourceDx12::getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle, UINT strideInBytes, DXGI_FORMAT rtvFormatOverride)
+    ResourceView ResourceDx12::getResourceView(ResourceBindFlags viewType, DescriptorHandle descriptorHandle, UINT strideInBytes, DXGI_FORMAT formatOverride)
     {
         ResourceView view = {};
 
@@ -76,13 +76,13 @@ namespace raphael
             view.type = ResourceViewType::ShaderResource;
             view.cpuHandle = descriptorHandle.cpuHandle;
             view.gpuHandle = descriptorHandle.gpuHandle;
-            initAsSrv(descriptorHandle.cpuHandle);
+            initAsSrv(descriptorHandle.cpuHandle, formatOverride);
             break;
         case ResourceBindFlags::RenderTarget:
             view.type = ResourceViewType::RenderTarget;
             view.cpuHandle = descriptorHandle.cpuHandle;
             view.gpuHandle = descriptorHandle.gpuHandle;
-            initAsRtv(descriptorHandle.cpuHandle, rtvFormatOverride);
+            initAsRtv(descriptorHandle.cpuHandle, formatOverride);
             break;
         case ResourceBindFlags::DepthStencil:
             view.type = ResourceViewType::DepthStencil;
@@ -226,7 +226,7 @@ namespace raphael
         m_device->getNativeDevice()->CreateConstantBufferView(&cbvDesc, handle);
     }
 
-    void ResourceDx12::initAsSrv(D3D12_CPU_DESCRIPTOR_HANDLE handle)
+    void ResourceDx12::initAsSrv(D3D12_CPU_DESCRIPTOR_HANDLE handle, DXGI_FORMAT formatOverride)
     {
         // Basic SRV only for now, no format/mip customization.
         if (m_desc.type == ResourceDesc::ResourceType::Buffer)
@@ -239,7 +239,8 @@ namespace raphael
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Texture2D.MipLevels = m_desc.mipLevels; // Use whatever mip count the resource was created with
-            srvDesc.Format = convertFormatToDXGI(m_desc.format);
+            // An explicit override lets us view a color texture as sRGB so the sampler decodes to linear on read.
+            srvDesc.Format = (formatOverride != DXGI_FORMAT_UNKNOWN) ? formatOverride : convertFormatToDXGI(m_desc.format);
             m_device->getNativeDevice()->CreateShaderResourceView(m_resource.Get(), &srvDesc, handle);
         }
     }
