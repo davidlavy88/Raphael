@@ -23,6 +23,12 @@ namespace raphael
 		XMFLOAT2 uvTiling = { 1.0f, 1.0f };
     };
 
+    struct TextureLoadInfo
+    {
+        std::string path;
+        bool        isSRGB;   // true = color data (albedo) -> sRGB view; false = linear data (normal/roughness/metallic)
+    };
+
     class MaterialRepository
     {
     public:
@@ -39,19 +45,19 @@ namespace raphael
             return (it != m_materials.end()) ? &it->second : nullptr;
         }
 
-        std::vector<std::string> GetAllTexturePaths() const
+        std::vector<TextureLoadInfo> GetAllTextures() const
         {
-            std::vector<std::string> paths;
+            std::vector<TextureLoadInfo> textures;
             for (const auto& [name, mat] : m_materials)
             {
-                if (!mat.albedoTexturePath.empty())    paths.push_back(mat.albedoTexturePath);
-                if (!mat.normalTexturePath.empty())     paths.push_back(mat.normalTexturePath);
-                if (!mat.roughnessTexturePath.empty())  paths.push_back(mat.roughnessTexturePath);
-                if (!mat.metallicTexturePath.empty())   paths.push_back(mat.metallicTexturePath);
+                if (!mat.albedoTexturePath.empty())     textures.push_back({ mat.albedoTexturePath,    true  });
+                if (!mat.normalTexturePath.empty())     textures.push_back({ mat.normalTexturePath,    false });
+                if (!mat.roughnessTexturePath.empty())  textures.push_back({ mat.roughnessTexturePath, false });
+                if (!mat.metallicTexturePath.empty())   textures.push_back({ mat.metallicTexturePath,  false });
             }
-            std::sort(paths.begin(), paths.end());
-            // paths.erase(std::unique(paths.begin(), paths.end()), paths.end());
-            return paths;
+            std::sort(textures.begin(), textures.end(),
+                      [](const TextureLoadInfo& a, const TextureLoadInfo& b) { return a.path < b.path; });
+            return textures;
         }
 
     private:

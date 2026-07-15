@@ -5,6 +5,7 @@
 #include "TextureLoader/DDSTextureLoader.h"
 #include "TextureLoader/WICTextureLoader12.h"
 #include "GPUStructs.h"
+#include <unordered_set>
 
 
 using namespace raphael;
@@ -551,20 +552,45 @@ void GltfDemo::CreateTexture()
     // Reset the command list to record texture upload commands
     m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
 
-    for (const tinygltf::Texture& texture : m_gltfModel->textures)
+    // Collect texture indices that hold color data (base-color, emissive, spec-gloss diffuse)
+    // -> need an sRGB view. Everything else (normal, metallic-roughness, occlusion) is linear
+    // data and stays UNORM.
+    std::unordered_set<int> srgbTextureIndices;
+    for (const tinygltf::Material& material : m_gltfModel->materials)
     {
-        if (texture.source < 0 || texture.source >= m_gltfModel->images.size())
+        // Standard metallic-roughness workflow.
+        if (material.pbrMetallicRoughness.baseColorTexture.index >= 0)
+            srgbTextureIndices.insert(material.pbrMetallicRoughness.baseColorTexture.index);
+        if (material.emissiveTexture.index >= 0)
+            srgbTextureIndices.insert(material.emissiveTexture.index);
+
+        // Legacy specular-glossiness workflow (KHR extension): diffuseTexture is color data.
+        auto extIt = material.extensions.find("KHR_materials_pbrSpecularGlossiness");
+        if (extIt != material.extensions.end() && extIt->second.Has("diffuseTexture"))
+        {
+            const tinygltf::Value& diffuseTex = extIt->second.Get("diffuseTexture");
+            if (diffuseTex.Has("index"))
+                srgbTextureIndices.insert(diffuseTex.Get("index").GetNumberAsInt());
+        }
+    }
+
+    for (size_t i = 0; i < m_gltfModel->textures.size(); ++i)
+    {
+        const tinygltf::Texture& gltfTexture = m_gltfModel->textures[i];
+        if (gltfTexture.source < 0 || gltfTexture.source >= m_gltfModel->images.size())
         {
             throw std::runtime_error("Texture source index out of bounds in gltf model");
         }
 
-        const tinygltf::Image& image = m_gltfModel->images[texture.source];
+        const tinygltf::Image& image = m_gltfModel->images[gltfTexture.source];
 
 		auto texture = std::make_unique<Texture>();
 		texture->Initialize(m_srvHeap, m_device.get());
 
+        const bool isSRGB = srgbTextureIndices.count(static_cast<int>(i)) > 0;
+
         std::string texturePath = "Models/sora/" + image.uri;
-        texture->LoadTextureFromWICFile(texturePath, m_device.get(), m_commandList.get());
+        texture->LoadTextureFromWICFile(texturePath, m_device.get(), m_commandList.get(), isSRGB);
 
         m_textures[texturePath] = std::move(texture);
     }

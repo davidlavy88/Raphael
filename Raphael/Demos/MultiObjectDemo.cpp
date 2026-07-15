@@ -7,9 +7,21 @@
 #include "GPUStructs.h"
 #include "Mesh/GltfLoader.h"
 #include "Mesh/MeshGenerator.h"
+#include <cmath>
 
 
 using namespace raphael;
+
+namespace
+{
+    // Convert an sRGB (display-referred) color component to linear. Hand-authored color
+    // constants like baseColorFactor are picked in sRGB space, so they must be decoded to
+    // linear before lighting - exactly like textures sampled through an sRGB view.
+    float srgbToLinear(float c)
+    {
+        return (c <= 0.04045f) ? (c / 12.92f) : std::pow((c + 0.055f) / 1.055f, 2.4f);
+    }
+}
 
 void MultiObjectImGui::Display()
 {
@@ -503,20 +515,22 @@ void MultiObjectDemo::CreateTexture()
     m_commandList->begin(m_frameContexts[0].commandAllocator.Get());
 
     // Load all textures referenced by materials in the repository
-    std::vector<std::string> texturePaths = m_materialRepo.GetAllTexturePaths();
-    for (const std::string& texturePath : texturePaths)
+    std::vector<TextureLoadInfo> textureInfos = m_materialRepo.GetAllTextures();
+    for (const TextureLoadInfo& info : textureInfos)
     {
+        const std::string& texturePath = info.path;
         // Skip if already loaded
         if (m_textures.find(texturePath) != m_textures.end())
             continue;
 
         auto texture = std::make_unique<Texture>();
         texture->Initialize(m_srvHeap, m_device.get());
-        // Check if texture is a DDS file or a WIC-supported format based on file extension
+        // Check if texture is a DDS file or a WIC-supported format based on file extension.
+        // Only color data (albedo) is decoded through an sRGB view; linear data stays UNORM.
         if (texturePath.substr(texturePath.find_last_of('.')) == ".dds")
-            texture->LoadTextureFromDDSFile(texturePath, m_device.get(), m_commandList.get());
+            texture->LoadTextureFromDDSFile(texturePath, m_device.get(), m_commandList.get(), info.isSRGB);
         else if (texturePath.substr(texturePath.find_last_of('.')) == ".png" || texturePath.substr(texturePath.find_last_of('.')) == ".jpg")
-            texture->LoadTextureFromWICFile(texturePath, m_device.get(), m_commandList.get());
+            texture->LoadTextureFromWICFile(texturePath, m_device.get(), m_commandList.get(), info.isSRGB);
         else
             throw std::runtime_error("Unsupported texture format: " + texturePath);
         m_textures[texturePath] = std::move(texture);
@@ -581,7 +595,14 @@ void MultiObjectDemo::UpdateConstantBuffers()
         MaterialConstants matConstants = {};
         if (material)
         {
-            matConstants.DiffuseAlbedo = material->baseColorFactor;
+            // baseColorFactor is authored in sRGB; decode to linear so untextured objects are
+            // consistent with sRGB-decoded textures under the linear -> sRGB output pipeline.
+            matConstants.DiffuseAlbedo = {
+                srgbToLinear(material->baseColorFactor.x),
+                srgbToLinear(material->baseColorFactor.y),
+                srgbToLinear(material->baseColorFactor.z),
+                material->baseColorFactor.w
+            };
             matConstants.Metallic = material->metallicFactor;
             matConstants.Roughness = material->roughnessFactor;
             matConstants.UVTiling = material->uvTiling;
