@@ -1,5 +1,6 @@
 #include "BoxDemo.h"
 #include "GPUStructs.h"
+#include "DX12/PixMarkers.h"
 
 using namespace raphael;
 
@@ -426,27 +427,35 @@ void BoxDemo::Render()
 
     {
         // Bind root signature and pipeline state
-        m_commandList->setGraphicsRootSignature(m_rootSignature.get());
-        m_commandList->setPipeline(m_pipeline.get());
+        {
+            ScopedGpuEvent geo(*m_commandList, "Geometry", PixColors::Geometry);
 
-        // Bind constant buffers to root parameters (descriptor tables or root descriptors 
-        // depending on how we set up the root signature)
-        m_commandList->setConstantBufferView(
-            0,
-            m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
-        m_commandList->setConstantBufferView(
-            1,
-            m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+            m_commandList->setGraphicsRootSignature(m_rootSignature.get());
+            m_commandList->setPipeline(m_pipeline.get());
 
-        // Bind geometry
-        m_commandList->setVertexBuffer(0, m_vertexBufferView);
-        m_commandList->setIndexBuffer(m_indexBufferView);
+            // Bind constant buffers to root parameters (descriptor tables or root descriptors 
+            // depending on how we set up the root signature)
+            m_commandList->setConstantBufferView(
+                0,
+                m_objectCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
+            m_commandList->setConstantBufferView(
+                1,
+                m_frameCBs[backBufferIndex]->getResource()->GetGPUVirtualAddress());
 
-        m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+            // Bind geometry
+            m_commandList->setVertexBuffer(0, m_vertexBufferView);
+            m_commandList->setIndexBuffer(m_indexBufferView);
 
-        // Render ImGui (needs SRV descriptor heap set since ImGui uses a font texture)
-        m_commandList->setDescriptorHeaps(m_srvHeap.get(), 1);
-        m_imguiLoader.Render(m_commandList.get());
+            m_commandList->drawIndexedInstanced(m_indexCount, 1, 0, 0, 0);
+        }
+
+        {
+            ScopedGpuEvent ui(*m_commandList, "ImGui", PixColors::Ui);
+
+            // Render ImGui (needs SRV descriptor heap set since ImGui uses a font texture)
+            m_commandList->setDescriptorHeaps(m_srvHeap.get(), 1);
+            m_imguiLoader.Render(m_commandList.get());
+        }
     }
 
     m_commandList->endRenderPass();

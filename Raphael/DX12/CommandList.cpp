@@ -4,6 +4,7 @@
 #include "DescriptorHeapDx12.h"
 #include "RootSignatureDx12.h"
 #include "RootSignatureTableDx12.h"
+#include "PixMarkers.h"
 
 namespace raphael
 {
@@ -223,6 +224,13 @@ namespace raphael
         m_currentRenderPassDesc = renderPassDesc;
         m_isInRenderPass = true;
 
+        // Emit a GPU marker spanning the whole pass so captures show a named region
+        // instead of a flat wall of anonymous draws.
+        if (renderPassDesc.debugName)
+        {
+            beginEvent(renderPassDesc.debugName, PixColors::Pass);
+        }
+
         // Only viewport + scissor here (covering the whole target).
         // RTs get bound and cleared later, in clearAndSetRenderTargets.
         D3D12_VIEWPORT viewport = {};
@@ -245,6 +253,28 @@ namespace raphael
             throw std::runtime_error("Not currently in a render pass");
         }
 
+        // Close the whole-pass GPU marker opened in beginRenderPass.
+        if (m_currentRenderPassDesc.debugName)
+        {
+            endEvent();
+        }
+
         m_isInRenderPass = false;
+    }
+
+    void CommandList::beginEvent(const char* name, uint32_t color)
+    {
+        // "%s" (rather than passing name directly) keeps names with '%' literal-safe.
+        PIXBeginEvent(m_commandList.Get(), static_cast<UINT64>(color), "%s", name);
+    }
+
+    void CommandList::endEvent()
+    {
+        PIXEndEvent(m_commandList.Get());
+    }
+
+    void CommandList::setMarker(const char* name, uint32_t color)
+    {
+        PIXSetMarker(m_commandList.Get(), static_cast<UINT64>(color), "%s", name);
     }
 } // namespace raphael

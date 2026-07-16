@@ -56,6 +56,13 @@ namespace raphael
         void beginRenderPass(const RenderPassDesc& renderPassDesc);
         void endRenderPass();
 
+        // GPU debug markers (PIX). Named, colored regions that nest and show up in
+        // PIX/RenderDoc captures. These call PIX macros from pix3.h, which expand to
+        // nothing (no-ops) unless USE_PIX is defined (Debug/Profile builds).
+        void beginEvent(const char* name, uint32_t color = 0xFFFFFFFF);
+        void endEvent();
+        void setMarker(const char* name, uint32_t color = 0xFFFFFFFF);
+
 
     private:
         CommandListDesc m_desc = {};
@@ -66,6 +73,25 @@ namespace raphael
         RenderPassDesc m_currentRenderPassDesc = {};
         bool m_isInRenderPass = false; // Track if we are currently inside a render pass
 
+    };
+
+    // RAII helper: opens a GPU marker region on construction and closes it on
+    // destruction, so a region can never leak on an early return or exception.
+    // Usage: ScopedGpuEvent ev(*cmdList, "Geometry", PixColors::Geometry);
+    class ScopedGpuEvent
+    {
+    public:
+        ScopedGpuEvent(CommandList& cmd, const char* name, uint32_t color = 0xFFFFFFFF)
+            : m_cmd(cmd) { m_cmd.beginEvent(name, color); }
+        ~ScopedGpuEvent() { m_cmd.endEvent(); }
+
+        // Non-copyable: copying would call endEvent() more than once for a single
+        // beginEvent(), closing marker regions that were never opened.
+        ScopedGpuEvent(const ScopedGpuEvent&) = delete;
+        ScopedGpuEvent& operator=(const ScopedGpuEvent&) = delete;
+
+    private:
+        CommandList& m_cmd;
     };
 
     // Template definition must be in the header so it's visible at instantiation

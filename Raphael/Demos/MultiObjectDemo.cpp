@@ -7,6 +7,7 @@
 #include "GPUStructs.h"
 #include "Mesh/GltfLoader.h"
 #include "Mesh/MeshGenerator.h"
+#include "DX12/PixMarkers.h"
 #include <cmath>
 
 
@@ -650,7 +651,7 @@ void MultiObjectDemo::Render()
         m_depthStencilView,
         WINDOW_WIDTH, WINDOW_HEIGHT,
         clearColor);
-    renderPassDesc.debugName = "Textured Box Render Pass";
+    renderPassDesc.debugName = "MultiObject Render Pass";
 
     // Test command list recording
     m_commandList->begin(currentFrameContext.commandAllocator.Get());
@@ -666,6 +667,16 @@ void MultiObjectDemo::Render()
     {
         // Set descriptor heaps (for the texture shader resource descriptor heaps)
         m_commandList->setDescriptorHeaps(m_srvHeap.get(), 1);
+
+        // Scene-geometry span. We use explicit beginEvent/endEvent here instead of the RAII
+        // ScopedGpuEvent so the ~45-line draw loop below doesn't gain an extra scope + indent
+        // level (which would also be a large whitespace-only diff). This is only safe because
+        // nothing in the span exits early: the loop's single jump is `continue`, which still
+        // falls through to the matching endEvent() after the loop. If a `return`/`throw` is
+        // ever added inside this span, switch back to ScopedGpuEvent (or extract a
+        // renderSceneGeometry() helper) — otherwise the marker leaks and PIX's event stack
+        // becomes unbalanced.
+        m_commandList->beginEvent("Scene Geometry", PixColors::Geometry);
 
         // Bind root signature and pipeline state
         m_commandList->setGraphicsRootSignature(m_rootSignature.get());
@@ -726,7 +737,12 @@ void MultiObjectDemo::Render()
             m_commandList->drawIndexedInstanced(submesh.indexCount, 1, submesh.indexBufferOffset, submesh.vertexBufferOffset, 0);
         }
 
-        m_imguiLoader.Render(m_commandList.get());
+        m_commandList->endEvent(); // end "Scene Geometry"
+
+        {
+            ScopedGpuEvent ui(*m_commandList, "ImGui", PixColors::Ui);
+            m_imguiLoader.Render(m_commandList.get());
+        }
 
     }
 
